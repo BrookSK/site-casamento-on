@@ -17,10 +17,11 @@ $groom     = $wedding['groom'] ?? 'Noivo';
 $dateLabel = $wedding['date_label'] ?? 'Data a definir';
 $dateIso   = $wedding['date_iso'] ?? '';
 
-// Imagem de destaque. Se o arquivo não existir, o placeholder (CSS) aparece.
-$heroImg     = View::asset('img/hero.jpg', $baseUrl);
-$heroImgFile = PUBLIC_PATH . '/assets/img/hero.jpg';
-$hasHero     = is_file($heroImgFile);
+// Imagem de destaque. Aceita hero.jpg/.png/.webp etc. Se nenhuma existir,
+// o placeholder (CSS) aparece.
+$hero    = View::image('hero', $baseUrl);
+$heroImg = $hero['url'];
+$hasHero = $hero['exists'];
 ?>
 <section class="hero <?= $hasHero ? 'hero--has-image' : 'hero--placeholder' ?>" data-reveal>
     <?php if ($hasHero): ?>

@@ -33,4 +33,43 @@ final class View
         $baseUrl = rtrim($baseUrl, '/');
         return $baseUrl . '/' . ltrim($path, '/');
     }
+
+    /** Extensões de imagem aceitas, em ordem de preferência. */
+    private const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
+
+    /**
+     * Resolve uma imagem a partir de um nome-base (sem extensão), procurando
+     * no disco qual extensão existe de fato.
+     *
+     * Ex.: image('hero') tenta hero.jpg, hero.jpeg, hero.png, hero.webp...
+     * e usa a primeira que existir em public/assets/img/.
+     *
+     * @param string $name    Nome-base do arquivo (sem extensão), ex.: "hero"
+     * @param string $baseUrl base_url da aplicação
+     * @return array{exists: bool, url: string, file: string} Dados da imagem
+     */
+    public static function image(string $name, string $baseUrl = ''): array
+    {
+        $name    = ltrim($name, '/');
+        $dir     = defined('PUBLIC_PATH') ? PUBLIC_PATH . '/assets/img/' : '';
+
+        foreach (self::IMAGE_EXTENSIONS as $ext) {
+            $file = $dir . $name . '.' . $ext;
+            if ($dir !== '' && is_file($file)) {
+                return [
+                    'exists' => true,
+                    'url'    => self::asset('img/' . $name . '.' . $ext, $baseUrl),
+                    'file'   => $file,
+                ];
+            }
+        }
+
+        // Nenhuma imagem encontrada: devolve o caminho .jpg como referência
+        // (usado apenas para a mensagem de placeholder).
+        return [
+            'exists' => false,
+            'url'    => self::asset('img/' . $name . '.jpg', $baseUrl),
+            'file'   => $dir . $name . '.jpg',
+        ];
+    }
 }

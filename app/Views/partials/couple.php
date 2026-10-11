@@ -15,9 +15,9 @@ $baseUrl = $app['base_url'] ?? '';
 $bride   = $wedding['bride'] ?? 'Noiva';
 $groom   = $wedding['groom'] ?? 'Noivo';
 
-$coupleImg     = View::asset('img/couple-1.jpg', $baseUrl);
-$coupleImgFile = PUBLIC_PATH . '/assets/img/couple-1.jpg';
-$hasCouple     = is_file($coupleImgFile);
+$couple    = View::image('couple-1', $baseUrl);
+$coupleImg = $couple['url'];
+$hasCouple = $couple['exists'];
 ?>
 <section class="section section--couple" id="historia" data-reveal>
     <div class="container couple">

@@ -28,8 +28,10 @@ placeholder elegante no lugar — então pode adicionar aos poucos.
 
 ## Dicas
 
-- **Formato:** `.jpg` para fotos (bom equilíbrio de qualidade/tamanho).
-  Se preferir, pode usar `.webp` — nesse caso ajuste os nomes nas views.
+- **Formato:** o site aceita automaticamente `.jpg`, `.jpeg`, `.png`, `.webp`
+  ou `.avif` — basta manter o **nome-base** da tabela (ex.: `hero`, `couple-1`,
+  `gallery-1`). Não precisa converter: se existir `hero.png`, ele será usado.
+  Recomendado `.jpg` ou `.webp` para fotos (bom equilíbrio qualidade/tamanho).
 - **Peso:** otimize as imagens (idealmente abaixo de ~400 KB cada) para
   carregamento rápido. A `hero.jpg` pode ser maior por ser tela cheia.
 - **Resolução sugerida:** `hero.jpg` ~2000px de largura; demais ~1200px.
