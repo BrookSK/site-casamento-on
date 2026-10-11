@@ -10,21 +10,19 @@ placeholder elegante no lugar — então pode adicionar aos poucos.
 |-----------------|---------------------------|--------------------------------------------|
 | `hero.jpg`      | Topo (hero, tela cheia)   | Horizontal/paisagem, casal em destaque     |
 | `couple-1.jpg`  | Seção "Nossa história"    | Vertical/retrato (proporção ~3:4)          |
-| `gallery-1.jpg` | Galeria (bloco largo)     | Horizontal/paisagem                        |
-| `gallery-2.jpg` | Galeria                   | Qualquer (recorte quadrado automático)     |
-| `gallery-3.jpg` | Galeria                   | Qualquer                                   |
-| `gallery-4.jpg` | Galeria                   | Qualquer                                   |
-| `gallery-5.jpg` | Galeria                   | Qualquer                                   |
-| `gallery-6.jpg` | Galeria                   | Qualquer                                   |
+| `gallery-1.jpg` | Galeria (mosaico 2x2)     | Vertical/retrato (recorte 4:5 automático)  |
+| `gallery-2.jpg` | Galeria (mosaico 2x2)     | Vertical/retrato (recorte 4:5 automático)  |
+| `gallery-3.jpg` | Galeria (mosaico 2x2)     | Vertical/retrato (recorte 4:5 automático)  |
+| `gallery-4.jpg` | Galeria (mosaico 2x2)     | Vertical/retrato (recorte 4:5 automático)  |
 
-### Sugestão de mapeamento (fotos enviadas)
+### Mapeamento atual (fotos do ensaio)
 
-1. Jardim com chafariz (mãos dadas) → `hero.jpg` **e/ou** `gallery-1.jpg`
-2. Retrato com buquê (look claro) → `couple-1.jpg` ou `gallery-2.jpg`
-3. Abraço com prédio ao fundo → `gallery-3.jpg`
-4. Trajes escuros na balaustrada → `gallery-4.jpg`
-5. Beijo com buquê (trajes escuros) → `gallery-5.jpg`
-6. Preto e branco (close) → `gallery-6.jpg`
+1. Jardim com chafariz (mãos dadas) → `hero`
+2. Retrato com buquê (look claro) → `couple-1`
+3. Abraço com prédio ao fundo → `gallery-1`
+4. Trajes escuros na balaustrada → `gallery-2`
+5. Beijo com buquê (trajes escuros) → `gallery-3`
+6. Preto e branco (close) → `gallery-4`
 
 ## Dicas
 

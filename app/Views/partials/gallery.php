@@ -16,12 +16,10 @@ $baseUrl = $app['base_url'] ?? '';
 // Fotos esperadas (ver public/assets/img/README.md).
 // 'name' é o nome-base (sem extensão): aceita .jpg/.png/.webp etc.
 $photos = [
-    ['name' => 'gallery-1', 'alt' => 'O casal de mãos dadas em um jardim com chafariz.'],
-    ['name' => 'gallery-2', 'alt' => 'Retrato do casal com buquê de flores.'],
-    ['name' => 'gallery-3', 'alt' => 'O casal em um abraço, com arquitetura clássica ao fundo.'],
-    ['name' => 'gallery-4', 'alt' => 'O casal em trajes escuros diante de um prédio histórico.'],
-    ['name' => 'gallery-5', 'alt' => 'O casal se beijando ao ar livre.'],
-    ['name' => 'gallery-6', 'alt' => 'Retrato em preto e branco do casal.'],
+    ['name' => 'gallery-1', 'alt' => 'O casal em um abraço, com arquitetura clássica ao fundo.'],
+    ['name' => 'gallery-2', 'alt' => 'O casal em trajes escuros diante de um prédio histórico.'],
+    ['name' => 'gallery-3', 'alt' => 'O casal se beijando ao ar livre com buquê de flores.'],
+    ['name' => 'gallery-4', 'alt' => 'Retrato em preto e branco do casal.'],
 ];
 ?>
 <section class="section section--gallery" id="galeria" data-reveal>
@@ -35,9 +33,8 @@ $photos = [
             <?php foreach ($photos as $i => $photo): ?>
                 <?php
                 $img = View::image($photo['name'], $baseUrl);
-                $spanClass = ($i === 0) ? 'gallery-item--wide' : '';
                 ?>
-                <figure class="gallery-item <?= $spanClass ?>">
+                <figure class="gallery-item">
                     <?php if ($img['exists']): ?>
                         <img src="<?= View::e($img['url']) ?>" alt="<?= View::e($photo['alt']) ?>" loading="lazy">
                     <?php else: ?>
