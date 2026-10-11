@@ -25,7 +25,7 @@ $hasCouple = $couple['exists'];
             <?php if ($hasCouple): ?>
                 <img src="<?= View::e($coupleImg) ?>"
                      alt="Retrato de <?= View::e($bride) ?> e <?= View::e($groom) ?>."
-                     loading="lazy" width="700" height="900">
+                     loading="lazy">
             <?php else: ?>
                 <div class="media-placeholder media-placeholder--portrait" role="img"
                      aria-label="Espaço reservado para uma foto do casal (couple-1.jpg).">

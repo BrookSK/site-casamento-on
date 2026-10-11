@@ -343,7 +343,20 @@ p { margin: 0 0 1rem; }
     gap: clamp(2rem, 6vw, 5rem);
     align-items: center;
 }
-.couple__media img,
+.couple__media {
+    display: flex;
+    justify-content: center;
+}
+.couple__media img {
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    /* Altura fixa (combina com o layout); largura segue a proporção real
+       da foto, sem esticar nem cortar. */
+    height: clamp(420px, 60vh, 620px);
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+}
 .couple__media .media-placeholder {
     border-radius: var(--radius);
     box-shadow: var(--shadow-soft);
@@ -579,7 +592,7 @@ p { margin: 0 0 1rem; }
    ============================================================= */
 @media (max-width: 860px) {
     .couple { grid-template-columns: 1fr; }
-    .couple__media { max-width: 420px; margin-inline: auto; }
+    .couple__media img { height: auto; width: auto; max-height: 70vh; }
     .gift-grid { grid-template-columns: repeat(2, 1fr); }
 
     /* Menu mobile */
