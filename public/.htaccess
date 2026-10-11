@@ -1,0 +1,19 @@
+# Roteamento para o front controller (Apache)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Não reescreve arquivos ou diretórios que existem fisicamente
+    # (assets: css, js, imagens).
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Todo o resto vai para o index.php
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Segurança básica: impede listagem de diretórios
+Options -Indexes
+
+# Define a página inicial
+DirectoryIndex index.php

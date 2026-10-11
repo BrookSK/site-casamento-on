@@ -1,0 +1,31 @@
+# ---- Dependências (futuras) ----
+/vendor/
+node_modules/
+
+# ---- Ambiente / segredos ----
+# (Não usamos .env nesta etapa; ignorado por precaução para o futuro.)
+.env
+.env.*
+*.key
+*.pem
+
+# ---- Logs e cache ----
+*.log
+/logs/
+/cache/
+/tmp/
+
+# ---- Sistema operacional ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Editores / IDEs ----
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---- Build (futuro) ----
+/dist/
+/build/
