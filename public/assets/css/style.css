@@ -350,9 +350,9 @@ p { margin: 0 0 1rem; }
 .couple__media img {
     border-radius: var(--radius);
     box-shadow: var(--shadow-soft);
-    /* Altura fixa (combina com o layout); largura segue a proporção real
-       da foto, sem esticar nem cortar. */
-    height: clamp(420px, 60vh, 620px);
+    /* Altura próxima à original (900px), limitada à altura da tela em telas
+       menores; largura segue a proporção real da foto, sem esticar. */
+    height: min(900px, 85vh);
     width: auto;
     max-width: 100%;
     object-fit: contain;
