@@ -73,6 +73,31 @@ abstract class Controller
         require $viewFile;
     }
 
+    /**
+     * Renderiza uma view dentro do layout administrativo (sidebar + topbar).
+     *
+     * @param string               $view Caminho da view (sem .php)
+     * @param array<string, mixed> $data
+     */
+    protected function viewAdmin(string $view, array $data = []): void
+    {
+        $viewFile = APP_PATH . '/Views/' . $view . '.php';
+
+        if (!is_file($viewFile)) {
+            http_response_code(500);
+            echo 'View não encontrada: ' . htmlspecialchars($view, ENT_QUOTES);
+            return;
+        }
+
+        $config = $this->config;
+        $app    = $this->config['app'] ?? [];
+        extract($data, EXTR_SKIP);
+
+        require APP_PATH . '/Views/admin/layout/header.php';
+        require $viewFile;
+        require APP_PATH . '/Views/admin/layout/footer.php';
+    }
+
     /** Redireciona para um caminho interno e encerra a execução. */
     protected function redirect(string $path): void
     {

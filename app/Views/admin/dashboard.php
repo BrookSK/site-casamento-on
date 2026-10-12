@@ -5,49 +5,46 @@ declare(strict_types=1);
 use App\Core\View;
 
 /**
- * Painel administrativo (área protegida).
+ * Painel — visão geral.
  *
- * @var array  $app
- * @var string $pageTitle
- * @var array{id:int,name:string,email:string}|null $admin
+ * @var array                                   $app
+ * @var array{total:int,confirmed:int,declined:int,pending:int,people:int} $rsvpSummary
+ * @var int                                     $giftCount
+ * @var string|null                             $dbError
  */
 
 $baseUrl = $app['base_url'] ?? '';
-$name    = $admin['name'] ?? 'Administrador';
 ?>
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex, nofollow">
-    <title><?= View::e($pageTitle) ?> · Administração</title>
+<?php if (!empty($dbError)): ?>
+    <div class="flash flash--error"><?= View::e($dbError) ?></div>
+<?php endif; ?>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= View::e(View::asset('css/admin.css', $baseUrl)) ?>">
-</head>
-<body>
-    <header class="admin-topbar">
-        <span class="admin-topbar__brand">Administração</span>
-        <div class="admin-topbar__right">
-            <span>Olá, <?= View::e($name) ?></span>
-            <a href="<?= View::e(View::url('/admin/logout', $baseUrl)) ?>">Sair</a>
-        </div>
-    </header>
+<div class="stat-grid">
+    <div class="stat">
+        <span class="stat__value"><?= (int) $rsvpSummary['confirmed'] ?></span>
+        <span class="stat__label">Confirmados</span>
+    </div>
+    <div class="stat">
+        <span class="stat__value"><?= (int) $rsvpSummary['people'] ?></span>
+        <span class="stat__label">Pessoas (c/ acompanhantes)</span>
+    </div>
+    <div class="stat">
+        <span class="stat__value"><?= (int) $rsvpSummary['declined'] ?></span>
+        <span class="stat__label">Não poderão ir</span>
+    </div>
+    <div class="stat">
+        <span class="stat__value"><?= (int) $giftCount ?></span>
+        <span class="stat__label">Presentes cadastrados</span>
+    </div>
+</div>
 
-    <main class="admin-main">
-        <div class="admin-card">
-            <h2>Bem-vindo(a) ao painel</h2>
-            <p>Você está autenticado(a) na área administrativa.</p>
+<div class="admin-card">
+    <h2>Bem-vindo(a) ao painel</h2>
+    <p>Use o menu lateral para gerenciar as confirmações de presença, a lista de
+    presentes e as configurações do site.</p>
 
-            <div class="admin-note">
-                Esta é a base do painel. O gerenciamento de confirmações de
-                presença, lista de presentes e demais recursos será adicionado
-                nas próximas etapas.
-            </div>
-        </div>
-    </main>
-</body>
-</html>
+    <div class="admin-toolbar" style="margin-top:1.5rem;">
+        <a class="btn-admin" href="<?= View::e(View::url('/admin/confirmacoes', $baseUrl)) ?>">Ver confirmações</a>
+        <a class="btn-admin btn-admin--ghost" href="<?= View::e(View::url('/admin/presentes', $baseUrl)) ?>">Gerenciar presentes</a>
+    </div>
+</div>

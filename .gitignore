@@ -13,6 +13,9 @@ node_modules/
 # O modelo versionado é o database.example.php.
 /app/Config/database.php
 
+# Chave de aplicação para cifrar segredos (SMTP, ASAAS). NUNCA versionar.
+/app/Config/app_key.php
+
 # ---- Logs e cache ----
 *.log
 /logs/
