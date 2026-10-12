@@ -64,6 +64,7 @@ $reception = $wedding['reception'] ?? [];
             'ok'          => ['success', 'Obrigado! Sua resposta foi registrada com carinho.'],
             'erro'        => ['error', 'Não foi possível registrar agora. Tente novamente.'],
             'erro-nome'   => ['error', 'Por favor, informe seu nome.'],
+            'erro-email'  => ['error', 'Este e-mail já foi usado em uma confirmação.'],
             'erro-sessao' => ['error', 'A sessão expirou. Recarregue a página e tente de novo.'],
         ];
         // Imagem decorativa da coluna esquerda (uma das fotos do ensaio).

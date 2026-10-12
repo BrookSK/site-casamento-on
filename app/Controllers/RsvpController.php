@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Csrf;
 use App\Models\Rsvp;
+use PDOException;
 use Throwable;
 
 /**
@@ -48,6 +49,13 @@ final class RsvpController extends Controller
 
         try {
             (new Rsvp($this->config))->createWithGuest($data, $rsvp);
+        } catch (PDOException $e) {
+            // 23000 / 1062 = violação de chave única (e-mail já cadastrado).
+            if ($e->getCode() === '23000' || ($e->errorInfo[1] ?? null) === 1062) {
+                $this->redirectHome('rsvp', 'erro-email');
+            }
+            error_log('[Rsvp] store (pdo): ' . $e->getMessage());
+            $this->redirectHome('rsvp', 'erro');
         } catch (Throwable $e) {
             error_log('[Rsvp] store: ' . $e->getMessage());
             $this->redirectHome('rsvp', 'erro');
