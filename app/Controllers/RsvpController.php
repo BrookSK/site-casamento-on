@@ -35,6 +35,28 @@ final class RsvpController extends Controller
         $companions = (int) ($_POST['companions'] ?? 0);
         $companions = max(0, min(20, $companions)); // limite sensato
 
+        // Nomes dos acompanhantes (só valem quando a pessoa vai comparecer).
+        $companionNames = [];
+        if ($attending && $companions > 0) {
+            $raw = $_POST['companion_names'] ?? [];
+            if (is_array($raw)) {
+                foreach ($raw as $cn) {
+                    $cn = trim((string) $cn);
+                    if ($cn !== '') {
+                        $companionNames[] = $cn;
+                    }
+                }
+            }
+
+            // Obrigatório: precisa ter um nome para cada acompanhante informado.
+            if (count($companionNames) < $companions) {
+                $this->redirectHome('rsvp', 'erro-acompanhantes');
+            }
+
+            // Usa exatamente a quantidade declarada (ignora extras).
+            $companionNames = array_slice($companionNames, 0, $companions);
+        }
+
         $data = [
             'name'  => mb_substr($name, 0, 150),
             'email' => trim((string) ($_POST['email'] ?? '')) ?: null,
@@ -48,7 +70,7 @@ final class RsvpController extends Controller
         ];
 
         try {
-            (new Rsvp($this->config))->createWithGuest($data, $rsvp);
+            (new Rsvp($this->config))->createWithGuest($data, $rsvp, $companionNames);
         } catch (PDOException $e) {
             // 23000 / 1062 = violação de chave única (e-mail já cadastrado).
             if ($e->getCode() === '23000' || ($e->errorInfo[1] ?? null) === 1062) {

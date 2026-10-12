@@ -75,8 +75,24 @@ $filters = [
             <tbody>
                 <?php foreach ($rows as $r): ?>
                     <?php [$label, $cls] = $statusLabels[$r['status']] ?? ['—', '']; ?>
+                    <?php
+                    // Nomes dos acompanhantes vêm agregados com separador '||'.
+                    $companionNames = [];
+                    if (!empty($r['companion_names'])) {
+                        $companionNames = array_filter(explode('||', (string) $r['companion_names']));
+                    }
+                    ?>
                     <tr>
-                        <td><?= View::e((string) $r['name']) ?></td>
+                        <td>
+                            <strong><?= View::e((string) $r['name']) ?></strong>
+                            <?php if ($companionNames !== []): ?>
+                                <ul class="companion-list">
+                                    <?php foreach ($companionNames as $cn): ?>
+                                        <li>+ <?= View::e((string) $cn) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <?php if (!empty($r['email'])): ?><?= View::e((string) $r['email']) ?><br><?php endif; ?>
                             <?php if (!empty($r['phone'])): ?><small><?= View::e((string) $r['phone']) ?></small><?php endif; ?>

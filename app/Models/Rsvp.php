@@ -14,12 +14,14 @@ final class Rsvp extends Model
     protected string $table = 'rsvps';
 
     /**
-     * Registra uma confirmação: cria o convidado e o RSVP numa transação.
+     * Registra uma confirmação: cria o convidado, o RSVP e os acompanhantes
+     * numa única transação.
      *
      * @param array{name:string, email:?string, phone:?string} $guest
      * @param array{status:string, companions:int, message:?string} $rsvp
+     * @param array<int, string> $companionNames Nomes dos acompanhantes
      */
-    public function createWithGuest(array $guest, array $rsvp): int
+    public function createWithGuest(array $guest, array $rsvp, array $companionNames = []): int
     {
         $pdo = $this->db();
         $pdo->beginTransaction();
@@ -47,6 +49,19 @@ final class Rsvp extends Model
             ]);
             $rsvpId = (int) $pdo->lastInsertId();
 
+            if ($companionNames !== []) {
+                $stmt = $pdo->prepare(
+                    'INSERT INTO rsvp_companions (rsvp_id, name) VALUES (:rid, :name)'
+                );
+                foreach ($companionNames as $cname) {
+                    $cname = trim($cname);
+                    if ($cname === '') {
+                        continue;
+                    }
+                    $stmt->execute(['rid' => $rsvpId, 'name' => mb_substr($cname, 0, 150)]);
+                }
+            }
+
             $pdo->commit();
             return $rsvpId;
         } catch (\Throwable $e) {
@@ -63,9 +78,13 @@ final class Rsvp extends Model
      */
     public function listWithGuests(?string $status = null): array
     {
+        // Agrega os nomes dos acompanhantes num campo só, com separador '||'.
         $sql = 'SELECT r.id, r.status, r.companions, r.message, r.responded_at, '
-             . 'g.name, g.email, g.phone '
-             . 'FROM rsvps r JOIN guests g ON g.id = r.guest_id ';
+             . 'g.name, g.email, g.phone, '
+             . "GROUP_CONCAT(c.name ORDER BY c.id SEPARATOR '||') AS companion_names "
+             . 'FROM rsvps r '
+             . 'JOIN guests g ON g.id = r.guest_id '
+             . 'LEFT JOIN rsvp_companions c ON c.rsvp_id = r.id ';
         $params = [];
 
         if ($status !== null && $status !== '') {
@@ -73,6 +92,7 @@ final class Rsvp extends Model
             $params['status'] = $status;
         }
 
+        $sql .= 'GROUP BY r.id, r.status, r.companions, r.message, r.responded_at, g.name, g.email, g.phone ';
         $sql .= 'ORDER BY r.responded_at DESC, r.id DESC';
         return $this->select($sql, $params);
     }

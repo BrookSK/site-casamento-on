@@ -71,6 +71,21 @@ CREATE TABLE IF NOT EXISTS `rsvps` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
+--  rsvp_companions — nomes dos acompanhantes de cada confirmação
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `rsvp_companions` (
+    `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `rsvp_id`    INT UNSIGNED NOT NULL,
+    `name`       VARCHAR(150) NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_companions_rsvp` (`rsvp_id`),
+    CONSTRAINT `fk_companions_rsvp`
+        FOREIGN KEY (`rsvp_id`) REFERENCES `rsvps` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
 --  gifts — itens da lista de presentes
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `gifts` (

@@ -65,6 +65,7 @@ $reception = $wedding['reception'] ?? [];
             'erro'        => ['error', 'Não foi possível registrar agora. Tente novamente.'],
             'erro-nome'   => ['error', 'Por favor, informe seu nome.'],
             'erro-email'  => ['error', 'Este e-mail já foi usado em uma confirmação.'],
+            'erro-acompanhantes' => ['error', 'Por favor, informe o nome de cada acompanhante.'],
             'erro-sessao' => ['error', 'A sessão expirou. Recarregue a página e tente de novo.'],
         ];
         // Imagem decorativa da coluna esquerda (uma das fotos do ensaio).
@@ -125,7 +126,14 @@ $reception = $wedding['reception'] ?? [];
                     <!-- Acompanhantes: só aparece ao escolher "Sim" (via JS). -->
                     <div class="rsvp-field rsvp-field--companions" data-companions hidden>
                         <label for="rsvp-companions">Quantos acompanhantes?</label>
-                        <input type="number" id="rsvp-companions" name="companions" min="0" max="20" value="0">
+                        <input type="number" id="rsvp-companions" name="companions"
+                               min="0" max="20" value="0" data-companions-count>
+                    </div>
+
+                    <!-- Campos de nome gerados conforme a quantidade (via JS). -->
+                    <div class="rsvp-companions-names" data-companions-names hidden>
+                        <p class="rsvp-companions-names__hint">Informe o nome de cada acompanhante:</p>
+                        <div data-companions-list></div>
                     </div>
 
                     <div class="rsvp-field">

@@ -235,6 +235,17 @@ a { color: var(--c-sage-dark); }
 .admin-table tbody tr:hover { background: var(--c-cream); }
 .admin-empty { text-align: center; color: var(--c-muted); padding: 2.5rem 1rem; }
 
+.companion-list {
+    list-style: none;
+    margin: 0.4rem 0 0;
+    padding: 0;
+}
+.companion-list li {
+    font-size: 0.85rem;
+    color: var(--c-muted);
+    padding: 0.1rem 0;
+}
+
 /* ---- Badges de status ---- */
 .badge {
     display: inline-block;

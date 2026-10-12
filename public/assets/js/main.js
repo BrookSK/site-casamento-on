@@ -104,12 +104,62 @@
         }
     }
 
-    /* ---- RSVP: mostra "acompanhantes" só quando escolhe "Sim" ---- */
+    /* ---- RSVP: acompanhantes + nomes dinâmicos ---- */
     var rsvpForm = document.querySelector('[data-rsvp-form]');
     if (rsvpForm) {
         var companionsField = rsvpForm.querySelector('[data-companions]');
-        var companionsInput = companionsField ? companionsField.querySelector('input') : null;
+        var companionsInput = rsvpForm.querySelector('[data-companions-count]');
+        var namesWrap = rsvpForm.querySelector('[data-companions-names]');
+        var namesList = rsvpForm.querySelector('[data-companions-list]');
         var attendingRadios = rsvpForm.querySelectorAll('[data-attending]');
+
+        var MAX = 20;
+
+        // Gera/ajusta os campos de nome conforme a quantidade informada.
+        var renderNameFields = function () {
+            if (!namesList || !namesWrap) { return; }
+
+            var checked = rsvpForm.querySelector('[data-attending]:checked');
+            var isYes = checked && checked.getAttribute('data-attending') === 'yes';
+            var count = parseInt(companionsInput ? companionsInput.value : '0', 10);
+            if (isNaN(count) || count < 0) { count = 0; }
+            if (count > MAX) { count = MAX; }
+
+            // Esconde a seção se não for "sim" ou não houver acompanhantes.
+            namesWrap.hidden = !(isYes && count > 0);
+
+            var current = namesList.children.length;
+
+            // Adiciona campos faltantes (preservando o que o usuário já digitou).
+            for (var i = current; i < count; i++) {
+                var field = document.createElement('div');
+                field.className = 'rsvp-field';
+                var id = 'rsvp-companion-' + (i + 1);
+                var label = document.createElement('label');
+                label.setAttribute('for', id);
+                label.textContent = 'Acompanhante ' + (i + 1);
+                var input = document.createElement('input');
+                input.type = 'text';
+                input.id = id;
+                input.name = 'companion_names[]';
+                field.appendChild(label);
+                field.appendChild(input);
+                namesList.appendChild(field);
+            }
+            // Remove campos excedentes.
+            while (namesList.children.length > count) {
+                namesList.removeChild(namesList.lastChild);
+            }
+
+            // Nomes são obrigatórios quando visíveis.
+            Array.prototype.forEach.call(namesList.querySelectorAll('input'), function (inp) {
+                if (namesWrap.hidden) {
+                    inp.removeAttribute('required');
+                } else {
+                    inp.setAttribute('required', 'required');
+                }
+            });
+        };
 
         var updateCompanions = function () {
             var checked = rsvpForm.querySelector('[data-attending]:checked');
@@ -117,15 +167,19 @@
             if (companionsField) {
                 companionsField.hidden = !isYes;
             }
-            // Zera o campo quando a pessoa escolhe "não".
             if (!isYes && companionsInput) {
                 companionsInput.value = '0';
             }
+            renderNameFields();
         };
 
         attendingRadios.forEach(function (radio) {
             radio.addEventListener('change', updateCompanions);
         });
+        if (companionsInput) {
+            companionsInput.addEventListener('input', renderNameFields);
+            companionsInput.addEventListener('change', renderNameFields);
+        }
         updateCompanions();
     }
 })();
