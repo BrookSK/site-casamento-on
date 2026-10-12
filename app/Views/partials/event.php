@@ -57,66 +57,84 @@ $reception = $wedding['reception'] ?? [];
         </div>
 
         <!-- Confirmação de presença (RSVP) -->
+        <?php
+        // Mensagem de retorno após enviar (vinda de ?rsvp=...).
+        $rsvpStatus = $rsvpStatus ?? null;
+        $feedback = [
+            'ok'          => ['success', 'Obrigado! Sua resposta foi registrada com carinho.'],
+            'erro'        => ['error', 'Não foi possível registrar agora. Tente novamente.'],
+            'erro-nome'   => ['error', 'Por favor, informe seu nome.'],
+            'erro-sessao' => ['error', 'A sessão expirou. Recarregue a página e tente de novo.'],
+        ];
+        // Imagem decorativa da coluna esquerda (uma das fotos do ensaio).
+        $rsvpImg = View::image('gallery-2', $app['base_url'] ?? '');
+        ?>
         <div class="rsvp" id="rsvp">
-            <h3 class="rsvp__title">Confirmação de presença</h3>
-
-            <?php
-            // Mensagem de retorno após enviar (vinda de ?rsvp=...).
-            $rsvpStatus = $rsvpStatus ?? null;
-            $feedback = [
-                'ok'          => ['success', 'Obrigado! Sua resposta foi registrada.'],
-                'erro'        => ['error', 'Não foi possível registrar agora. Tente novamente.'],
-                'erro-nome'   => ['error', 'Por favor, informe seu nome.'],
-                'erro-sessao' => ['error', 'A sessão expirou. Recarregue a página e tente de novo.'],
-            ];
-            ?>
-            <?php if ($rsvpStatus !== null && isset($feedback[$rsvpStatus])): ?>
-                <p class="rsvp__feedback rsvp__feedback--<?= View::e($feedback[$rsvpStatus][0]) ?>">
-                    <?= View::e($feedback[$rsvpStatus][1]) ?>
-                </p>
-            <?php endif; ?>
-
-            <p class="rsvp__text">Conte para nós se você poderá comemorar com a gente.</p>
-
-            <form class="rsvp-form" method="post"
-                  action="<?= View::e(View::url('/confirmar-presenca', $app['base_url'] ?? '')) ?>">
-                <?= $csrfField ?? '' ?>
-
-                <div class="rsvp-form__row">
-                    <div class="rsvp-field">
-                        <label for="rsvp-name">Nome *</label>
-                        <input type="text" id="rsvp-name" name="name" required>
-                    </div>
-                    <div class="rsvp-field">
-                        <label for="rsvp-phone">Telefone</label>
-                        <input type="text" id="rsvp-phone" name="phone" inputmode="tel">
-                    </div>
+            <div class="rsvp__aside" <?= $rsvpImg['exists'] ? 'style="background-image:url(\'' . View::e($rsvpImg['url']) . '\')"' : '' ?>>
+                <div class="rsvp__aside-inner">
+                    <p class="rsvp__aside-eyebrow">Faça parte deste dia</p>
+                    <h3 class="rsvp__aside-title">Confirme sua presença</h3>
+                    <p class="rsvp__aside-text">Sua presença é o presente mais especial. Conte para nós se poderá celebrar ao nosso lado.</p>
                 </div>
+            </div>
 
-                <div class="rsvp-form__row">
+            <div class="rsvp__form-wrap">
+                <?php if ($rsvpStatus !== null && isset($feedback[$rsvpStatus])): ?>
+                    <p class="rsvp__feedback rsvp__feedback--<?= View::e($feedback[$rsvpStatus][0]) ?>">
+                        <?= View::e($feedback[$rsvpStatus][1]) ?>
+                    </p>
+                <?php endif; ?>
+
+                <form class="rsvp-form" method="post" data-rsvp-form
+                      action="<?= View::e(View::url('/confirmar-presenca', $app['base_url'] ?? '')) ?>">
+                    <?= $csrfField ?? '' ?>
+
+                    <fieldset class="rsvp-choice">
+                        <legend>Você vai comparecer? *</legend>
+                        <div class="rsvp-choice__options">
+                            <label class="rsvp-choice__card">
+                                <input type="radio" name="attending" value="yes" required data-attending="yes">
+                                <span class="rsvp-choice__icon" aria-hidden="true">&#10084;</span>
+                                <span class="rsvp-choice__label">Sim, estarei lá</span>
+                            </label>
+                            <label class="rsvp-choice__card">
+                                <input type="radio" name="attending" value="no" data-attending="no">
+                                <span class="rsvp-choice__icon" aria-hidden="true">&#9815;</span>
+                                <span class="rsvp-choice__label">Não poderei ir</span>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <div class="rsvp-form__row">
+                        <div class="rsvp-field">
+                            <label for="rsvp-name">Nome completo *</label>
+                            <input type="text" id="rsvp-name" name="name" required>
+                        </div>
+                        <div class="rsvp-field">
+                            <label for="rsvp-phone">Telefone</label>
+                            <input type="text" id="rsvp-phone" name="phone" inputmode="tel">
+                        </div>
+                    </div>
+
                     <div class="rsvp-field">
                         <label for="rsvp-email">E-mail</label>
                         <input type="email" id="rsvp-email" name="email">
                     </div>
-                    <div class="rsvp-field">
-                        <label for="rsvp-companions">Acompanhantes</label>
+
+                    <!-- Acompanhantes: só aparece ao escolher "Sim" (via JS). -->
+                    <div class="rsvp-field rsvp-field--companions" data-companions hidden>
+                        <label for="rsvp-companions">Quantos acompanhantes?</label>
                         <input type="number" id="rsvp-companions" name="companions" min="0" max="20" value="0">
                     </div>
-                </div>
 
-                <fieldset class="rsvp-field rsvp-field--choice">
-                    <legend>Você vai comparecer? *</legend>
-                    <label><input type="radio" name="attending" value="yes" required> Sim, estarei lá</label>
-                    <label><input type="radio" name="attending" value="no"> Infelizmente não poderei</label>
-                </fieldset>
+                    <div class="rsvp-field">
+                        <label for="rsvp-message">Deixe um recado (opcional)</label>
+                        <textarea id="rsvp-message" name="message" rows="3"></textarea>
+                    </div>
 
-                <div class="rsvp-field">
-                    <label for="rsvp-message">Mensagem (opcional)</label>
-                    <textarea id="rsvp-message" name="message" rows="3"></textarea>
-                </div>
-
-                <button class="btn btn--primary" type="submit">Enviar confirmação</button>
-            </form>
+                    <button class="btn btn--primary rsvp-form__submit" type="submit">Enviar confirmação</button>
+                </form>
+            </div>
         </div>
     </div>
 </section>

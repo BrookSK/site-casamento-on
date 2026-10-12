@@ -103,4 +103,29 @@
             var timer = setInterval(tick, 1000);
         }
     }
+
+    /* ---- RSVP: mostra "acompanhantes" só quando escolhe "Sim" ---- */
+    var rsvpForm = document.querySelector('[data-rsvp-form]');
+    if (rsvpForm) {
+        var companionsField = rsvpForm.querySelector('[data-companions]');
+        var companionsInput = companionsField ? companionsField.querySelector('input') : null;
+        var attendingRadios = rsvpForm.querySelectorAll('[data-attending]');
+
+        var updateCompanions = function () {
+            var checked = rsvpForm.querySelector('[data-attending]:checked');
+            var isYes = checked && checked.getAttribute('data-attending') === 'yes';
+            if (companionsField) {
+                companionsField.hidden = !isYes;
+            }
+            // Zera o campo quando a pessoa escolhe "não".
+            if (!isYes && companionsInput) {
+                companionsInput.value = '0';
+            }
+        };
+
+        attendingRadios.forEach(function (radio) {
+            radio.addEventListener('change', updateCompanions);
+        });
+        updateCompanions();
+    }
 })();
