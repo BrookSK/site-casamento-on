@@ -9,6 +9,10 @@ node_modules/
 *.key
 *.pem
 
+# Credenciais do banco de dados (NUNCA versionar).
+# O modelo versionado é o database.example.php.
+/app/Config/database.php
+
 # ---- Logs e cache ----
 *.log
 /logs/
