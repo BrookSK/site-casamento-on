@@ -48,4 +48,36 @@ abstract class Controller
         require $viewFile;
         require APP_PATH . '/Views/layouts/footer.php';
     }
+
+    /**
+     * Renderiza uma view SEM o layout público (usada pelas telas de admin,
+     * que têm o próprio HTML).
+     *
+     * @param string               $view Caminho da view (sem .php)
+     * @param array<string, mixed> $data
+     */
+    protected function viewRaw(string $view, array $data = []): void
+    {
+        $viewFile = APP_PATH . '/Views/' . $view . '.php';
+
+        if (!is_file($viewFile)) {
+            http_response_code(500);
+            echo 'View não encontrada: ' . htmlspecialchars($view, ENT_QUOTES);
+            return;
+        }
+
+        $config = $this->config;
+        $app    = $this->config['app'] ?? [];
+        extract($data, EXTR_SKIP);
+
+        require $viewFile;
+    }
+
+    /** Redireciona para um caminho interno e encerra a execução. */
+    protected function redirect(string $path): void
+    {
+        $baseUrl = rtrim((string) ($this->config['app']['base_url'] ?? ''), '/');
+        header('Location: ' . $baseUrl . '/' . ltrim($path, '/'));
+        exit;
+    }
 }
