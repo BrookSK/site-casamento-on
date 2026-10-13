@@ -123,8 +123,45 @@ final class Rsvp extends Model
         ];
     }
 
+    /**
+     * Remove uma confirmação E o cadastro do convidado associado.
+     *
+     * Ao apagar a linha de `guests`, as FKs em cascata removem o próprio
+     * `rsvps` e os `rsvp_companions`. Assim o e-mail/telefone deixa de estar
+     * em uso e pode ser reaproveitado num novo cadastro/confirmação.
+     *
+     * Compras de presente (`gift_purchases`) são preservadas: a FK usa
+     * ON DELETE SET NULL, mantendo o histórico financeiro sem o vínculo.
+     *
+     * @return int Número de confirmações removidas (0 se o id não existia).
+     */
     public function delete(int $id): int
     {
-        return $this->execute('DELETE FROM rsvps WHERE id = :id', ['id' => $id]);
+        $pdo = $this->db();
+        $pdo->beginTransaction();
+
+        try {
+            // Descobre o convidado dono desta confirmação.
+            $stmt = $pdo->prepare('SELECT guest_id FROM rsvps WHERE id = :id');
+            $stmt->execute(['id' => $id]);
+            $guestId = $stmt->fetchColumn();
+
+            if ($guestId === false) {
+                // Nada a remover.
+                $pdo->commit();
+                return 0;
+            }
+
+            // Apaga o convidado: cascata remove rsvps e rsvp_companions.
+            $stmt = $pdo->prepare('DELETE FROM guests WHERE id = :id');
+            $stmt->execute(['id' => (int) $guestId]);
+            $affected = $stmt->rowCount();
+
+            $pdo->commit();
+            return $affected;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 }
