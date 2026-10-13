@@ -394,27 +394,27 @@ p { margin: 0 0 1rem; }
 
 /* =============================================================
    Fotos sobrepostas (estilo fotos impressas) — "Nossa História"
+   Arranjo em leque horizontal, inspirado na referência: duas fotos no
+   topo (esquerda/direita), uma central em destaque e uma em paisagem no
+   canto inferior direito.
    ============================================================= */
 .photo-stack {
     position: relative;
     width: 100%;
-    max-width: 460px;
+    max-width: 520px;
     margin-inline: auto;
-    /* Mantém a área reservada para o leque de fotos (evita cortes). */
-    aspect-ratio: 1 / 1;
+    /* Área reservada para o leque (um pouco mais larga que alta). */
+    aspect-ratio: 1 / 0.92;
 }
 .photo-stack__item {
     position: absolute;
     margin: 0;
-    width: 56%;
-    aspect-ratio: 4 / 5;
     background: var(--c-white);
     /* Borda branca grossa (aspecto de papel fotográfico). */
-    padding: 3.5%;
-    border-radius: 3px;
-    box-shadow: 0 10px 28px -12px rgba(44, 42, 38, 0.5);
-    transition: transform 0.45s var(--ease), box-shadow 0.45s var(--ease),
-                z-index 0s;
+    padding: 3%;
+    border-radius: 2px;
+    box-shadow: 0 12px 30px -14px rgba(44, 42, 38, 0.5);
+    transition: transform 0.45s var(--ease), box-shadow 0.45s var(--ease);
     cursor: pointer;
     outline: none;
 }
@@ -436,11 +436,46 @@ p { margin: 0 0 1rem; }
     font-size: 0.8rem;
 }
 
-/* Posições/rotações individuais (leque como na referência). */
-.photo-stack__item--1 { top: 2%;  left: 4%;   transform: rotate(-9deg);  z-index: 2; }
-.photo-stack__item--2 { top: 6%;  right: 2%;  transform: rotate(7deg);   z-index: 1; }
-.photo-stack__item--3 { top: 34%; left: 20%;  transform: rotate(-3deg);  z-index: 4; }
-.photo-stack__item--4 { bottom: 2%; right: 6%; transform: rotate(11deg); z-index: 3; }
+/* Cantos discretamente levantados: uma sombra extra atrás do papel,
+   deslocada, dá a sensação de a foto estar ligeiramente solta do fundo. */
+.photo-stack__item::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    left: 8%;
+    right: 8%;
+    bottom: 4%;
+    height: 20%;
+    border-radius: 50%;
+    background: rgba(44, 42, 38, 0.28);
+    filter: blur(9px);
+    transform: rotate(0deg);
+    transition: opacity 0.45s var(--ease);
+    opacity: 0.5;
+}
+
+/* Posições/rotações individuais (leque como na referência).
+   Fotos no topo são verticais; a 4 é paisagem (como a de Veneza). */
+.photo-stack__item--1 {
+    width: 40%; aspect-ratio: 4 / 5;
+    top: 0; left: 2%;
+    transform: rotate(-8deg); z-index: 2;
+}
+.photo-stack__item--2 {
+    width: 40%; aspect-ratio: 4 / 5;
+    top: 6%; right: 2%;
+    transform: rotate(6deg); z-index: 1;
+}
+.photo-stack__item--3 {
+    width: 44%; aspect-ratio: 4 / 5;
+    top: 30%; left: 27%;
+    transform: rotate(-2deg); z-index: 4;
+}
+.photo-stack__item--4 {
+    width: 42%; aspect-ratio: 5 / 4;
+    bottom: 0; right: 5%;
+    transform: rotate(9deg); z-index: 3;
+}
 
 /* Destaque no hover (desktop) e foco (teclado): zoom leve, sobe acima das
    demais, sombra mais intensa e rotação quase zerada. As outras ficam
@@ -449,20 +484,24 @@ p { margin: 0 0 1rem; }
 .photo-stack__item:focus-visible,
 .photo-stack__item.is-active {
     z-index: 10;
-    box-shadow: 0 22px 50px -14px rgba(44, 42, 38, 0.6);
+    box-shadow: 0 26px 56px -16px rgba(44, 42, 38, 0.62);
 }
+.photo-stack__item:hover::after,
+.photo-stack__item:focus-visible::after,
+.photo-stack__item.is-active::after { opacity: 0.75; }
+
 .photo-stack__item--1:hover,
 .photo-stack__item--1:focus-visible,
-.photo-stack__item--1.is-active { transform: rotate(-1deg) scale(1.06); }
+.photo-stack__item--1.is-active { transform: rotate(-2deg) scale(1.07); }
 .photo-stack__item--2:hover,
 .photo-stack__item--2:focus-visible,
-.photo-stack__item--2.is-active { transform: rotate(1deg) scale(1.06); }
+.photo-stack__item--2.is-active { transform: rotate(1deg) scale(1.07); }
 .photo-stack__item--3:hover,
 .photo-stack__item--3:focus-visible,
-.photo-stack__item--3.is-active { transform: rotate(0deg) scale(1.06); }
+.photo-stack__item--3.is-active { transform: rotate(0deg) scale(1.07); }
 .photo-stack__item--4:hover,
 .photo-stack__item--4:focus-visible,
-.photo-stack__item--4.is-active { transform: rotate(2deg) scale(1.06); }
+.photo-stack__item--4.is-active { transform: rotate(2deg) scale(1.07); }
 .couple__media .media-placeholder {
     border-radius: var(--radius);
     box-shadow: var(--shadow-soft);

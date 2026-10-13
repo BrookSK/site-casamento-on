@@ -18,22 +18,28 @@ $bride   = $content->text('bride', (string) ($wedding['bride'] ?? 'Noiva'));
 $groom   = $content->text('groom', (string) ($wedding['groom'] ?? 'Noivo'));
 
 // Composição de fotos sobrepostas (estilo fotos impressas espalhadas).
-// Nomes fixos story-1..story-4 em public/assets/img. Fallback: couple-1.
+// Cada posição aceita um nome dedicado (story-N) e, se ele não existir,
+// cai para uma imagem já presente no site. Assim a composição aparece de
+// imediato reutilizando as fotos atuais, e pode ser trocada depois subindo
+// os arquivos story-1..story-4.
 $storyPhotos = [
-    ['name' => 'story-1', 'alt' => 'Momento especial de ' . $bride . ' e ' . $groom . '.'],
-    ['name' => 'story-2', 'alt' => 'Retrato de ' . $bride . '.'],
-    ['name' => 'story-3', 'alt' => 'Retrato de ' . $groom . '.'],
-    ['name' => 'story-4', 'alt' => 'Uma paisagem marcante para o casal.'],
+    ['name' => 'story-1', 'fallback' => 'gallery-1', 'alt' => 'Momento especial de ' . $bride . ' e ' . $groom . '.'],
+    ['name' => 'story-2', 'fallback' => 'gallery-4', 'alt' => 'Retrato do casal.'],
+    ['name' => 'story-3', 'fallback' => 'couple-1',  'alt' => 'Retrato de ' . $bride . ' e ' . $groom . '.'],
+    ['name' => 'story-4', 'fallback' => 'gallery-3', 'alt' => 'Uma paisagem marcante para o casal.'],
 ];
 $storyResolved = [];
 $hasStory = false;
 foreach ($storyPhotos as $sp) {
     $img = View::image($sp['name'], $baseUrl);
+    if (!$img['exists']) {
+        $img = View::image($sp['fallback'], $baseUrl);
+    }
     if ($img['exists']) { $hasStory = true; }
     $storyResolved[] = ['img' => $img, 'alt' => $sp['alt'], 'name' => $sp['name']];
 }
 
-// Fallback: foto única antiga, caso nenhuma story-N exista ainda.
+// Fallback final: foto única antiga, caso nenhuma imagem exista.
 $couple = View::image('couple-1', $baseUrl);
 
 $historyTitle = $content->text('history_title', 'Dois caminhos, uma só direção');
