@@ -34,7 +34,8 @@ $tab     = $tab ?? 'login';
         <div class="account__card">
             <a class="account__brand" href="<?= View::e(View::url('/', $baseUrl)) ?>">Voltar ao site</a>
 
-            <div class="account__tabs" role="tablist">
+            <div class="account__tabs" role="tablist" data-active="<?= $tab === 'register' ? 'register' : 'login' ?>">
+                <span class="account__tabs-indicator" aria-hidden="true"></span>
                 <button type="button" class="account__tab <?= $tab === 'login' ? 'is-active' : '' ?>"
                         data-account-tab="login">Entrar</button>
                 <button type="button" class="account__tab <?= $tab === 'register' ? 'is-active' : '' ?>"

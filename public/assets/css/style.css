@@ -1320,6 +1320,7 @@ p { margin: 0 0 1rem; }
 }
 
 .account__tabs {
+    position: relative;
     display: flex;
     gap: 0.5rem;
     background: var(--c-cream);
@@ -1327,7 +1328,25 @@ p { margin: 0 0 1rem; }
     padding: 0.3rem;
     margin-bottom: 1.5rem;
 }
+/* "Bola" indicadora que desliza entre as abas. */
+.account__tabs-indicator {
+    position: absolute;
+    top: 0.3rem;
+    bottom: 0.3rem;
+    left: 0.3rem;
+    width: calc((100% - 0.6rem - 0.5rem) / 2);
+    border-radius: 999px;
+    background: var(--c-sage);
+    transform: translateX(0);
+    transition: transform 0.35s var(--ease);
+    pointer-events: none;
+}
+.account__tabs[data-active="register"] .account__tabs-indicator {
+    transform: translateX(calc(100% + 0.5rem));
+}
 .account__tab {
+    position: relative;
+    z-index: 1;
     flex: 1;
     border: 0;
     background: transparent;
@@ -1339,9 +1358,13 @@ p { margin: 0 0 1rem; }
     text-transform: uppercase;
     color: var(--c-muted);
     cursor: pointer;
-    transition: background 0.3s var(--ease), color 0.3s var(--ease);
+    transition: color 0.3s var(--ease);
 }
-.account__tab.is-active { background: var(--c-sage); color: var(--c-white); }
+.account__tab.is-active { color: var(--c-white); }
+
+@media (prefers-reduced-motion: reduce) {
+    .account__tabs-indicator { transition: none; }
+}
 
 .account__alert {
     background: #f0dcd6;

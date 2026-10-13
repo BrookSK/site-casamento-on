@@ -5,10 +5,14 @@
     'use strict';
 
     // Alterna entre as abas "Entrar" e "Criar conta".
+    var tabsWrap = document.querySelector('.account__tabs');
     var tabs = document.querySelectorAll('[data-account-tab]');
     var forms = document.querySelectorAll('[data-account-form]');
 
     var activate = function (name) {
+        if (tabsWrap) {
+            tabsWrap.setAttribute('data-active', name);
+        }
         tabs.forEach(function (t) {
             t.classList.toggle('is-active', t.getAttribute('data-account-tab') === name);
         });
