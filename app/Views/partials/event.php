@@ -34,34 +34,48 @@ $receptionDetails = $content->text('reception_details', (string) ($wedding['rece
             </p>
         </div>
 
-        <div class="event-highlight">
-            <div class="event-highlight__item">
-                <span class="event-highlight__label">Data</span>
-                <span class="event-highlight__value"><?= View::e($dateLabel) ?></span>
+        <!-- Bloco único tipo "convite": data/horário no topo e os dois
+             locais (cerimônia e recepção) com o emoji à esquerda do título. -->
+        <div class="invite">
+            <div class="invite__header">
+                <div class="invite__header-item">
+                    <span class="invite__label">Data</span>
+                    <span class="invite__value"><?= View::e($dateLabel) ?></span>
+                </div>
+                <div class="invite__header-divider" aria-hidden="true"></div>
+                <div class="invite__header-item">
+                    <span class="invite__label">Horário</span>
+                    <span class="invite__value"><?= View::e($timeLabel) ?></span>
+                </div>
             </div>
-            <div class="event-highlight__divider" aria-hidden="true"></div>
-            <div class="event-highlight__item">
-                <span class="event-highlight__label">Horário</span>
-                <span class="event-highlight__value"><?= View::e($timeLabel) ?></span>
+
+            <div class="invite__body">
+                <div class="invite__row">
+                    <span class="invite__emoji" aria-hidden="true">&#9962;</span>
+                    <div class="invite__info">
+                        <h3 class="invite__title">Cerimônia</h3>
+                        <p class="invite__place"><?= View::e($ceremonyPlace) ?></p>
+                        <p class="invite__address"><?= View::e($ceremonyAddress) ?></p>
+                        <?php if ($ceremonyDetails !== ''): ?>
+                            <p class="invite__details"><?= View::e($ceremonyDetails) ?></p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="invite__divider" aria-hidden="true"></div>
+
+                <div class="invite__row">
+                    <span class="invite__emoji" aria-hidden="true">&#127870;</span>
+                    <div class="invite__info">
+                        <h3 class="invite__title">Recepção</h3>
+                        <p class="invite__place"><?= View::e($receptionPlace) ?></p>
+                        <p class="invite__address"><?= View::e($receptionAddress) ?></p>
+                        <?php if ($receptionDetails !== ''): ?>
+                            <p class="invite__details"><?= View::e($receptionDetails) ?></p>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
-        </div>
-
-        <div class="event-cards">
-            <article class="event-card">
-                <div class="event-card__icon" aria-hidden="true">&#9962;</div>
-                <h3 class="event-card__title">Cerimônia</h3>
-                <p class="event-card__place"><?= View::e($ceremonyPlace) ?></p>
-                <p class="event-card__address"><?= View::e($ceremonyAddress) ?></p>
-                <p class="event-card__details"><?= View::e($ceremonyDetails) ?></p>
-            </article>
-
-            <article class="event-card">
-                <div class="event-card__icon" aria-hidden="true">&#127870;</div>
-                <h3 class="event-card__title">Recepção</h3>
-                <p class="event-card__place"><?= View::e($receptionPlace) ?></p>
-                <p class="event-card__address"><?= View::e($receptionAddress) ?></p>
-                <p class="event-card__details"><?= View::e($receptionDetails) ?></p>
-            </article>
         </div>
 
         <!-- Confirmação de presença (RSVP) -->
@@ -104,12 +118,12 @@ $receptionDetails = $content->text('reception_details', (string) ($wedding['rece
                         <div class="rsvp-choice__options">
                             <label class="rsvp-choice__card">
                                 <input type="radio" name="attending" value="yes" required data-attending="yes">
-                                <span class="rsvp-choice__icon" aria-hidden="true">&#10084;</span>
+                                <span class="rsvp-choice__icon heart" aria-hidden="true">&#10084;</span>
                                 <span class="rsvp-choice__label">Sim, estarei lá</span>
                             </label>
                             <label class="rsvp-choice__card">
                                 <input type="radio" name="attending" value="no" data-attending="no">
-                                <span class="rsvp-choice__icon" aria-hidden="true">&#9815;</span>
+                                <span class="rsvp-choice__icon rsvp-choice__icon--sad" aria-hidden="true">&#128542;</span>
                                 <span class="rsvp-choice__label">Não poderei ir</span>
                             </label>
                         </div>

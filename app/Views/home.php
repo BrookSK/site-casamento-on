@@ -14,5 +14,6 @@ declare(strict_types=1);
 require APP_PATH . '/Views/partials/hero.php';
 require APP_PATH . '/Views/partials/couple.php';
 require APP_PATH . '/Views/partials/event.php';
-require APP_PATH . '/Views/partials/gallery.php';
+// Lista de presentes antes do ensaio (ordem definida no ajuste da home).
 require APP_PATH . '/Views/partials/gifts.php';
+require APP_PATH . '/Views/partials/gallery.php';

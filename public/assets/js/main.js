@@ -216,4 +216,111 @@
         range.addEventListener('input', applyFilter);
         applyFilter();
     }
+
+    /* ---- Carrossel infinito do ensaio ---- */
+    var carousel = document.querySelector('[data-carousel]');
+    if (carousel) {
+        var viewport = carousel.querySelector('[data-carousel-viewport]');
+        var track = carousel.querySelector('[data-carousel-track]');
+        var originals = track ? Array.prototype.slice.call(track.children) : [];
+
+        // Precisa de ao menos 2 slides para fazer sentido rolar.
+        if (track && originals.length > 1) {
+            // Duplica os slides para criar a sensação de rolagem infinita.
+            originals.forEach(function (slide) {
+                track.appendChild(slide.cloneNode(true));
+            });
+
+            var position = 0;          // deslocamento atual (px)
+            var speed = 0.5;           // px por frame (~30px/s a 60fps)
+            var paused = false;
+            var rafId = null;
+            var halfWidth = 0;         // largura do conjunto original (ponto de reset)
+
+            var measure = function () {
+                // Metade do scrollWidth = largura dos slides originais (sem os clones).
+                halfWidth = track.scrollWidth / 2;
+            };
+
+            var step = function () {
+                if (!paused) {
+                    position += speed;
+                    if (position >= halfWidth) { position -= halfWidth; }
+                    track.style.transform = 'translateX(' + (-position) + 'px)';
+                }
+                rafId = window.requestAnimationFrame(step);
+            };
+
+            var start = function () {
+                measure();
+                if (rafId === null) { rafId = window.requestAnimationFrame(step); }
+            };
+
+            // Pausa no hover (desktop) e retoma ao sair.
+            carousel.addEventListener('mouseenter', function () { paused = true; });
+            carousel.addEventListener('mouseleave', function () { if (!dragging) { paused = false; } });
+
+            // ---- Arraste / swipe (mouse e toque) ----
+            var dragging = false;
+            var startX = 0;
+            var startPos = 0;
+
+            var pointerDown = function (clientX) {
+                dragging = true;
+                paused = true;
+                startX = clientX;
+                startPos = position;
+                viewport.classList.add('is-dragging');
+            };
+            var pointerMove = function (clientX) {
+                if (!dragging) { return; }
+                var delta = startX - clientX;
+                position = startPos + delta;
+                // Normaliza para manter o loop durante o arraste.
+                if (halfWidth > 0) {
+                    position = ((position % halfWidth) + halfWidth) % halfWidth;
+                }
+                track.style.transform = 'translateX(' + (-position) + 'px)';
+            };
+            var pointerUp = function () {
+                if (!dragging) { return; }
+                dragging = false;
+                viewport.classList.remove('is-dragging');
+                // Só retoma automaticamente se o mouse não estiver sobre o carrossel.
+                if (!carousel.matches(':hover')) { paused = false; }
+                else { paused = false; }
+            };
+
+            // Mouse
+            viewport.addEventListener('mousedown', function (e) { e.preventDefault(); pointerDown(e.clientX); });
+            window.addEventListener('mousemove', function (e) { pointerMove(e.clientX); });
+            window.addEventListener('mouseup', pointerUp);
+
+            // Toque
+            viewport.addEventListener('touchstart', function (e) {
+                pointerDown(e.touches[0].clientX);
+            }, { passive: true });
+            viewport.addEventListener('touchmove', function (e) {
+                pointerMove(e.touches[0].clientX);
+            }, { passive: true });
+            viewport.addEventListener('touchend', pointerUp);
+
+            // Recalcula no resize (larguras mudam entre breakpoints).
+            var resizeTimer = null;
+            window.addEventListener('resize', function () {
+                window.clearTimeout(resizeTimer);
+                resizeTimer = window.setTimeout(measure, 150);
+            });
+
+            // Respeita quem prefere menos movimento: sem rolagem automática,
+            // mas o arraste manual continua funcionando.
+            if (reduceMotion) {
+                measure();
+            } else {
+                // Garante medição correta após o carregamento das imagens.
+                if (document.readyState === 'complete') { start(); }
+                else { window.addEventListener('load', start); start(); }
+            }
+        }
+    }
 })();

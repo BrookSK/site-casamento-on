@@ -44,7 +44,7 @@ $facts = [
         </div>
 
         <div class="couple__text">
-            <p class="section__eyebrow">Nossa história</p>
+            <p class="section__eyebrow">Nossa história <span class="heart heart--soft" aria-hidden="true">&#10084;</span></p>
             <h2 class="section__title"><?= View::e($historyTitle) ?></h2>
 
             <?php if ($historyText !== ''): ?>
@@ -58,7 +58,10 @@ $facts = [
 
             <ul class="couple__facts">
                 <?php foreach ($facts as [$label, $value]): ?>
-                    <li><strong><?= View::e($label) ?></strong><span><?= View::e($value) ?></span></li>
+                    <li>
+                        <strong class="couple__facts-title"><?= View::e($label) ?></strong>
+                        <span class="couple__facts-desc"><?= View::e($value) ?></span>
+                    </li>
                 <?php endforeach; ?>
             </ul>
         </div>
