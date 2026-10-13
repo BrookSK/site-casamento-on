@@ -126,14 +126,15 @@ final class Rsvp extends Model
     /**
      * Remove uma confirmação E o cadastro do convidado associado.
      *
-     * Ao apagar a linha de `guests`, as FKs em cascata removem o próprio
-     * `rsvps` e os `rsvp_companions`. Assim o e-mail/telefone deixa de estar
-     * em uso e pode ser reaproveitado num novo cadastro/confirmação.
+     * Apaga acompanhantes, confirmações e o próprio convidado numa transação,
+     * de forma explícita (sem depender de ON DELETE CASCADE no banco). Assim o
+     * e-mail/telefone deixa de estar em uso e pode ser reaproveitado num novo
+     * cadastro/confirmação.
      *
-     * Compras de presente (`gift_purchases`) são preservadas: a FK usa
-     * ON DELETE SET NULL, mantendo o histórico financeiro sem o vínculo.
+     * Compras de presente (`gift_purchases`) são preservadas: o vínculo com o
+     * convidado é apenas anulado, mantendo o histórico financeiro.
      *
-     * @return int Número de confirmações removidas (0 se o id não existia).
+     * @return int 1 se o convidado foi removido; 0 se a confirmação não existia.
      */
     public function delete(int $id): int
     {
@@ -147,14 +148,35 @@ final class Rsvp extends Model
             $guestId = $stmt->fetchColumn();
 
             if ($guestId === false) {
-                // Nada a remover.
+                // Confirmação não existe mais; nada a remover.
                 $pdo->commit();
                 return 0;
             }
+            $guestId = (int) $guestId;
 
-            // Apaga o convidado: cascata remove rsvps e rsvp_companions.
-            $stmt = $pdo->prepare('DELETE FROM guests WHERE id = :id');
-            $stmt->execute(['id' => (int) $guestId]);
+            // Remoção explícita, na ordem correta — NÃO depende de a FK do banco
+            // estar com ON DELETE CASCADE (varia conforme como o banco foi
+            // criado). Assim o convidado é realmente apagado, liberando o
+            // e-mail e o telefone (índices UNIQUE) para um novo cadastro.
+
+            // 1) Acompanhantes de todas as confirmações do convidado.
+            $pdo->prepare(
+                'DELETE c FROM rsvp_companions c '
+                . 'JOIN rsvps r ON r.id = c.rsvp_id '
+                . 'WHERE r.guest_id = :gid'
+            )->execute(['gid' => $guestId]);
+
+            // 2) Confirmações do convidado.
+            $pdo->prepare('DELETE FROM rsvps WHERE guest_id = :gid')
+                ->execute(['gid' => $guestId]);
+
+            // 3) Desvincula compras de presente (preserva o histórico financeiro).
+            $pdo->prepare('UPDATE gift_purchases SET guest_id = NULL WHERE guest_id = :gid')
+                ->execute(['gid' => $guestId]);
+
+            // 4) O convidado em si — libera e-mail e telefone.
+            $stmt = $pdo->prepare('DELETE FROM guests WHERE id = :gid');
+            $stmt->execute(['gid' => $guestId]);
             $affected = $stmt->rowCount();
 
             $pdo->commit();
