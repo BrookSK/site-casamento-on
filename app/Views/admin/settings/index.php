@@ -73,9 +73,17 @@ $webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
             </div>
         </div>
 
+        <?php $smtpPasswordSet = (string) ($values['smtp_password_set'] ?? '') !== ''; ?>
         <div class="field">
-            <label for="smtp_password">Senha <?= ($values['smtp_password_set'] ?? '') ? '(já salva — preencha só para alterar)' : '' ?></label>
-            <input type="password" id="smtp_password" name="smtp_password" autocomplete="new-password" placeholder="••••••••">
+            <label for="smtp_password">Senha</label>
+            <input type="password" id="smtp_password" name="smtp_password" autocomplete="new-password"
+                   placeholder="<?= $smtpPasswordSet ? '••••••••••••••••' : '••••••••' ?>">
+            <?php if ($smtpPasswordSet): ?>
+                <small>
+                    Já existe uma senha salva (ocultada por segurança). Deixe em branco
+                    para mantê-la ou digite uma nova para substituir.
+                </small>
+            <?php endif; ?>
         </div>
 
         <div class="form-row">
