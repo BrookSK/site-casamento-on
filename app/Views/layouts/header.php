@@ -31,7 +31,7 @@ $title     = isset($pageTitle) ? $pageTitle . ' · ' . $siteName : $siteName;
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="<?= View::e(View::asset('css/style.css', $baseUrl)) ?>">
+    <link rel="stylesheet" href="<?= View::e(View::assetVersioned('css/style.css', $baseUrl)) ?>">
 </head>
 <body>
 

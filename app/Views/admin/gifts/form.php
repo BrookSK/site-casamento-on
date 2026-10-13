@@ -17,7 +17,8 @@ $isEdit  = $gift !== null;
 
 $name        = $isEdit ? (string) $gift['name'] : '';
 $description = $isEdit ? (string) ($gift['description'] ?? '') : '';
-$priceVal    = $isEdit ? number_format(((int) $gift['price_cents']) / 100, 2, ',', '') : '';
+// Formato brasileiro: ponto para milhar, vírgula para decimal (ex.: 5.000,00).
+$priceVal    = $isEdit ? number_format(((int) $gift['price_cents']) / 100, 2, ',', '.') : '';
 $image       = $isEdit ? (string) ($gift['image'] ?? '') : '';
 $statusCur   = $isEdit ? (string) $gift['status'] : 'available';
 $sortOrder   = $isEdit ? (int) $gift['sort_order'] : 0;
@@ -44,7 +45,11 @@ $statuses = ['available' => 'Disponível', 'reserved' => 'Reservado', 'purchased
         <div class="form-row">
             <div class="field">
                 <label for="price">Preço (R$)</label>
-                <input type="text" id="price" name="price" value="<?= View::e($priceVal) ?>" placeholder="150,00" inputmode="decimal">
+                <input type="text" id="price" name="price" value="<?= View::e($priceVal) ?>"
+                       placeholder="5.000,00" inputmode="decimal" autocomplete="off">
+                <small style="color:var(--c-muted);font-size:0.8rem;">
+                    Use vírgula para os centavos e ponto para o milhar. Ex.: 5.000,00
+                </small>
             </div>
             <div class="field">
                 <label for="sort_order">Ordem de exibição</label>

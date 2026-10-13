@@ -32,30 +32,30 @@ final class RsvpController extends Controller
         }
 
         $attending = ($_POST['attending'] ?? '') === 'yes';
-        $companions = (int) ($_POST['companions'] ?? 0);
-        $companions = max(0, min(20, $companions)); // limite sensato
 
-        // Nomes dos acompanhantes (só valem quando a pessoa vai comparecer).
+        // Acompanhantes: a quantidade é derivada dos nomes informados.
+        // Cada campo "Acompanhante N" deve ter um nome (não pode ficar vazio).
         $companionNames = [];
-        if ($attending && $companions > 0) {
+        if ($attending) {
             $raw = $_POST['companion_names'] ?? [];
             if (is_array($raw)) {
+                $hasEmpty = false;
                 foreach ($raw as $cn) {
                     $cn = trim((string) $cn);
-                    if ($cn !== '') {
+                    if ($cn === '') {
+                        $hasEmpty = true;
+                    } else {
                         $companionNames[] = $cn;
                     }
                 }
+                // Se o convidado adicionou um campo e deixou em branco, exige o nome.
+                if ($hasEmpty) {
+                    $this->redirectHome('rsvp', 'erro-acompanhantes');
+                }
             }
-
-            // Obrigatório: precisa ter um nome para cada acompanhante informado.
-            if (count($companionNames) < $companions) {
-                $this->redirectHome('rsvp', 'erro-acompanhantes');
-            }
-
-            // Usa exatamente a quantidade declarada (ignora extras).
-            $companionNames = array_slice($companionNames, 0, $companions);
+            $companionNames = array_slice($companionNames, 0, 20);
         }
+        $companions = count($companionNames);
 
         $data = [
             'name'  => mb_substr($name, 0, 150),

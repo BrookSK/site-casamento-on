@@ -132,16 +132,12 @@ $receptionDetails = $content->text('reception_details', (string) ($wedding['rece
                     </div>
 
                     <!-- Acompanhantes: só aparece ao escolher "Sim" (via JS). -->
-                    <div class="rsvp-field rsvp-field--companions" data-companions hidden>
-                        <label for="rsvp-companions">Quantos acompanhantes?</label>
-                        <input type="number" id="rsvp-companions" name="companions"
-                               min="0" max="20" value="0" data-companions-count>
-                    </div>
-
-                    <!-- Campos de nome gerados conforme a quantidade (via JS). -->
-                    <div class="rsvp-companions-names" data-companions-names hidden>
-                        <p class="rsvp-companions-names__hint">Informe o nome de cada acompanhante:</p>
-                        <div data-companions-list></div>
+                    <div class="rsvp-companions" data-companions hidden>
+                        <p class="rsvp-companions__hint">Possui algum acompanhante?</p>
+                        <div class="rsvp-companions__list" data-companions-list></div>
+                        <button type="button" class="rsvp-companions__add" data-companions-add>
+                            + Adicionar acompanhante
+                        </button>
                     </div>
 
                     <div class="rsvp-field">

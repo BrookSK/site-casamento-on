@@ -104,82 +104,82 @@
         }
     }
 
-    /* ---- RSVP: acompanhantes + nomes dinâmicos ---- */
+    /* ---- RSVP: acompanhantes adicionados um a um ---- */
     var rsvpForm = document.querySelector('[data-rsvp-form]');
     if (rsvpForm) {
-        var companionsField = rsvpForm.querySelector('[data-companions]');
-        var companionsInput = rsvpForm.querySelector('[data-companions-count]');
-        var namesWrap = rsvpForm.querySelector('[data-companions-names]');
-        var namesList = rsvpForm.querySelector('[data-companions-list]');
+        var companionsBox = rsvpForm.querySelector('[data-companions]');
+        var companionsList = rsvpForm.querySelector('[data-companions-list]');
+        var addBtn = rsvpForm.querySelector('[data-companions-add]');
         var attendingRadios = rsvpForm.querySelectorAll('[data-attending]');
 
         var MAX = 20;
 
-        // Gera/ajusta os campos de nome conforme a quantidade informada.
-        var renderNameFields = function () {
-            if (!namesList || !namesWrap) { return; }
-
-            var checked = rsvpForm.querySelector('[data-attending]:checked');
-            var isYes = checked && checked.getAttribute('data-attending') === 'yes';
-            var count = parseInt(companionsInput ? companionsInput.value : '0', 10);
-            if (isNaN(count) || count < 0) { count = 0; }
-            if (count > MAX) { count = MAX; }
-
-            // Esconde a seção se não for "sim" ou não houver acompanhantes.
-            namesWrap.hidden = !(isYes && count > 0);
-
-            var current = namesList.children.length;
-
-            // Adiciona campos faltantes (preservando o que o usuário já digitou).
-            for (var i = current; i < count; i++) {
-                var field = document.createElement('div');
-                field.className = 'rsvp-field';
+        // Renumera os rótulos (Acompanhante 1, 2, 3...) após adicionar/remover.
+        var renumber = function () {
+            var rows = companionsList.querySelectorAll('[data-companion-row]');
+            Array.prototype.forEach.call(rows, function (row, i) {
+                var label = row.querySelector('label');
+                var input = row.querySelector('input');
                 var id = 'rsvp-companion-' + (i + 1);
-                var label = document.createElement('label');
-                label.setAttribute('for', id);
-                label.textContent = 'Acompanhante ' + (i + 1);
-                var input = document.createElement('input');
-                input.type = 'text';
-                input.id = id;
-                input.name = 'companion_names[]';
-                field.appendChild(label);
-                field.appendChild(input);
-                namesList.appendChild(field);
-            }
-            // Remove campos excedentes.
-            while (namesList.children.length > count) {
-                namesList.removeChild(namesList.lastChild);
-            }
-
-            // Nomes são obrigatórios quando visíveis.
-            Array.prototype.forEach.call(namesList.querySelectorAll('input'), function (inp) {
-                if (namesWrap.hidden) {
-                    inp.removeAttribute('required');
-                } else {
-                    inp.setAttribute('required', 'required');
-                }
+                if (label) { label.textContent = 'Acompanhante ' + (i + 1); label.setAttribute('for', id); }
+                if (input) { input.id = id; }
             });
+            // Esconde o botão ao atingir o máximo.
+            if (addBtn) { addBtn.hidden = rows.length >= MAX; }
         };
+
+        var addCompanion = function () {
+            if (companionsList.querySelectorAll('[data-companion-row]').length >= MAX) { return; }
+
+            var row = document.createElement('div');
+            row.className = 'rsvp-companion-row';
+            row.setAttribute('data-companion-row', '');
+
+            var field = document.createElement('div');
+            field.className = 'rsvp-field';
+            var label = document.createElement('label');
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.name = 'companion_names[]';
+            input.required = true;
+            field.appendChild(label);
+            field.appendChild(input);
+
+            var remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'rsvp-companion-row__remove';
+            remove.setAttribute('aria-label', 'Remover acompanhante');
+            remove.innerHTML = '&times;';
+            remove.addEventListener('click', function () {
+                row.parentNode.removeChild(row);
+                renumber();
+            });
+
+            row.appendChild(field);
+            row.appendChild(remove);
+            companionsList.appendChild(row);
+            renumber();
+            input.focus();
+        };
+
+        if (addBtn) {
+            addBtn.addEventListener('click', addCompanion);
+        }
 
         var updateCompanions = function () {
             var checked = rsvpForm.querySelector('[data-attending]:checked');
             var isYes = checked && checked.getAttribute('data-attending') === 'yes';
-            if (companionsField) {
-                companionsField.hidden = !isYes;
+            if (companionsBox) { companionsBox.hidden = !isYes; }
+            // Ao escolher "não", limpa todos os acompanhantes.
+            if (!isYes && companionsList) {
+                companionsList.innerHTML = '';
+                renumber();
             }
-            if (!isYes && companionsInput) {
-                companionsInput.value = '0';
-            }
-            renderNameFields();
         };
 
         attendingRadios.forEach(function (radio) {
             radio.addEventListener('change', updateCompanions);
         });
-        if (companionsInput) {
-            companionsInput.addEventListener('input', renderNameFields);
-            companionsInput.addEventListener('change', renderNameFields);
-        }
         updateCompanions();
     }
 

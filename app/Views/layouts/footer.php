@@ -43,6 +43,6 @@ $year    = date('Y');
     </div>
 </footer>
 
-<script src="<?= View::e(View::asset('js/main.js', $baseUrl)) ?>" defer></script>
+<script src="<?= View::e(View::assetVersioned('js/main.js', $baseUrl)) ?>" defer></script>
 </body>
 </html>

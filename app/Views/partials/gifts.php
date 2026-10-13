@@ -43,7 +43,7 @@ $showFilter = $maxCents > 0 && count($gifts) > 1;
                 </div>
                 <input type="range" id="gift-range"
                        min="<?= (int) $minCents ?>" max="<?= (int) $maxCents ?>"
-                       value="<?= (int) $maxCents ?>" step="100"
+                       value="<?= (int) $maxCents ?>" step="5000"
                        data-gift-range
                        aria-label="Valor máximo do presente">
                 <div class="gift-filter__scale">

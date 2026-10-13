@@ -588,7 +588,7 @@ p { margin: 0 0 1rem; }
     outline-offset: 2px;
 }
 
-.rsvp-companions-names {
+.rsvp-companions {
     display: grid;
     gap: 0.75rem;
     padding: 1rem;
@@ -596,14 +596,50 @@ p { margin: 0 0 1rem; }
     border-radius: var(--radius);
     border: 1px solid var(--c-line);
 }
-.rsvp-companions-names__hint {
+.rsvp-companions__hint {
     margin: 0;
     font-size: 0.8rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--c-sage-dark);
 }
-.rsvp-companions-names [data-companions-list] { display: grid; gap: 0.75rem; }
+.rsvp-companions__list { display: grid; gap: 0.75rem; }
+.rsvp-companions__list:empty { display: none; }
+
+/* Linha de acompanhante: campo + botão remover */
+.rsvp-companion-row { display: flex; align-items: flex-end; gap: 0.5rem; }
+.rsvp-companion-row .rsvp-field { flex: 1; }
+.rsvp-companion-row__remove {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--c-line);
+    background: var(--c-white);
+    color: var(--c-muted);
+    border-radius: var(--radius);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+.rsvp-companion-row__remove:hover { background: #f0dcd6; color: #9c3b26; }
+
+/* Botão "Adicionar acompanhante" */
+.rsvp-companions__add {
+    justify-self: start;
+    background: transparent;
+    border: 1px dashed var(--c-sage);
+    color: var(--c-sage-dark);
+    border-radius: 999px;
+    padding: 0.55rem 1.2rem;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 0.2s var(--ease);
+}
+.rsvp-companions__add:hover { background: #eef0e4; }
+.rsvp-companions__add[hidden] { display: none; }
 
 .rsvp-form__submit { justify-self: start; margin-top: 0.25rem; }
 

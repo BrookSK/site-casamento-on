@@ -27,6 +27,19 @@ final class View
         return $baseUrl . '/assets/' . ltrim($path, '/');
     }
 
+    /**
+     * Como asset(), mas acrescenta ?v=<timestamp> baseado na data de
+     * modificação do arquivo. Isso força o navegador a baixar a versão nova
+     * sempre que o CSS/JS mudar (cache busting), evitando conteúdo em cache.
+     */
+    public static function assetVersioned(string $path, string $baseUrl = ''): string
+    {
+        $url  = self::asset($path, $baseUrl);
+        $file = defined('PUBLIC_PATH') ? PUBLIC_PATH . '/assets/' . ltrim($path, '/') : '';
+        $ver  = ($file !== '' && is_file($file)) ? (string) filemtime($file) : '1';
+        return $url . '?v=' . $ver;
+    }
+
     /** Monta uma URL interna respeitando a base_url. */
     public static function url(string $path, string $baseUrl = ''): string
     {
