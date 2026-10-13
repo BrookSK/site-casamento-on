@@ -15,7 +15,10 @@ return [
     // ---- Aplicação ----
     'app' => [
         'name'     => 'Nossa História',
-        'base_url' => '', // Deixe vazio quando servir a partir da raiz (ex.: php -S)
+        // URL base pública do site (sem barra final). Usada para montar links
+        // absolutos — ex.: a URL do webhook do ASAAS.
+        // Deixe vazio APENAS em desenvolvimento local servindo a partir da raiz.
+        'base_url' => 'https://zen-raman.186-209-113-140.plesk.page',
         'locale'   => 'pt_BR',
         'timezone' => 'America/Sao_Paulo',
         'debug'    => true,

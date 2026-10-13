@@ -55,6 +55,7 @@ $router->post('/admin/textos-e-imagens/salvar', 'ContentController@save');
 // Configurações (SMTP / ASAAS — base)
 $router->get('/admin/configuracoes', 'SettingsController@index');
 $router->post('/admin/configuracoes/smtp', 'SettingsController@saveSmtp');
+$router->post('/admin/configuracoes/smtp/testar', 'SettingsController@testSmtp');
 $router->post('/admin/configuracoes/asaas', 'SettingsController@saveAsaas');
 $router->post('/admin/configuracoes/asaas/testar', 'SettingsController@testAsaas');
 $router->post('/admin/configuracoes/webhook', 'SettingsController@saveWebhook');

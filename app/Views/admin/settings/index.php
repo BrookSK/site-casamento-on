@@ -40,8 +40,10 @@ $webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
 <!-- ===================== SMTP ===================== -->
 <div class="admin-card">
     <h2>E-mail (SMTP)</h2>
-    <p>Configuração do servidor de envio de e-mails. <strong>Base apenas</strong> —
-    o envio ainda não está ativo; será implementado em outra etapa.</p>
+    <p>Configuração do servidor de envio de e-mails. Com o SMTP configurado, o
+    site envia automaticamente a confirmação de presença aos convidados e o
+    agradecimento quando um presente é pago. Use o botão <em>Testar envio</em>
+    para validar as credenciais.</p>
 
     <form class="form-grid" method="post" action="<?= View::e(View::url('/admin/configuracoes/smtp', $baseUrl)) ?>">
         <?= $csrfField ?>
@@ -91,6 +93,19 @@ $webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
             <button type="submit" class="btn-admin">Salvar SMTP</button>
         </div>
     </form>
+
+    <form class="form-grid" method="post" action="<?= View::e(View::url('/admin/configuracoes/smtp/testar', $baseUrl)) ?>" style="margin-top:1rem">
+        <?= $csrfField ?>
+        <div class="field">
+            <label for="smtp_test_to">Enviar e-mail de teste para</label>
+            <input type="email" id="smtp_test_to" name="smtp_test_to" value="<?= $v('smtp_from_email') ?>" placeholder="destinatario@exemplo.com" autocomplete="off">
+            <small>Em branco envia para o próprio e-mail remetente. Salve as
+            configurações antes de testar.</small>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-admin btn-admin--ghost">Testar envio</button>
+        </div>
+    </form>
 </div>
 
 <!-- ===================== ASAAS ===================== -->
@@ -110,9 +125,19 @@ $webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
             </select>
         </div>
 
+        <?php $asaasKeySet = (string) ($values['asaas_api_key_set'] ?? '') !== ''; ?>
         <div class="field">
-            <label for="asaas_api_key">Chave de API <?= ($values['asaas_api_key_set'] ?? '') ? '(já salva — preencha só para alterar)' : '' ?></label>
-            <input type="password" id="asaas_api_key" name="asaas_api_key" autocomplete="off" placeholder="$aact_...">
+            <label for="asaas_api_key">Chave de API</label>
+            <input type="password" id="asaas_api_key" name="asaas_api_key" autocomplete="off"
+                   placeholder="<?= $asaasKeySet ? '••••••••••••••••' : '$aact_...' ?>">
+            <small>
+                <?php if ($asaasKeySet): ?>
+                    Já existe uma chave salva (ocultada por segurança). Deixe em branco
+                    para mantê-la ou digite uma nova para substituir.
+                <?php else: ?>
+                    Cole a chave gerada no painel do ASAAS (começa com <code>$aact_</code>).
+                <?php endif; ?>
+            </small>
         </div>
 
         <div class="field">
@@ -123,9 +148,21 @@ $webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
             <code>asaas-access-token</code> antes de processar.</small>
         </div>
 
+        <?php
+        // Monta a URL ABSOLUTA do webhook. Com base_url configurada (produção),
+        // usa-a direto. Sem base_url (dev local), deriva do host da requisição,
+        // evitando mostrar um caminho relativo que o ASAAS não consegue chamar.
+        if ($baseUrl !== '') {
+            $webhookUrl = View::url('/asaas/webhook', $baseUrl);
+        } else {
+            $scheme     = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host       = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $webhookUrl = $scheme . '://' . $host . '/asaas/webhook';
+        }
+        ?>
         <div class="field">
             <label>URL do webhook (configure no painel do ASAAS)</label>
-            <input type="text" readonly value="<?= View::e(View::url('/asaas/webhook', $baseUrl)) ?>" onclick="this.select()">
+            <input type="text" readonly value="<?= View::e($webhookUrl) ?>" onclick="this.select()">
             <small>Cadastre esta URL no ASAAS para receber as confirmações de
             pagamento (eventos de cobrança). Em desenvolvimento local, use um
             túnel público (ex.: ngrok) para o ASAAS conseguir acessá-la.</small>

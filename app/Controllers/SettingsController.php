@@ -8,6 +8,7 @@ use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\Crypto;
 use App\Core\Csrf;
+use App\Core\Mailer;
 use App\Models\Setting;
 use Throwable;
 
@@ -95,6 +96,51 @@ final class SettingsController extends Controller
         } catch (Throwable $e) {
             error_log('[Settings] saveSmtp: ' . $e->getMessage());
             $this->setFlash('error', 'Não foi possível salvar: ' . $e->getMessage());
+        }
+
+        $this->redirect('/admin/configuracoes');
+    }
+
+    /**
+     * Envia um e-mail de teste usando as configurações de SMTP já salvas.
+     * Útil para o administrador validar host/porta/credenciais no painel.
+     */
+    public function testSmtp(): void
+    {
+        $this->guard();
+        if (!Csrf::validate($_POST[Csrf::fieldName()] ?? null)) {
+            $this->setFlash('error', 'Sessão expirada. Tente novamente.');
+            $this->redirect('/admin/configuracoes');
+        }
+
+        try {
+            $mailer = Mailer::fromSettings($this->config);
+
+            // Destinatário: o campo informado no formulário ou, na falta dele,
+            // o próprio e-mail remetente configurado.
+            $model = new Setting($this->config);
+            $to    = trim((string) ($_POST['smtp_test_to'] ?? ''));
+            if ($to === '') {
+                $to = trim((string) ($model->get('smtp_from_email') ?? ''));
+            }
+            if ($to === '' || filter_var($to, FILTER_VALIDATE_EMAIL) === false) {
+                $this->setFlash('error', 'Informe um e-mail de destino válido para o teste.');
+                $this->redirect('/admin/configuracoes');
+            }
+
+            $site    = (string) ($this->config['app']['name'] ?? 'o site');
+            $subject = 'Teste de envio — ' . $site;
+            $html    = '<p>Este é um e-mail de teste enviado pelo painel de '
+                . 'configurações de <strong>' . htmlspecialchars($site, ENT_QUOTES, 'UTF-8')
+                . '</strong>.</p><p>Se você recebeu esta mensagem, o SMTP está '
+                . 'configurado corretamente.</p>';
+
+            $mailer->send($to, $subject, $html);
+
+            $this->setFlash('success', 'E-mail de teste enviado para ' . $to . '.');
+        } catch (Throwable $e) {
+            error_log('[Settings] testSmtp: ' . $e->getMessage());
+            $this->setFlash('error', 'Falha no envio de teste: ' . $e->getMessage());
         }
 
         $this->redirect('/admin/configuracoes');

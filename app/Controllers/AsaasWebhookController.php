@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\Mailer;
 use App\Models\AsaasWebhookEvent;
 use App\Models\GiftPurchase;
 use App\Models\Setting;
@@ -75,7 +76,14 @@ final class AsaasWebhookController extends Controller
                 $purchases = new GiftPurchase($this->config);
                 $purchase  = $purchases->findByPaymentRef($paymentId);
                 if ($purchase !== null) {
+                    $wasPaid = ($purchase['payment_status'] ?? '') === 'paid';
                     $purchases->updateStatus((int) $purchase['id'], $status);
+
+                    // Agradece ao presenteador quando o pagamento é confirmado
+                    // (apenas na transição para "paid", para não repetir e-mails).
+                    if ($status === 'paid' && !$wasPaid) {
+                        $this->sendThankYouEmail($purchase);
+                    }
                 }
             }
 
@@ -85,6 +93,47 @@ final class AsaasWebhookController extends Controller
             // 500 faz o ASAAS reenviar depois; a idempotência cobre duplicatas.
             $this->respond(500, 'error');
         }
+    }
+
+    /**
+     * Envia um e-mail de agradecimento ao presenteador quando a cobrança é
+     * confirmada. Tolerante a falhas: nunca interrompe o processamento do
+     * webhook (um erro de SMTP não deve fazer o ASAAS reenviar o evento).
+     *
+     * @param array<string, mixed> $purchase Linha de gift_purchases.
+     */
+    private function sendThankYouEmail(array $purchase): void
+    {
+        try {
+            $email = trim((string) ($purchase['buyer_email'] ?? ''));
+            if ($email === '' || !Mailer::isConfigured($this->config)) {
+                return;
+            }
+
+            $name   = trim((string) ($purchase['buyer_name'] ?? ''));
+            $site   = (string) ($this->config['app']['name'] ?? '');
+            $greet  = $name !== '' ? ('Olá ' . $name . ', ') : '';
+            $amount = $this->formatAmount((int) ($purchase['amount_cents'] ?? 0));
+
+            $html = '<p>' . htmlspecialchars($greet, ENT_QUOTES, 'UTF-8')
+                . 'recebemos a sua contribuição' . ($amount !== '' ? (' de <strong>' . $amount . '</strong>') : '')
+                . '. Muito obrigado pelo carinho!</p>'
+                . ($site !== '' ? ('<p>Com carinho, ' . htmlspecialchars($site, ENT_QUOTES, 'UTF-8') . '.</p>') : '');
+
+            $mailer = Mailer::fromSettings($this->config);
+            $mailer->send($email, 'Recebemos o seu presente — obrigado!', $html, $name);
+        } catch (Throwable $e) {
+            error_log('[AsaasWebhook] sendThankYouEmail: ' . $e->getMessage());
+        }
+    }
+
+    /** Formata centavos como "R$ 1.234,56" (vazio quando não houver valor). */
+    private function formatAmount(int $cents): string
+    {
+        if ($cents <= 0) {
+            return '';
+        }
+        return 'R$ ' . number_format($cents / 100, 2, ',', '.');
     }
 
     /**

@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Csrf;
+use App\Core\Mailer;
 use App\Core\Webhook;
 use App\Models\Rsvp;
 use App\Models\Setting;
@@ -89,7 +90,43 @@ final class RsvpController extends Controller
         // aqui NÃO afetam o convidado — apenas são registradas no log.
         $this->notifyWebhook($data, $rsvp['status']);
 
+        // Envia o e-mail de confirmação ao convidado (se houver e-mail e o SMTP
+        // estiver configurado). Também é tolerante a falhas: só registra no log.
+        $this->sendConfirmationEmail($data, $rsvp['status']);
+
         $this->redirectHome('rsvp', 'ok');
+    }
+
+    /**
+     * Envia o e-mail de confirmação de presença ao convidado.
+     *
+     * @param array{name:string, email:?string, phone:?string} $guest
+     * @param string $status 'confirmed' ou 'declined'
+     */
+    private function sendConfirmationEmail(array $guest, string $status): void
+    {
+        try {
+            $email = trim((string) ($guest['email'] ?? ''));
+            if ($email === '' || !Mailer::isConfigured($this->config)) {
+                return;
+            }
+
+            $mailer  = Mailer::fromSettings($this->config);
+            $subject = $status === 'confirmed'
+                ? 'Presença confirmada'
+                : 'Resposta recebida';
+
+            $mailer->send($email, $subject, $this->buildEmailBody($guest['name'], $status), $guest['name']);
+        } catch (Throwable $e) {
+            error_log('[Rsvp] sendConfirmationEmail: ' . $e->getMessage());
+        }
+    }
+
+    /** Monta o corpo HTML do e-mail a partir da mensagem pré-pronta. */
+    private function buildEmailBody(string $name, string $status): string
+    {
+        $message = $this->buildMessage($name, $status);
+        return '<p>' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</p>';
     }
 
     /**
