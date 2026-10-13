@@ -242,8 +242,8 @@ p { margin: 0 0 1rem; }
     min-height: 100svh;
     display: flex;
     align-items: center;
-    justify-content: center;
-    text-align: center;
+    justify-content: flex-start; /* conteúdo à esquerda (desktop) */
+    text-align: left;
     overflow: hidden;
     color: var(--c-white);
 }
@@ -263,12 +263,23 @@ p { margin: 0 0 1rem; }
 }
 .hero__overlay {
     position: absolute; inset: 0; z-index: -1;
-    background: linear-gradient(180deg,
-        rgba(32, 30, 26, 0.35) 0%,
-        rgba(32, 30, 26, 0.15) 35%,
-        rgba(32, 30, 26, 0.55) 100%);
+    /* Vertical para profundidade + reforço à esquerda, onde fica o texto,
+       garantindo legibilidade sem escurecer a foto toda. */
+    background:
+        linear-gradient(90deg,
+            rgba(32, 30, 26, 0.60) 0%,
+            rgba(32, 30, 26, 0.30) 38%,
+            rgba(32, 30, 26, 0.00) 68%),
+        linear-gradient(180deg,
+            rgba(32, 30, 26, 0.25) 0%,
+            rgba(32, 30, 26, 0.10) 40%,
+            rgba(32, 30, 26, 0.45) 100%);
 }
-.hero__content { padding-top: 4rem; }
+.hero__content {
+    padding-top: 4rem;
+    max-width: 620px;      /* evita os nomes esticarem demais na horizontal */
+    margin-right: auto;    /* mantém encostado à esquerda */
+}
 .hero__eyebrow {
     letter-spacing: 0.4em;
     text-transform: uppercase;
@@ -276,10 +287,11 @@ p { margin: 0 0 1rem; }
     margin: 0 0 1.25rem;
 }
 .hero__names {
-    font-size: clamp(3rem, 11vw, 7rem);
+    font-size: clamp(3rem, 9vw, 6rem);
     font-weight: 400;
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: 0.1em;
     text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
 }
@@ -297,7 +309,7 @@ p { margin: 0 0 1rem; }
 
 .countdown {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     gap: clamp(0.75rem, 3vw, 2.25rem);
     margin-top: 2rem;
 }
@@ -838,6 +850,19 @@ p { margin: 0 0 1rem; }
     margin: 0;
     letter-spacing: 0.08em;
 }
+.site-footer__admin {
+    margin: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+.site-footer__admin a {
+    color: var(--c-sand);
+    opacity: 0.4;
+    text-decoration: none;
+    transition: opacity 0.3s var(--ease);
+}
+.site-footer__admin a:hover { opacity: 0.8; }
 
 /* =============================================================
    Página de erro
@@ -865,6 +890,18 @@ p { margin: 0 0 1rem; }
     .couple { grid-template-columns: 1fr; }
     .couple__media img { height: auto; width: auto; max-height: 70vh; }
     .gift-grid { grid-template-columns: repeat(2, 1fr); }
+
+    /* Hero volta a centralizado em telas menores */
+    .hero { justify-content: center; text-align: center; }
+    .hero__content { margin-inline: auto; max-width: 560px; }
+    .hero__names { align-items: center; }
+    .countdown { justify-content: center; }
+    .hero__overlay {
+        background: linear-gradient(180deg,
+            rgba(32, 30, 26, 0.35) 0%,
+            rgba(32, 30, 26, 0.15) 35%,
+            rgba(32, 30, 26, 0.55) 100%);
+    }
 
     /* Menu mobile */
     .nav-toggle { display: flex; }

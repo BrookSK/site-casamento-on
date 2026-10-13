@@ -36,8 +36,11 @@ $year    = date('Y');
             </ul>
         </nav>
 
+        <p class="site-footer__admin">
+            <a href="<?= View::e(View::url('/admin/login', $baseUrl)) ?>">Área administrativa</a>
+        </p>
+
         <p class="site-footer__note">
-            <!-- Observação provisória: conteúdo meramente visual nesta etapa -->
             Feito com carinho &middot; &copy; <?= View::e((string) $year) ?>
         </p>
     </div>
