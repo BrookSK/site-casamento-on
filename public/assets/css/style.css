@@ -277,8 +277,13 @@ p { margin: 0 0 1rem; }
 }
 .hero__content {
     padding-top: 4rem;
-    max-width: 620px;      /* evita os nomes esticarem demais na horizontal */
-    margin-right: auto;    /* mantém encostado à esquerda */
+    /* Encosta no bloco 1 (bem à esquerda): margem lateral enxuta e largura
+       menor, sem herdar o respiro central do .container. */
+    max-width: 460px;
+    margin-right: auto;
+    margin-left: 0;
+    padding-left: clamp(1.5rem, 5vw, 4rem);
+    padding-right: 1rem;
 }
 .hero__eyebrow {
     letter-spacing: 0.4em;
