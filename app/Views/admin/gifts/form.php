@@ -46,7 +46,7 @@ $statuses = ['available' => 'Disponível', 'reserved' => 'Reservado', 'purchased
             <div class="field">
                 <label for="price">Preço (R$)</label>
                 <input type="text" id="price" name="price" value="<?= View::e($priceVal) ?>"
-                       placeholder="5.000,00" inputmode="decimal" autocomplete="off">
+                       placeholder="5.000,00" inputmode="numeric" autocomplete="off" data-mask="money">
                 <small style="color:var(--c-muted);font-size:0.8rem;">
                     Use vírgula para os centavos e ponto para o milhar. Ex.: 5.000,00
                 </small>

@@ -79,8 +79,18 @@ $textField = function (string $key, string $label, string $default = '', bool $a
         <h2>Informações do evento</h2>
         <div class="form-grid">
             <div class="form-row">
-                <?php $textField('date_label', 'Data', 'Data a definir'); ?>
-                <?php $textField('time_label', 'Horário', 'Horário a definir'); ?>
+                <div class="field">
+                    <label for="f-date_label">Data</label>
+                    <input type="text" id="f-date_label" name="date_label"
+                           value="<?= View::e($content->text('date_label', '')) ?>"
+                           placeholder="dd/mm/aa" inputmode="numeric" data-mask="date">
+                </div>
+                <div class="field">
+                    <label for="f-time_label">Horário</label>
+                    <input type="text" id="f-time_label" name="time_label"
+                           value="<?= View::e($content->text('time_label', '')) ?>"
+                           placeholder="hh:mm" inputmode="numeric" data-mask="time">
+                </div>
             </div>
             <div class="form-row">
                 <?php $textField('ceremony_place', 'Cerimônia — local', 'Local a definir'); ?>

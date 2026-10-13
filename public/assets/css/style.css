@@ -376,19 +376,25 @@ p { margin: 0 0 1rem; }
     color: var(--c-muted);
 }
 
-.couple__lead { font-size: 1.15rem; color: var(--c-ink); }
+.couple__text .section__title { margin-bottom: 1.5rem; }
+.couple__lead {
+    font-size: 1.15rem;
+    line-height: 1.9;
+    color: var(--c-ink);
+    margin-bottom: 1.5rem;
+}
 .couple__facts {
     list-style: none;
-    margin: 2rem 0 0;
+    margin: 2.75rem 0 0;
     padding: 0;
     display: grid;
-    gap: 0.9rem;
+    gap: 1.4rem;
 }
 .couple__facts li {
     display: flex;
     justify-content: space-between;
     gap: 1rem;
-    padding-bottom: 0.9rem;
+    padding-bottom: 1.4rem;
     border-bottom: 1px solid var(--c-line);
 }
 .couple__facts strong {
