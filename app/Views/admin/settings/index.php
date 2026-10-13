@@ -136,10 +136,12 @@ $webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
         </div>
     </form>
 
-    <form method="post" action="<?= View::e(View::url('/admin/configuracoes/asaas/testar', $baseUrl)) ?>" style="margin-top:12px">
+    <form method="post" action="<?= View::e(View::url('/admin/configuracoes/asaas/testar', $baseUrl)) ?>">
+        <div class="form-actions" style="margin-top:1rem">
+            <button type="submit" class="btn-admin btn-admin--ghost">Testar conexão</button>
+            <small>Usa a chave já salva para validar o acesso à API do ASAAS.</small>
+        </div>
         <?= $csrfField ?>
-        <button type="submit" class="btn-admin btn-admin--ghost">Testar conexão</button>
-        <small>Usa a chave já salva para validar o acesso à API do ASAAS.</small>
     </form>
 </div>
 
@@ -159,9 +161,9 @@ $webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
         </div>
 
         <div class="field">
-            <label>
-                <input type="checkbox" name="webhook_rsvp_enabled" value="1" <?= $webhookEnabled ? 'checked' : '' ?>>
-                Ativar o envio automático ao receber uma confirmação
+            <label class="checkbox-field" for="webhook_rsvp_enabled">
+                <input type="checkbox" id="webhook_rsvp_enabled" name="webhook_rsvp_enabled" value="1" <?= $webhookEnabled ? 'checked' : '' ?>>
+                <span>Ativar o envio automático ao receber uma confirmação</span>
             </label>
         </div>
 

@@ -309,7 +309,8 @@ a { color: var(--c-sage-dark); }
 .form-grid .field { margin: 0; }
 .form-grid textarea,
 .form-grid select,
-.form-grid input {
+/* Alvo apenas campos de texto — evita afetar checkbox/radio. */
+.form-grid input:not([type="checkbox"]):not([type="radio"]) {
     width: 100%;
     font-family: var(--font-sans);
     font-size: 1rem;
@@ -319,8 +320,47 @@ a { color: var(--c-sage-dark); }
     background: var(--c-cream);
 }
 .form-grid textarea { min-height: 90px; resize: vertical; }
-.form-actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; align-items: center; }
+.field small {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--c-muted);
+    line-height: 1.5;
+}
+.form-actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; align-items: center; flex-wrap: wrap; }
+.form-actions small { color: var(--c-muted); font-size: 0.82rem; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
+
+/* ---- Campo de checkbox (toggle de opção) ---- */
+/* .field label define block/uppercase/margin; reforçamos para o checkbox. */
+.field label.checkbox-field,
+.checkbox-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 0;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--c-ink);
+}
+.checkbox-field input[type="checkbox"] {
+    width: 1.15rem;
+    height: 1.15rem;
+    flex-shrink: 0;
+    margin: 0;
+    margin-top: 0.1rem;
+    accent-color: var(--c-sage);
+    cursor: pointer;
+}
+.checkbox-field span {
+    font-size: 0.92rem;
+    color: var(--c-ink);
+    letter-spacing: 0;
+    text-transform: none;
+    line-height: 1.5;
+}
 
 .flash {
     padding: 0.85rem 1.1rem;
