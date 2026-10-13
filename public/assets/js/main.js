@@ -323,4 +323,140 @@
             }
         }
     }
+
+    /* ---- Fotos sobrepostas ("Nossa História"): destaque por toque ---- */
+    var photoStack = document.querySelector('[data-photo-stack]');
+    if (photoStack) {
+        var items = Array.prototype.slice.call(
+            photoStack.querySelectorAll('[data-photo-stack-item]')
+        );
+
+        var clearActive = function (except) {
+            items.forEach(function (el) {
+                if (el !== except) { el.classList.remove('is-active'); }
+            });
+        };
+
+        items.forEach(function (item) {
+            // No toque, alterna o destaque da foto tocada (hover não existe).
+            item.addEventListener('touchstart', function () {
+                var willActivate = !item.classList.contains('is-active');
+                clearActive(item);
+                item.classList.toggle('is-active', willActivate);
+            }, { passive: true });
+
+            // Teclado: Enter/Espaço também destacam (acessibilidade).
+            item.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    var willActivate = !item.classList.contains('is-active');
+                    clearActive(item);
+                    item.classList.toggle('is-active', willActivate);
+                }
+            });
+        });
+
+        // Toque fora das fotos remove o destaque atual.
+        document.addEventListener('touchstart', function (e) {
+            if (!photoStack.contains(e.target)) { clearActive(null); }
+        }, { passive: true });
+    }
+
+    /* ---- Galeria por álbuns: lightbox com navegação por álbum ---- */
+    var lightbox = document.querySelector('[data-lightbox]');
+    if (lightbox) {
+        var lbImg = lightbox.querySelector('[data-lightbox-img]');
+        var lbCaption = lightbox.querySelector('[data-lightbox-caption]');
+        var prevBtn = lightbox.querySelector('[data-lightbox-prev]');
+        var nextBtn = lightbox.querySelector('[data-lightbox-next]');
+        var closeEls = lightbox.querySelectorAll('[data-lightbox-close]');
+
+        var currentAlbum = null;  // lista de fotos do álbum atual
+        var currentIndex = 0;
+        var lastFocused = null;
+
+        var render = function () {
+            if (!currentAlbum || !currentAlbum[currentIndex]) { return; }
+            var photo = currentAlbum[currentIndex];
+            lbImg.setAttribute('src', photo.src);
+            lbImg.setAttribute('alt', photo.alt);
+            if (lbCaption) { lbCaption.textContent = photo.alt; }
+            // Esconde as setas quando o álbum tem só uma foto.
+            var multiple = currentAlbum.length > 1;
+            if (prevBtn) { prevBtn.style.display = multiple ? '' : 'none'; }
+            if (nextBtn) { nextBtn.style.display = multiple ? '' : 'none'; }
+        };
+
+        var openLightbox = function (albumEl, index) {
+            var photoBtns = Array.prototype.slice.call(
+                albumEl.querySelectorAll('[data-album-photo]')
+            );
+            currentAlbum = photoBtns.map(function (btn) {
+                return {
+                    src: btn.getAttribute('data-src'),
+                    alt: btn.getAttribute('data-alt') || ''
+                };
+            });
+            currentIndex = index;
+            lastFocused = document.activeElement;
+            render();
+            lightbox.hidden = false;
+            document.body.style.overflow = 'hidden';
+            if (closeEls[0]) { closeEls[0].focus(); }
+        };
+
+        var closeLightbox = function () {
+            lightbox.hidden = true;
+            document.body.style.overflow = '';
+            currentAlbum = null;
+            if (lastFocused && typeof lastFocused.focus === 'function') {
+                lastFocused.focus();
+            }
+        };
+
+        var showPrev = function () {
+            if (!currentAlbum) { return; }
+            currentIndex = (currentIndex - 1 + currentAlbum.length) % currentAlbum.length;
+            render();
+        };
+        var showNext = function () {
+            if (!currentAlbum) { return; }
+            currentIndex = (currentIndex + 1) % currentAlbum.length;
+            render();
+        };
+
+        // Abre ao clicar numa foto (delegação por álbum).
+        document.querySelectorAll('[data-album]').forEach(function (albumEl) {
+            albumEl.querySelectorAll('[data-album-photo]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var index = parseInt(btn.getAttribute('data-index'), 10) || 0;
+                    openLightbox(albumEl, index);
+                });
+            });
+        });
+
+        if (prevBtn) { prevBtn.addEventListener('click', showPrev); }
+        if (nextBtn) { nextBtn.addEventListener('click', showNext); }
+        closeEls.forEach(function (el) { el.addEventListener('click', closeLightbox); });
+
+        // Teclado: Esc fecha, setas navegam.
+        document.addEventListener('keydown', function (e) {
+            if (lightbox.hidden) { return; }
+            if (e.key === 'Escape') { closeLightbox(); }
+            else if (e.key === 'ArrowLeft') { showPrev(); }
+            else if (e.key === 'ArrowRight') { showNext(); }
+        });
+
+        // Swipe no mobile (dentro do lightbox).
+        var touchStartX = 0;
+        lightbox.addEventListener('touchstart', function (e) {
+            touchStartX = e.touches[0].clientX;
+        }, { passive: true });
+        lightbox.addEventListener('touchend', function (e) {
+            var delta = e.changedTouches[0].clientX - touchStartX;
+            if (Math.abs(delta) > 50) {
+                if (delta < 0) { showNext(); } else { showPrev(); }
+            }
+        }, { passive: true });
+    }
 })();

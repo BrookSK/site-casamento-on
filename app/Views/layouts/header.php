@@ -58,10 +58,11 @@ $title     = isset($pageTitle) ? $pageTitle . ' · ' . $siteName : $siteName;
 
         <nav class="site-nav" id="menu-principal" aria-label="Navegação principal" data-nav>
             <ul class="site-nav__list">
-                <li><a href="#historia">O casal</a></li>
-                <li><a href="#evento">O evento</a></li>
-                <li><a href="#presentes">Presentes</a></li>
-                <li><a href="#rsvp" class="site-nav__cta">Confirmar presença</a></li>
+                <li><a href="<?= View::e(View::url('/#historia', $baseUrl)) ?>">O casal</a></li>
+                <li><a href="<?= View::e(View::url('/#evento', $baseUrl)) ?>">O evento</a></li>
+                <li><a href="<?= View::e(View::url('/#presentes', $baseUrl)) ?>">Presentes</a></li>
+                <li><a href="<?= View::e(View::url('/galeria', $baseUrl)) ?>">Galeria de Fotos</a></li>
+                <li><a href="<?= View::e(View::url('/#rsvp', $baseUrl)) ?>" class="site-nav__cta">Confirmar presença</a></li>
                 <?php if ($guestLogged): ?>
                     <li><a href="<?= View::e(View::url('/minha-conta', $baseUrl)) ?>" class="site-nav__account">Minha conta<?= $guestFirst !== '' ? ' (' . View::e($guestFirst) . ')' : '' ?></a></li>
                 <?php else: ?>

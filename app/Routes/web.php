@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 // ---- Site público ----
 $router->get('/', 'HomeController@index');
+$router->get('/galeria', 'GalleryController@index');
 $router->post('/confirmar-presenca', 'RsvpController@store');
 
 // Presentes (pagamento real via ASAAS)

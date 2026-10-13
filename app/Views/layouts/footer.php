@@ -28,10 +28,11 @@ $year    = date('Y');
 
         <nav class="site-footer__nav" aria-label="Navegação do rodapé">
             <ul>
-                <li><a href="#historia">O casal</a></li>
-                <li><a href="#evento">O evento</a></li>
-                <li><a href="#presentes">Presentes</a></li>
-                <li><a href="#rsvp">Confirmar presença</a></li>
+                <li><a href="<?= View::e(View::url('/#historia', $baseUrl)) ?>">O casal</a></li>
+                <li><a href="<?= View::e(View::url('/#evento', $baseUrl)) ?>">O evento</a></li>
+                <li><a href="<?= View::e(View::url('/#presentes', $baseUrl)) ?>">Presentes</a></li>
+                <li><a href="<?= View::e(View::url('/galeria', $baseUrl)) ?>">Galeria de Fotos</a></li>
+                <li><a href="<?= View::e(View::url('/#rsvp', $baseUrl)) ?>">Confirmar presença</a></li>
                 <li><a href="#topo">Voltar ao topo</a></li>
             </ul>
         </nav>

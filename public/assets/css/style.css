@@ -379,7 +379,9 @@ p { margin: 0 0 1rem; }
     display: flex;
     justify-content: center;
 }
-.couple__media img {
+/* A foto única (fallback) mantém o comportamento antigo. O seletor evita
+   afetar as imagens dentro da composição sobreposta (.photo-stack). */
+.couple__media > img {
     border-radius: var(--radius);
     box-shadow: var(--shadow-soft);
     /* Altura próxima à original (900px), limitada à altura da tela em telas
@@ -389,6 +391,78 @@ p { margin: 0 0 1rem; }
     max-width: 100%;
     object-fit: contain;
 }
+
+/* =============================================================
+   Fotos sobrepostas (estilo fotos impressas) — "Nossa História"
+   ============================================================= */
+.photo-stack {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    margin-inline: auto;
+    /* Mantém a área reservada para o leque de fotos (evita cortes). */
+    aspect-ratio: 1 / 1;
+}
+.photo-stack__item {
+    position: absolute;
+    margin: 0;
+    width: 56%;
+    aspect-ratio: 4 / 5;
+    background: var(--c-white);
+    /* Borda branca grossa (aspecto de papel fotográfico). */
+    padding: 3.5%;
+    border-radius: 3px;
+    box-shadow: 0 10px 28px -12px rgba(44, 42, 38, 0.5);
+    transition: transform 0.45s var(--ease), box-shadow 0.45s var(--ease),
+                z-index 0s;
+    cursor: pointer;
+    outline: none;
+}
+.photo-stack__item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 1px;
+    display: block;
+    pointer-events: none;
+}
+.photo-stack__placeholder {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--c-sand), var(--c-line));
+    color: var(--c-muted);
+    font-size: 0.8rem;
+}
+
+/* Posições/rotações individuais (leque como na referência). */
+.photo-stack__item--1 { top: 2%;  left: 4%;   transform: rotate(-9deg);  z-index: 2; }
+.photo-stack__item--2 { top: 6%;  right: 2%;  transform: rotate(7deg);   z-index: 1; }
+.photo-stack__item--3 { top: 34%; left: 20%;  transform: rotate(-3deg);  z-index: 4; }
+.photo-stack__item--4 { bottom: 2%; right: 6%; transform: rotate(11deg); z-index: 3; }
+
+/* Destaque no hover (desktop) e foco (teclado): zoom leve, sobe acima das
+   demais, sombra mais intensa e rotação quase zerada. As outras ficam
+   paradas na posição original. */
+.photo-stack__item:hover,
+.photo-stack__item:focus-visible,
+.photo-stack__item.is-active {
+    z-index: 10;
+    box-shadow: 0 22px 50px -14px rgba(44, 42, 38, 0.6);
+}
+.photo-stack__item--1:hover,
+.photo-stack__item--1:focus-visible,
+.photo-stack__item--1.is-active { transform: rotate(-1deg) scale(1.06); }
+.photo-stack__item--2:hover,
+.photo-stack__item--2:focus-visible,
+.photo-stack__item--2.is-active { transform: rotate(1deg) scale(1.06); }
+.photo-stack__item--3:hover,
+.photo-stack__item--3:focus-visible,
+.photo-stack__item--3.is-active { transform: rotate(0deg) scale(1.06); }
+.photo-stack__item--4:hover,
+.photo-stack__item--4:focus-visible,
+.photo-stack__item--4.is-active { transform: rotate(2deg) scale(1.06); }
 .couple__media .media-placeholder {
     border-radius: var(--radius);
     box-shadow: var(--shadow-soft);
@@ -787,6 +861,140 @@ p { margin: 0 0 1rem; }
 }
 
 /* =============================================================
+   Galeria de Fotos (página independente, por álbuns)
+   ============================================================= */
+.section--gallery-page {
+    background: var(--c-white);
+    padding-top: clamp(6rem, 12vw, 9rem); /* compensa o header fixo */
+}
+.gallery-empty {
+    text-align: center;
+    color: var(--c-muted);
+    margin-top: 2.5rem;
+}
+.album { margin-top: clamp(2.5rem, 6vw, 4rem); }
+.album__title {
+    font-size: clamp(1.5rem, 3.5vw, 2.2rem);
+    margin: 0 0 1.25rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--c-line);
+}
+.album__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: clamp(0.5rem, 1.5vw, 1rem);
+}
+.album__photo {
+    padding: 0;
+    border: 0;
+    background: var(--c-sand);
+    border-radius: var(--radius);
+    overflow: hidden;
+    cursor: pointer;
+    aspect-ratio: 1 / 1;
+    display: block;
+    width: 100%;
+}
+.album__photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s var(--ease);
+}
+.album__photo:hover img,
+.album__photo:focus-visible img { transform: scale(1.06); }
+
+@media (max-width: 860px) {
+    .album__grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 560px) {
+    .album__grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ---- Lightbox ---- */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1rem, 4vw, 3rem);
+}
+.lightbox[hidden] { display: none; }
+.lightbox__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 18, 16, 0.92);
+    backdrop-filter: blur(3px);
+}
+.lightbox__figure {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    max-width: min(1000px, 92vw);
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+.lightbox__img {
+    max-width: 100%;
+    max-height: 78vh;
+    object-fit: contain;
+    border-radius: var(--radius);
+    box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
+}
+.lightbox__caption {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+.lightbox__btn {
+    position: relative;
+    z-index: 2;
+    border: 0;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--c-white);
+    width: 52px;
+    height: 52px;
+    border-radius: 999px;
+    font-size: 1.8rem;
+    line-height: 1;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background 0.25s var(--ease), transform 0.25s var(--ease);
+    flex-shrink: 0;
+}
+.lightbox__btn:hover { background: rgba(255, 255, 255, 0.25); transform: scale(1.08); }
+.lightbox__btn--close {
+    position: absolute;
+    top: clamp(1rem, 3vw, 2rem);
+    right: clamp(1rem, 3vw, 2rem);
+    width: 44px;
+    height: 44px;
+    font-size: 1.6rem;
+}
+.lightbox__btn--prev { margin-right: clamp(0.5rem, 2vw, 1.5rem); }
+.lightbox__btn--next { margin-left: clamp(0.5rem, 2vw, 1.5rem); }
+
+@media (max-width: 560px) {
+    .lightbox { padding: 0.75rem; }
+    .lightbox__btn--prev,
+    .lightbox__btn--next {
+        position: absolute;
+        bottom: 1.25rem;
+        z-index: 3;
+    }
+    .lightbox__btn--prev { left: 1.25rem; margin: 0; }
+    .lightbox__btn--next { right: 1.25rem; margin: 0; }
+    .lightbox__img { max-height: 70vh; }
+}
+
+/* =============================================================
    Presentes
    ============================================================= */
 .section--gifts { background: var(--c-cream); }
@@ -978,7 +1186,9 @@ p { margin: 0 0 1rem; }
    ============================================================= */
 @media (max-width: 860px) {
     .couple { grid-template-columns: 1fr; }
-    .couple__media img { height: auto; width: auto; max-height: 70vh; }
+    .couple__media > img { height: auto; width: auto; max-height: 70vh; }
+    /* Composição sobreposta: um pouco maior no celular, sem cortes. */
+    .photo-stack { max-width: 420px; }
     .gift-grid { grid-template-columns: repeat(2, 1fr); }
 
     /* Hero no mobile: ajusta enquadramento da imagem e suaviza o overlay */
