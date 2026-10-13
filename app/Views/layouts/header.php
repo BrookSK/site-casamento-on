@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Core\GuestAuth;
 use App\Core\View;
 
 /**
@@ -11,6 +12,11 @@ use App\Core\View;
  */
 
 $baseUrl   = $app['base_url'] ?? '';
+
+// Estado da conta do convidado (para alternar "Entrar" / "Minha conta").
+$guestLogged = GuestAuth::check();
+$guestUser   = $guestLogged ? GuestAuth::user() : null;
+$guestFirst  = $guestLogged ? trim(explode(' ', (string) ($guestUser['name'] ?? ''))[0]) : '';
 $bride     = $wedding['bride'] ?? 'Noiva';
 $groom     = $wedding['groom'] ?? 'Noivo';
 $siteName  = $app['name'] ?? 'Casamento';
@@ -56,6 +62,11 @@ $title     = isset($pageTitle) ? $pageTitle . ' · ' . $siteName : $siteName;
                 <li><a href="#evento">O evento</a></li>
                 <li><a href="#presentes">Presentes</a></li>
                 <li><a href="#rsvp" class="site-nav__cta">Confirmar presença</a></li>
+                <?php if ($guestLogged): ?>
+                    <li><a href="<?= View::e(View::url('/minha-conta', $baseUrl)) ?>" class="site-nav__account">Minha conta<?= $guestFirst !== '' ? ' (' . View::e($guestFirst) . ')' : '' ?></a></li>
+                <?php else: ?>
+                    <li><a href="<?= View::e(View::url('/entrar', $baseUrl)) ?>" class="site-nav__account">Entrar</a></li>
+                <?php endif; ?>
             </ul>
         </nav>
     </div>

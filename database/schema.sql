@@ -37,14 +37,19 @@ CREATE TABLE IF NOT EXISTS `guests` (
     `name`           VARCHAR(150) NOT NULL,
     `email`          VARCHAR(190) NULL,
     `phone`          VARCHAR(30) NULL,
-    -- Senha para login futuro (sempre via password_hash). Pode ficar nula até lá.
+    -- Telefone só com dígitos (ex.: 11988887777), para login por telefone.
+    `phone_normalized` VARCHAR(20) NULL,
+    -- Senha para login (sempre via password_hash). Nula até criar conta.
     `password_hash`  VARCHAR(255) NULL,
+    -- Quando o convidado criou/assumiu a conta.
+    `account_created_at` TIMESTAMP NULL,
     -- Token para links de confirmação/convite sem necessidade de login.
     `invite_token`   CHAR(32) NULL,
     `created_at`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_guests_email` (`email`),
+    UNIQUE KEY `uq_guests_phone_normalized` (`phone_normalized`),
     UNIQUE KEY `uq_guests_invite_token` (`invite_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -14,6 +14,13 @@ declare(strict_types=1);
 $router->get('/', 'HomeController@index');
 $router->post('/confirmar-presenca', 'RsvpController@store');
 
+// ---- Conta do convidado ----
+$router->get('/entrar', 'GuestAuthController@show');
+$router->post('/entrar', 'GuestAuthController@login');
+$router->post('/cadastrar', 'GuestAuthController@register');
+$router->get('/sair', 'GuestAuthController@logout');
+$router->get('/minha-conta', 'AccountController@index');
+
 // ---- Autenticação admin ----
 $router->get('/admin/login', 'AuthController@showLogin');
 $router->post('/admin/login', 'AuthController@login');

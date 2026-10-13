@@ -912,3 +912,132 @@ p { margin: 0 0 1rem; }
     }
     [data-reveal] { opacity: 1; transform: none; }
 }
+
+/* =============================================================
+   Conta do convidado (login/cadastro + perfil)
+   ============================================================= */
+.account-page {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background:
+        linear-gradient(180deg, rgba(44,42,38,0.04), rgba(44,42,38,0.08)),
+        var(--c-cream);
+    padding: 2rem 1.25rem;
+}
+.account { width: 100%; display: grid; place-items: center; }
+.account__card {
+    width: 100%;
+    max-width: 440px;
+    background: var(--c-white);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    padding: clamp(1.75rem, 5vw, 3rem);
+}
+.account__card--wide { max-width: 560px; }
+
+.account__brand {
+    display: inline-block;
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--c-sage-dark);
+    margin-bottom: 1.5rem;
+}
+
+.account__tabs {
+    display: flex;
+    gap: 0.5rem;
+    background: var(--c-cream);
+    border-radius: 999px;
+    padding: 0.3rem;
+    margin-bottom: 1.5rem;
+}
+.account__tab {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    padding: 0.6rem 1rem;
+    border-radius: 999px;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-muted);
+    cursor: pointer;
+    transition: background 0.3s var(--ease), color 0.3s var(--ease);
+}
+.account__tab.is-active { background: var(--c-sage); color: var(--c-white); }
+
+.account__alert {
+    background: #f0dcd6;
+    color: #9c3b26;
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    font-size: 0.92rem;
+    margin-bottom: 1.25rem;
+}
+
+.account__form { display: none; }
+.account__form.is-active { display: grid; gap: 1.1rem; }
+
+.account-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.account-field label {
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-sage-dark);
+}
+.account-field input {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    background: var(--c-cream);
+    width: 100%;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+.account-field input:focus {
+    border-color: var(--c-sage);
+    background: var(--c-white);
+    outline: none;
+}
+.account__submit { justify-self: stretch; margin-top: 0.25rem; text-align: center; }
+
+/* Perfil */
+.account__profile-head { margin-bottom: 1.5rem; }
+.account__eyebrow {
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    color: var(--c-sage-dark);
+    margin: 0 0 0.4rem;
+}
+.account__title { font-family: var(--font-serif); font-size: clamp(1.8rem, 4vw, 2.6rem); margin: 0; }
+.account__info { display: grid; gap: 0.25rem; margin-bottom: 1.5rem; }
+.account__info-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--c-line);
+}
+.account__info-row span {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-muted);
+}
+.account__note {
+    background: var(--c-cream);
+    border-left: 3px solid var(--c-sage);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    font-size: 0.92rem;
+    color: var(--c-muted);
+    margin-bottom: 1.75rem;
+}
+.account__actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.account__actions .btn { flex: 1; text-align: center; }
