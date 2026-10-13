@@ -182,4 +182,38 @@
         }
         updateCompanions();
     }
+
+    /* ---- Lista de presentes: filtro por valor máximo (slider) ---- */
+    var giftFilter = document.querySelector('[data-gift-filter]');
+    if (giftFilter) {
+        var range = giftFilter.querySelector('[data-gift-range]');
+        var label = giftFilter.querySelector('[data-gift-filter-label]');
+        var cards = Array.prototype.slice.call(document.querySelectorAll('[data-gift-card]'));
+        var emptyMsg = document.querySelector('[data-gift-empty]');
+
+        var formatBRL = function (cents) {
+            return (cents / 100).toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        };
+
+        var applyFilter = function () {
+            var max = parseInt(range.value, 10);
+            var visible = 0;
+
+            cards.forEach(function (card) {
+                var price = parseInt(card.getAttribute('data-price'), 10) || 0;
+                var show = price <= max;
+                card.classList.toggle('gift-card--hidden', !show);
+                if (show) { visible++; }
+            });
+
+            if (label) { label.textContent = 'Até R$ ' + formatBRL(max); }
+            if (emptyMsg) { emptyMsg.hidden = visible > 0; }
+        };
+
+        range.addEventListener('input', applyFilter);
+        applyFilter();
+    }
 })();

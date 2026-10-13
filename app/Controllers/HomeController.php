@@ -48,9 +48,11 @@ final class HomeController extends Controller
             $rows = (new Gift($this->config))->listAll(true);
             if ($rows !== []) {
                 return array_map(static function (array $g): array {
+                    $cents = (int) $g['price_cents'];
                     return [
-                        'name'  => (string) $g['name'],
-                        'price' => 'R$ ' . number_format(((int) $g['price_cents']) / 100, 2, ',', '.'),
+                        'name'        => (string) $g['name'],
+                        'price'       => 'R$ ' . number_format($cents / 100, 2, ',', '.'),
+                        'price_cents' => $cents,
                     ];
                 }, $rows);
             }

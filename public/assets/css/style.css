@@ -645,12 +645,90 @@ p { margin: 0 0 1rem; }
    Presentes
    ============================================================= */
 .section--gifts { background: var(--c-cream); }
+
+/* Filtro de preço (slider) */
+.gift-filter {
+    max-width: 520px;
+    margin: 2.5rem auto 0;
+    background: var(--c-white);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+}
+.gift-filter__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+.gift-filter__head label {
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--c-sage-dark);
+}
+.gift-filter__value {
+    font-family: var(--font-serif);
+    font-size: 1.3rem;
+    color: var(--c-ink);
+    white-space: nowrap;
+}
+.gift-filter__scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--c-muted);
+}
+
+/* Trilho + bolinha do range, estilizados nas cores da paleta */
+.gift-filter input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--c-line);
+    outline: none;
+    cursor: pointer;
+}
+.gift-filter input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--c-sage);
+    border: 3px solid var(--c-white);
+    box-shadow: 0 2px 8px rgba(44,42,38,0.25);
+    transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.gift-filter input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+.gift-filter input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--c-sage);
+    border: 3px solid var(--c-white);
+    box-shadow: 0 2px 8px rgba(44,42,38,0.25);
+    cursor: pointer;
+}
+.gift-filter input[type="range"]:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--c-sage-dark);
+    outline-offset: 2px;
+}
+
+.gift-empty { text-align: center; margin-top: 1.5rem; color: var(--c-muted); }
+
 .gift-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: clamp(1rem, 2.5vw, 1.75rem);
     margin-top: 2.5rem;
 }
+/* Card oculto pelo filtro (some suavemente) */
+.gift-card--hidden { display: none; }
 .gift-card {
     background: var(--c-white);
     border: 1px solid var(--c-line);
