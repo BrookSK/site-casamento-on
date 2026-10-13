@@ -96,8 +96,9 @@ $webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
 <!-- ===================== ASAAS ===================== -->
 <div class="admin-card">
     <h2>Pagamentos (ASAAS)</h2>
-    <p>Credenciais do gateway de pagamento. <strong>Base apenas</strong> — nenhuma
-    cobrança é gerada ainda. Comece sempre pelo ambiente <em>sandbox</em>.</p>
+    <p>Credenciais do gateway de pagamento. Com a chave configurada, a lista de
+    presentes passa a gerar cobranças reais (PIX, cartão e boleto). Comece sempre
+    pelo ambiente <em>sandbox</em> e só mude para produção após homologar.</p>
 
     <form class="form-grid" method="post" action="<?= View::e(View::url('/admin/configuracoes/asaas', $baseUrl)) ?>">
         <?= $csrfField ?>
@@ -114,9 +115,31 @@ $webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
             <input type="password" id="asaas_api_key" name="asaas_api_key" autocomplete="off" placeholder="$aact_...">
         </div>
 
+        <div class="field">
+            <label for="asaas_webhook_token">Token do webhook (opcional)</label>
+            <input type="text" id="asaas_webhook_token" name="asaas_webhook_token" value="<?= $v('asaas_webhook_token') ?>" autocomplete="off" placeholder="um valor secreto à sua escolha">
+            <small>Defina o mesmo valor no cadastro do webhook no painel do ASAAS
+            (campo <em>Token de autenticação</em>). O site valida o header
+            <code>asaas-access-token</code> antes de processar.</small>
+        </div>
+
+        <div class="field">
+            <label>URL do webhook (configure no painel do ASAAS)</label>
+            <input type="text" readonly value="<?= View::e(View::url('/asaas/webhook', $baseUrl)) ?>" onclick="this.select()">
+            <small>Cadastre esta URL no ASAAS para receber as confirmações de
+            pagamento (eventos de cobrança). Em desenvolvimento local, use um
+            túnel público (ex.: ngrok) para o ASAAS conseguir acessá-la.</small>
+        </div>
+
         <div class="form-actions">
             <button type="submit" class="btn-admin">Salvar ASAAS</button>
         </div>
+    </form>
+
+    <form method="post" action="<?= View::e(View::url('/admin/configuracoes/asaas/testar', $baseUrl)) ?>" style="margin-top:12px">
+        <?= $csrfField ?>
+        <button type="submit" class="btn-admin btn-admin--ghost">Testar conexão</button>
+        <small>Usa a chave já salva para validar o acesso à API do ASAAS.</small>
     </form>
 </div>
 

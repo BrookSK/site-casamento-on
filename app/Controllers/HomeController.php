@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Asaas;
 use App\Core\Content;
 use App\Core\Controller;
 use App\Core\Csrf;
+use App\Core\GuestAuth;
 use App\Models\Gift;
 use Throwable;
 
@@ -28,11 +30,14 @@ final class HomeController extends Controller
         $groom = $content->text('groom', (string) ($this->config['wedding']['groom'] ?? 'Noivo'));
 
         $this->view('home', [
-            'pageTitle' => $bride . ' & ' . $groom,
-            'gifts'     => $gifts,
-            'content'   => $content,
-            'csrfField' => Csrf::field(),
-            'rsvpStatus'=> isset($_GET['rsvp']) ? (string) $_GET['rsvp'] : null,
+            'pageTitle'       => $bride . ' & ' . $groom,
+            'gifts'           => $gifts,
+            'content'         => $content,
+            'csrfField'       => Csrf::field(),
+            'rsvpStatus'      => isset($_GET['rsvp']) ? (string) $_GET['rsvp'] : null,
+            'giftStatus'      => isset($_GET['gift']) ? (string) $_GET['gift'] : null,
+            'paymentsEnabled' => Asaas::isConfigured($this->config),
+            'currentGuest'    => GuestAuth::user(),
         ]);
     }
 
@@ -50,6 +55,7 @@ final class HomeController extends Controller
                 return array_map(static function (array $g): array {
                     $cents = (int) $g['price_cents'];
                     return [
+                        'id'          => (int) $g['id'],
                         'name'        => (string) $g['name'],
                         'price'       => 'R$ ' . number_format($cents / 100, 2, ',', '.'),
                         'price_cents' => $cents,

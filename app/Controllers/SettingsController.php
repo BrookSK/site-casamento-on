@@ -22,7 +22,7 @@ final class SettingsController extends Controller
 {
     /** Chaves públicas (texto puro) por grupo. */
     private const SMTP_PLAIN    = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_security', 'smtp_from_email', 'smtp_from_name'];
-    private const ASAAS_PLAIN   = ['asaas_environment'];
+    private const ASAAS_PLAIN   = ['asaas_environment', 'asaas_webhook_token'];
     private const WEBHOOK_PLAIN = ['webhook_rsvp_url', 'webhook_rsvp_enabled'];
 
     private function guard(): void
@@ -115,6 +115,11 @@ final class SettingsController extends Controller
                 ? (string) $_POST['asaas_environment'] : 'sandbox';
             $model->set('asaas_environment', $env);
 
+            // Token do webhook (texto puro): valida o header asaas-access-token
+            // enviado pelo ASAAS. É sempre gravado — deixar em branco limpa o
+            // token (o webhook passa a ser aceito sem validação de token).
+            $model->set('asaas_webhook_token', trim((string) ($_POST['asaas_webhook_token'] ?? '')));
+
             $key = (string) ($_POST['asaas_api_key'] ?? '');
             if ($key !== '') {
                 $this->saveSecret($model, 'asaas_api_key', $key);
@@ -124,6 +129,27 @@ final class SettingsController extends Controller
         } catch (Throwable $e) {
             error_log('[Settings] saveAsaas: ' . $e->getMessage());
             $this->setFlash('error', 'Não foi possível salvar: ' . $e->getMessage());
+        }
+
+        $this->redirect('/admin/configuracoes');
+    }
+
+    /** Testa a conexão com o ASAAS usando a chave já salva. */
+    public function testAsaas(): void
+    {
+        $this->guard();
+        if (!Csrf::validate($_POST[Csrf::fieldName()] ?? null)) {
+            $this->setFlash('error', 'Sessão expirada. Tente novamente.');
+            $this->redirect('/admin/configuracoes');
+        }
+
+        try {
+            $asaas  = \App\Core\Asaas::fromSettings($this->config);
+            $result = $asaas->ping();
+            $this->setFlash($result['ok'] ? 'success' : 'error', $result['message']);
+        } catch (Throwable $e) {
+            error_log('[Settings] testAsaas: ' . $e->getMessage());
+            $this->setFlash('error', $e->getMessage());
         }
 
         $this->redirect('/admin/configuracoes');

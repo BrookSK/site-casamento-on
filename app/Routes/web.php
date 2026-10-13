@@ -14,6 +14,12 @@ declare(strict_types=1);
 $router->get('/', 'HomeController@index');
 $router->post('/confirmar-presenca', 'RsvpController@store');
 
+// Presentes (pagamento real via ASAAS)
+$router->post('/presentear', 'GiftController@store');
+
+// Webhook do ASAAS (recebe confirmações de pagamento — rota pública)
+$router->post('/asaas/webhook', 'AsaasWebhookController@handle');
+
 // ---- Conta do convidado ----
 $router->get('/entrar', 'GuestAuthController@show');
 $router->post('/entrar', 'GuestAuthController@login');
@@ -35,6 +41,7 @@ $router->post('/admin/confirmacoes/remover', 'RsvpAdminController@destroy');
 
 // Presentes
 $router->get('/admin/presentes', 'GiftAdminController@index');
+$router->get('/admin/presentes/compras', 'GiftAdminController@purchases');
 $router->get('/admin/presentes/novo', 'GiftAdminController@create');
 $router->get('/admin/presentes/editar', 'GiftAdminController@edit');
 $router->post('/admin/presentes/salvar', 'GiftAdminController@save');
@@ -48,4 +55,5 @@ $router->post('/admin/textos-e-imagens/salvar', 'ContentController@save');
 $router->get('/admin/configuracoes', 'SettingsController@index');
 $router->post('/admin/configuracoes/smtp', 'SettingsController@saveSmtp');
 $router->post('/admin/configuracoes/asaas', 'SettingsController@saveAsaas');
+$router->post('/admin/configuracoes/asaas/testar', 'SettingsController@testAsaas');
 $router->post('/admin/configuracoes/webhook', 'SettingsController@saveWebhook');

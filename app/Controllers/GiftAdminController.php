@@ -8,6 +8,7 @@ use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\Csrf;
 use App\Models\Gift;
+use App\Models\GiftPurchase;
 use Throwable;
 
 /**
@@ -43,6 +44,30 @@ final class GiftAdminController extends Controller
             'rows'      => $rows,
             'error'     => $error,
             'csrfField' => Csrf::field(),
+            'flash'     => $this->pullFlash(),
+        ]);
+    }
+
+    /** Lista as contribuições/compras recebidas (status de pagamento). */
+    public function purchases(): void
+    {
+        $this->guard();
+
+        $rows  = [];
+        $error = null;
+        try {
+            $rows = (new GiftPurchase($this->config))->listWithGift();
+        } catch (Throwable $e) {
+            error_log('[GiftAdmin] purchases: ' . $e->getMessage());
+            $error = 'Não foi possível carregar as contribuições.';
+        }
+
+        $this->viewAdmin('admin/gifts/purchases', [
+            'pageTitle' => 'Contribuições',
+            'active'    => 'purchases',
+            'admin'     => Auth::user(),
+            'rows'      => $rows,
+            'error'     => $error,
             'flash'     => $this->pullFlash(),
         ]);
     }

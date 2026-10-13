@@ -80,4 +80,17 @@ final class Gift extends Model
         $row = $this->selectOne('SELECT COUNT(*) AS n FROM ' . $this->table);
         return (int) ($row['n'] ?? 0);
     }
+
+    /**
+     * Busca um presente disponível pelo ID (usado no fluxo de presentear).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findAvailable(int $id): ?array
+    {
+        return $this->selectOne(
+            'SELECT * FROM ' . $this->table . ' WHERE id = :id AND status = \'available\' LIMIT 1',
+            ['id' => $id]
+        );
+    }
 }
