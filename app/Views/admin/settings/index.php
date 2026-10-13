@@ -18,8 +18,9 @@ use App\Core\View;
 $baseUrl = $app['base_url'] ?? '';
 $v = static fn (string $k): string => View::e((string) ($values[$k] ?? ''));
 
-$smtpSecurity = (string) ($values['smtp_security'] ?? 'tls');
-$asaasEnv     = (string) ($values['asaas_environment'] ?? 'sandbox');
+$smtpSecurity   = (string) ($values['smtp_security'] ?? 'tls');
+$asaasEnv       = (string) ($values['asaas_environment'] ?? 'sandbox');
+$webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
 ?>
 <?php if (!empty($flash)): ?>
     <div class="flash flash--<?= View::e($flash['type']) ?>"><?= View::e($flash['message']) ?></div>
@@ -115,6 +116,34 @@ $asaasEnv     = (string) ($values['asaas_environment'] ?? 'sandbox');
 
         <div class="form-actions">
             <button type="submit" class="btn-admin">Salvar ASAAS</button>
+        </div>
+    </form>
+</div>
+
+<!-- ===================== WEBHOOK (confirmações) ===================== -->
+<div class="admin-card">
+    <h2>Webhook (confirmações)</h2>
+    <p>Quando um convidado envia a confirmação de presença (positiva ou negativa),
+    o site faz um <code>POST</code> em <strong>JSON</strong> para a URL abaixo.
+    Útil para integrar com automações (ex.: envio de mensagem no WhatsApp).
+    Deixe em branco para desativar.</p>
+
+    <form class="form-grid" method="post" action="<?= View::e(View::url('/admin/configuracoes/webhook', $baseUrl)) ?>">
+        <?= $csrfField ?>
+        <div class="field">
+            <label for="webhook_rsvp_url">URL do webhook</label>
+            <input type="url" id="webhook_rsvp_url" name="webhook_rsvp_url" value="<?= $v('webhook_rsvp_url') ?>" placeholder="https://exemplo.com/webhook" autocomplete="off">
+        </div>
+
+        <div class="field">
+            <label>
+                <input type="checkbox" name="webhook_rsvp_enabled" value="1" <?= $webhookEnabled ? 'checked' : '' ?>>
+                Ativar o envio automático ao receber uma confirmação
+            </label>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-admin">Salvar Webhook</button>
         </div>
     </form>
 </div>

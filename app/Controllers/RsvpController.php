@@ -6,7 +6,9 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Csrf;
+use App\Core\Webhook;
 use App\Models\Rsvp;
+use App\Models\Setting;
 use PDOException;
 use Throwable;
 
@@ -83,7 +85,53 @@ final class RsvpController extends Controller
             $this->redirectHome('rsvp', 'erro');
         }
 
+        // Confirmação já gravada: notifica o webhook (se configurado). Falhas
+        // aqui NÃO afetam o convidado — apenas são registradas no log.
+        $this->notifyWebhook($data, $rsvp['status']);
+
         $this->redirectHome('rsvp', 'ok');
+    }
+
+    /**
+     * Dispara o webhook de confirmação, se estiver habilitado e com URL válida.
+     *
+     * @param array{name:string, email:?string, phone:?string} $guest
+     * @param string $status 'confirmed' ou 'declined'
+     */
+    private function notifyWebhook(array $guest, string $status): void
+    {
+        try {
+            $settings = new Setting($this->config);
+            $pairs    = $settings->getMany(['webhook_rsvp_url', 'webhook_rsvp_enabled']);
+
+            $url     = trim((string) ($pairs['webhook_rsvp_url'] ?? ''));
+            $enabled = (string) ($pairs['webhook_rsvp_enabled'] ?? '') !== '';
+            if (!$enabled || $url === '') {
+                return;
+            }
+
+            Webhook::send($url, [
+                'name'    => $guest['name'],
+                'email'   => $guest['email'],
+                'phone'   => $guest['phone'],
+                'status'  => $status,
+                'message' => $this->buildMessage($guest['name'], $status),
+            ]);
+        } catch (Throwable $e) {
+            error_log('[Rsvp] notifyWebhook: ' . $e->getMessage());
+        }
+    }
+
+    /** Monta a mensagem pré-pronta conforme o status da confirmação. */
+    private function buildMessage(string $name, string $status): string
+    {
+        if ($status === 'confirmed') {
+            return 'Olá ' . $name . ', recebemos a sua confirmação de presença. '
+                . 'Ficamos muito felizes em ter você conosco!';
+        }
+
+        return 'Olá ' . $name . ', recebemos a sua resposta. '
+            . 'Sentiremos a sua falta, mas agradecemos por avisar!';
     }
 
     /** Redireciona para a home, numa âncora, com um status de retorno. */

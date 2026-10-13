@@ -21,8 +21,9 @@ use Throwable;
 final class SettingsController extends Controller
 {
     /** Chaves públicas (texto puro) por grupo. */
-    private const SMTP_PLAIN  = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_security', 'smtp_from_email', 'smtp_from_name'];
-    private const ASAAS_PLAIN = ['asaas_environment'];
+    private const SMTP_PLAIN    = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_security', 'smtp_from_email', 'smtp_from_name'];
+    private const ASAAS_PLAIN   = ['asaas_environment'];
+    private const WEBHOOK_PLAIN = ['webhook_rsvp_url', 'webhook_rsvp_enabled'];
 
     private function guard(): void
     {
@@ -41,7 +42,7 @@ final class SettingsController extends Controller
 
         try {
             $model = new Setting($this->config);
-            $keys  = array_merge(self::SMTP_PLAIN, self::ASAAS_PLAIN);
+            $keys  = array_merge(self::SMTP_PLAIN, self::ASAAS_PLAIN, self::WEBHOOK_PLAIN);
             $values = $model->getMany($keys);
 
             // Para os segredos, não devolvemos o valor; só indicamos se já existe.
@@ -122,6 +123,42 @@ final class SettingsController extends Controller
             $this->setFlash('success', 'Configurações do ASAAS salvas.');
         } catch (Throwable $e) {
             error_log('[Settings] saveAsaas: ' . $e->getMessage());
+            $this->setFlash('error', 'Não foi possível salvar: ' . $e->getMessage());
+        }
+
+        $this->redirect('/admin/configuracoes');
+    }
+
+    /** Salva as configurações do Webhook de confirmações (RSVP). */
+    public function saveWebhook(): void
+    {
+        $this->guard();
+        if (!Csrf::validate($_POST[Csrf::fieldName()] ?? null)) {
+            $this->setFlash('error', 'Sessão expirada. Tente novamente.');
+            $this->redirect('/admin/configuracoes');
+        }
+
+        try {
+            $model = new Setting($this->config);
+
+            $url     = trim((string) ($_POST['webhook_rsvp_url'] ?? ''));
+            $enabled = isset($_POST['webhook_rsvp_enabled']) ? '1' : '';
+
+            // Valida a URL quando informada (apenas http/https). Em branco é
+            // permitido: significa "sem webhook configurado".
+            if ($url !== '' && filter_var($url, FILTER_VALIDATE_URL) === false) {
+                $this->setFlash('error', 'Informe uma URL de webhook válida (http/https).');
+                $this->redirect('/admin/configuracoes');
+            }
+
+            $model->setMany([
+                'webhook_rsvp_url'     => $url,
+                'webhook_rsvp_enabled' => $enabled,
+            ]);
+
+            $this->setFlash('success', 'Configurações do webhook salvas.');
+        } catch (Throwable $e) {
+            error_log('[Settings] saveWebhook: ' . $e->getMessage());
             $this->setFlash('error', 'Não foi possível salvar: ' . $e->getMessage());
         }
 

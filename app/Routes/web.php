@@ -48,3 +48,4 @@ $router->post('/admin/textos-e-imagens/salvar', 'ContentController@save');
 $router->get('/admin/configuracoes', 'SettingsController@index');
 $router->post('/admin/configuracoes/smtp', 'SettingsController@saveSmtp');
 $router->post('/admin/configuracoes/asaas', 'SettingsController@saveAsaas');
+$router->post('/admin/configuracoes/webhook', 'SettingsController@saveWebhook');
