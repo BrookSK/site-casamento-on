@@ -5,16 +5,14 @@ declare(strict_types=1);
 use App\Core\View;
 
 /**
- * Galeria — mosaico com as fotos do ensaio.
- * Mostra placeholders elegantes enquanto as imagens não existirem.
+ * Galeria — mosaico com as fotos do ensaio (imagens fixas em assets/img).
  *
  * @var array $app
  */
 
 $baseUrl = $app['base_url'] ?? '';
 
-// Fotos esperadas (ver public/assets/img/README.md).
-// 'name' é o nome-base (sem extensão): aceita .jpg/.png/.webp etc.
+// Fotos do ensaio (nome de arquivo fixo: gallery-N.jpg/.png/.webp).
 $photos = [
     ['name' => 'gallery-1', 'alt' => 'O casal em um abraço, com arquitetura clássica ao fundo.'],
     ['name' => 'gallery-2', 'alt' => 'O casal em trajes escuros diante de um prédio histórico.'],
@@ -30,16 +28,14 @@ $photos = [
         </div>
 
         <div class="gallery-grid">
-            <?php foreach ($photos as $i => $photo): ?>
-                <?php
-                $img = View::image($photo['name'], $baseUrl);
-                ?>
+            <?php foreach ($photos as $photo): ?>
+                <?php $img = View::image($photo['name'], $baseUrl); ?>
                 <figure class="gallery-item">
                     <?php if ($img['exists']): ?>
                         <img src="<?= View::e($img['url']) ?>" alt="<?= View::e($photo['alt']) ?>" loading="lazy">
                     <?php else: ?>
                         <div class="media-placeholder" role="img"
-                             aria-label="Espaço reservado para a foto <?= View::e($photo['name']) ?>.">
+                             aria-label="Espaço reservado para uma foto do ensaio.">
                             <span class="placeholder-note"><code><?= View::e($photo['name']) ?></code></span>
                         </div>
                     <?php endif; ?>

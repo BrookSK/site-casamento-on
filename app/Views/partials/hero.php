@@ -6,19 +6,20 @@ use App\Core\View;
 
 /**
  * Hero — fotografia do casal em destaque + nomes + data.
+ * Nomes e imagem editáveis via painel (Content), com fallback.
  *
- * @var array $app
- * @var array $wedding
+ * @var array          $app
+ * @var array          $wedding
+ * @var \App\Core\Content $content
  */
 
 $baseUrl   = $app['base_url'] ?? '';
-$bride     = $wedding['bride'] ?? 'Noiva';
-$groom     = $wedding['groom'] ?? 'Noivo';
-$dateLabel = $wedding['date_label'] ?? 'Data a definir';
+$bride     = $content->text('bride', (string) ($wedding['bride'] ?? 'Noiva'));
+$groom     = $content->text('groom', (string) ($wedding['groom'] ?? 'Noivo'));
+$dateLabel = $content->text('date_label', (string) ($wedding['date_label'] ?? 'Data a definir'));
 $dateIso   = $wedding['date_iso'] ?? '';
 
-// Imagem de destaque. Aceita hero.jpg/.png/.webp etc. Se nenhuma existir,
-// o placeholder (CSS) aparece.
+// Imagem de destaque (fixa: hero.jpg/.png/.webp em assets/img).
 $hero    = View::image('hero', $baseUrl);
 $heroImg = $hero['url'];
 $hasHero = $hero['exists'];
@@ -29,8 +30,8 @@ $hasHero = $hero['exists'];
              alt="<?= View::e($bride) ?> e <?= View::e($groom) ?> de mãos dadas em um jardim.">
     <?php else: ?>
         <div class="hero__bg hero__bg--placeholder" role="img"
-             aria-label="Espaço reservado para a foto principal do casal (hero.jpg).">
-            <span class="placeholder-note">Adicione a foto <code>public/assets/img/hero.jpg</code></span>
+             aria-label="Espaço reservado para a foto principal do casal.">
+            <span class="placeholder-note">Adicione a foto de capa pelo painel</span>
         </div>
     <?php endif; ?>
 

@@ -21,6 +21,7 @@ $nav = [
     'dashboard' => ['label' => 'Visão geral', 'url' => '/admin'],
     'rsvps'     => ['label' => 'Confirmações', 'url' => '/admin/confirmacoes'],
     'gifts'     => ['label' => 'Presentes',    'url' => '/admin/presentes'],
+    'content'   => ['label' => 'Conteúdo', 'url' => '/admin/textos-e-imagens'],
     'settings'  => ['label' => 'Configurações','url' => '/admin/configuracoes'],
 ];
 ?>

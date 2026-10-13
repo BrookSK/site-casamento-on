@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Content;
 use App\Core\Controller;
 use App\Core\Csrf;
 use App\Models\Gift;
@@ -19,11 +20,17 @@ final class HomeController extends Controller
 {
     public function index(): void
     {
-        $gifts = $this->loadGifts();
+        $gifts   = $this->loadGifts();
+        $content = new Content($this->config);
+
+        // Nomes para o título vêm do conteúdo editável (fallback para config).
+        $bride = $content->text('bride', (string) ($this->config['wedding']['bride'] ?? 'Noiva'));
+        $groom = $content->text('groom', (string) ($this->config['wedding']['groom'] ?? 'Noivo'));
 
         $this->view('home', [
-            'pageTitle' => $this->config['wedding']['bride'] . ' & ' . $this->config['wedding']['groom'],
+            'pageTitle' => $bride . ' & ' . $groom,
             'gifts'     => $gifts,
+            'content'   => $content,
             'csrfField' => Csrf::field(),
             'rsvpStatus'=> isset($_GET['rsvp']) ? (string) $_GET['rsvp'] : null,
         ]);

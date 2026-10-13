@@ -6,53 +6,60 @@ use App\Core\View;
 
 /**
  * Apresentação do casal — breve introdução / história.
+ * Conteúdo editável via painel (Content), com fallback para os textos padrão.
  *
- * @var array $app
- * @var array $wedding
+ * @var array          $app
+ * @var array          $wedding
+ * @var \App\Core\Content $content
  */
 
 $baseUrl = $app['base_url'] ?? '';
-$bride   = $wedding['bride'] ?? 'Noiva';
-$groom   = $wedding['groom'] ?? 'Noivo';
+$bride   = $content->text('bride', (string) ($wedding['bride'] ?? 'Noiva'));
+$groom   = $content->text('groom', (string) ($wedding['groom'] ?? 'Noivo'));
 
-$couple    = View::image('couple-1', $baseUrl);
-$coupleImg = $couple['url'];
-$hasCouple = $couple['exists'];
+$couple = View::image('couple-1', $baseUrl);
+
+$historyTitle = $content->text('history_title', 'Dois caminhos, uma só direção');
+$historyText  = $content->text('history_text', '');
+
+$facts = [
+    [$content->text('fact1_label', 'Onde tudo começou'), $content->text('fact1_value', 'A definir')],
+    [$content->text('fact2_label', 'O pedido'),          $content->text('fact2_value', 'A definir')],
+    [$content->text('fact3_label', 'Nosso lema'),        $content->text('fact3_value', 'A definir')],
+];
 ?>
 <section class="section section--couple" id="historia" data-reveal>
     <div class="container couple">
         <div class="couple__media">
-            <?php if ($hasCouple): ?>
-                <img src="<?= View::e($coupleImg) ?>"
+            <?php if ($couple['exists']): ?>
+                <img src="<?= View::e($couple['url']) ?>"
                      alt="Retrato de <?= View::e($bride) ?> e <?= View::e($groom) ?>."
                      loading="lazy">
             <?php else: ?>
                 <div class="media-placeholder media-placeholder--portrait" role="img"
-                     aria-label="Espaço reservado para uma foto do casal (couple-1.jpg).">
-                    <span class="placeholder-note">Adicione <code>couple-1.jpg</code></span>
+                     aria-label="Espaço reservado para uma foto do casal.">
+                    <span class="placeholder-note">Adicione a foto pelo painel</span>
                 </div>
             <?php endif; ?>
         </div>
 
         <div class="couple__text">
             <p class="section__eyebrow">Nossa história</p>
-            <h2 class="section__title">Dois caminhos, uma só direção</h2>
+            <h2 class="section__title"><?= View::e($historyTitle) ?></h2>
 
-            <!-- TEXTO PROVISÓRIO: substituir pela história real do casal. -->
-            <p class="couple__lead">
-                Este é um texto provisório. Em breve, esta seção contará como
-                <?= View::e($bride) ?> e <?= View::e($groom) ?> se conheceram e
-                decidiram seguir juntos.
-            </p>
-            <p>
-                <em>(Conteúdo meramente ilustrativo &mdash; nenhuma informação real
-                foi inventada. Será preenchido posteriormente.)</em>
-            </p>
+            <?php if ($historyText !== ''): ?>
+                <p class="couple__lead"><?= nl2br(View::e($historyText)) ?></p>
+            <?php else: ?>
+                <p class="couple__lead">
+                    Em breve, esta seção contará como <?= View::e($bride) ?> e
+                    <?= View::e($groom) ?> se conheceram e decidiram seguir juntos.
+                </p>
+            <?php endif; ?>
 
             <ul class="couple__facts">
-                <li><strong>Onde tudo começou</strong><span>A definir</span></li>
-                <li><strong>O pedido</strong><span>A definir</span></li>
-                <li><strong>Nosso lema</strong><span>A definir</span></li>
+                <?php foreach ($facts as [$label, $value]): ?>
+                    <li><strong><?= View::e($label) ?></strong><span><?= View::e($value) ?></span></li>
+                <?php endforeach; ?>
             </ul>
         </div>
     </div>

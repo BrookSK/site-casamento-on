@@ -6,14 +6,22 @@ use App\Core\View;
 
 /**
  * Informações do evento — data, horário, cerimônia e recepção.
+ * Conteúdo editável via painel (Content), com fallback para a config.
  *
- * @var array $wedding
+ * @var array          $wedding
+ * @var array          $app
+ * @var \App\Core\Content $content
  */
 
-$dateLabel = $wedding['date_label'] ?? 'Data a definir';
-$timeLabel = $wedding['time_label'] ?? 'Horário a definir';
-$ceremony  = $wedding['ceremony'] ?? [];
-$reception = $wedding['reception'] ?? [];
+$dateLabel = $content->text('date_label', (string) ($wedding['date_label'] ?? 'Data a definir'));
+$timeLabel = $content->text('time_label', (string) ($wedding['time_label'] ?? 'Horário a definir'));
+
+$ceremonyPlace   = $content->text('ceremony_place',   (string) ($wedding['ceremony']['place'] ?? 'Local a definir'));
+$ceremonyAddress = $content->text('ceremony_address', (string) ($wedding['ceremony']['address'] ?? 'Endereço a definir'));
+$ceremonyDetails = $content->text('ceremony_details', (string) ($wedding['ceremony']['details'] ?? ''));
+$receptionPlace   = $content->text('reception_place',   (string) ($wedding['reception']['place'] ?? 'Local a definir'));
+$receptionAddress = $content->text('reception_address', (string) ($wedding['reception']['address'] ?? 'Endereço a definir'));
+$receptionDetails = $content->text('reception_details', (string) ($wedding['reception']['details'] ?? ''));
 ?>
 <section class="section section--event" id="evento" data-reveal>
     <div class="container">
@@ -41,18 +49,18 @@ $reception = $wedding['reception'] ?? [];
         <div class="event-cards">
             <article class="event-card">
                 <div class="event-card__icon" aria-hidden="true">&#9962;</div>
-                <h3 class="event-card__title"><?= View::e($ceremony['title'] ?? 'Cerimônia') ?></h3>
-                <p class="event-card__place"><?= View::e($ceremony['place'] ?? 'Local a definir') ?></p>
-                <p class="event-card__address"><?= View::e($ceremony['address'] ?? 'Endereço a definir') ?></p>
-                <p class="event-card__details"><?= View::e($ceremony['details'] ?? '') ?></p>
+                <h3 class="event-card__title">Cerimônia</h3>
+                <p class="event-card__place"><?= View::e($ceremonyPlace) ?></p>
+                <p class="event-card__address"><?= View::e($ceremonyAddress) ?></p>
+                <p class="event-card__details"><?= View::e($ceremonyDetails) ?></p>
             </article>
 
             <article class="event-card">
                 <div class="event-card__icon" aria-hidden="true">&#127870;</div>
-                <h3 class="event-card__title"><?= View::e($reception['title'] ?? 'Recepção') ?></h3>
-                <p class="event-card__place"><?= View::e($reception['place'] ?? 'Local a definir') ?></p>
-                <p class="event-card__address"><?= View::e($reception['address'] ?? 'Endereço a definir') ?></p>
-                <p class="event-card__details"><?= View::e($reception['details'] ?? '') ?></p>
+                <h3 class="event-card__title">Recepção</h3>
+                <p class="event-card__place"><?= View::e($receptionPlace) ?></p>
+                <p class="event-card__address"><?= View::e($receptionAddress) ?></p>
+                <p class="event-card__details"><?= View::e($receptionDetails) ?></p>
             </article>
         </div>
 
@@ -68,7 +76,7 @@ $reception = $wedding['reception'] ?? [];
             'erro-acompanhantes' => ['error', 'Por favor, informe o nome de cada acompanhante.'],
             'erro-sessao' => ['error', 'A sessão expirou. Recarregue a página e tente de novo.'],
         ];
-        // Imagem decorativa da coluna esquerda (uma das fotos do ensaio).
+        // Imagem decorativa da coluna esquerda (fixa: gallery-2 em assets/img).
         $rsvpImg = View::image('gallery-2', $app['base_url'] ?? '');
         ?>
         <div class="rsvp" id="rsvp">
