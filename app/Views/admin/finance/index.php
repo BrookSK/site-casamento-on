@@ -55,25 +55,58 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
     <div class="flash flash--error"><?= View::e($error) ?></div>
 <?php endif; ?>
 
-<!-- Dashboard financeiro -->
-<div class="stat-grid">
-    <div class="stat"><span class="stat__value"><?= $money((int) ($summary['sold_cents'] ?? 0)) ?></span><span class="stat__label">Total vendido</span></div>
-    <div class="stat"><span class="stat__value"><?= $money((int) ($summary['approved_cents'] ?? 0)) ?></span><span class="stat__label">Aprovado (pago)</span></div>
-    <div class="stat"><span class="stat__value"><?= $money((int) ($summary['net_cents'] ?? 0)) ?></span><span class="stat__label">Líquido recebido</span></div>
-    <div class="stat"><span class="stat__value"><?= $money((int) ($summary['fee_cents'] ?? 0)) ?></span><span class="stat__label">Taxas</span></div>
-    <div class="stat"><span class="stat__value"><?= $money((int) ($summary['pending_cents'] ?? 0)) ?></span><span class="stat__label">Pendente</span></div>
-    <div class="stat"><span class="stat__value"><?= $money((int) ($summary['refunded_cents'] ?? 0)) ?></span><span class="stat__label">Estornos/reembolsos</span></div>
+<!-- Dashboard financeiro: valores em destaque -->
+<h2 class="finance-section-title">Resumo financeiro</h2>
+<div class="fin-grid fin-grid--money">
+    <div class="fin-stat fin-stat--highlight">
+        <span class="fin-stat__label">Total vendido</span>
+        <span class="fin-stat__value"><?= $money((int) ($summary['sold_cents'] ?? 0)) ?></span>
+    </div>
+    <div class="fin-stat fin-stat--good">
+        <span class="fin-stat__label">Aprovado (pago)</span>
+        <span class="fin-stat__value"><?= $money((int) ($summary['approved_cents'] ?? 0)) ?></span>
+    </div>
+    <div class="fin-stat fin-stat--good">
+        <span class="fin-stat__label">Líquido recebido</span>
+        <span class="fin-stat__value"><?= $money((int) ($summary['net_cents'] ?? 0)) ?></span>
+    </div>
+    <div class="fin-stat">
+        <span class="fin-stat__label">Taxas</span>
+        <span class="fin-stat__value"><?= $money((int) ($summary['fee_cents'] ?? 0)) ?></span>
+    </div>
+    <div class="fin-stat fin-stat--warn">
+        <span class="fin-stat__label">Pendente</span>
+        <span class="fin-stat__value"><?= $money((int) ($summary['pending_cents'] ?? 0)) ?></span>
+    </div>
+    <div class="fin-stat fin-stat--muted">
+        <span class="fin-stat__label">Estornos/reembolsos</span>
+        <span class="fin-stat__value"><?= $money((int) ($summary['refunded_cents'] ?? 0)) ?></span>
+    </div>
 </div>
 
-<div class="stat-grid">
-    <div class="stat"><span class="stat__value"><?= (int) ($summary['tx_total'] ?? 0) ?></span><span class="stat__label">Transações</span></div>
-    <div class="stat"><span class="stat__value"><?= (int) ($summary['tx_paid'] ?? 0) ?></span><span class="stat__label">Pagas</span></div>
-    <div class="stat"><span class="stat__value"><?= (int) ($summary['tx_pending'] ?? 0) ?></span><span class="stat__label">Pendentes</span></div>
-    <div class="stat"><span class="stat__value"><?= (int) ($summary['tx_refunded'] ?? 0) ?></span><span class="stat__label">Estornadas</span></div>
+<!-- Contadores de transações (menores) -->
+<div class="fin-grid fin-grid--counts">
+    <div class="fin-count">
+        <span class="fin-count__value"><?= (int) ($summary['tx_total'] ?? 0) ?></span>
+        <span class="fin-count__label">Transações</span>
+    </div>
+    <div class="fin-count">
+        <span class="fin-count__value"><?= (int) ($summary['tx_paid'] ?? 0) ?></span>
+        <span class="fin-count__label">Pagas</span>
+    </div>
+    <div class="fin-count">
+        <span class="fin-count__value"><?= (int) ($summary['tx_pending'] ?? 0) ?></span>
+        <span class="fin-count__label">Pendentes</span>
+    </div>
+    <div class="fin-count">
+        <span class="fin-count__value"><?= (int) ($summary['tx_refunded'] ?? 0) ?></span>
+        <span class="fin-count__label">Estornadas</span>
+    </div>
 </div>
 
 <!-- Filtros -->
 <div class="admin-card">
+    <h3 class="finance-card-title">Filtrar transações</h3>
     <form class="finance-filters" method="get" action="<?= View::e(View::url('/admin/financeiro', $baseUrl)) ?>">
         <div class="field">
             <label for="f-status">Status</label>
@@ -117,6 +150,7 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
 <!-- Tabela de transações -->
 <div class="admin-card">
     <div class="admin-toolbar">
+        <h3 class="finance-card-title" style="margin:0;">Transações</h3>
         <div class="spacer"></div>
         <div class="export-actions">
             <a class="btn-admin btn-admin--ghost btn-admin--sm"

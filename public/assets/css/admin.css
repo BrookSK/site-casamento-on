@@ -284,6 +284,85 @@ a { color: var(--c-sage-dark); }
 .admin-toolbar .spacer { flex: 1; }
 .export-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
+/* ---- Painel financeiro: títulos de seção ---- */
+.finance-section-title {
+    font-family: var(--font-serif);
+    font-size: 1.3rem;
+    font-weight: 500;
+    margin: 0 0 0.9rem;
+}
+.finance-card-title {
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin: 0 0 1.1rem;
+}
+
+/* ---- Cards de valores (dinheiro) ---- */
+.fin-grid { display: grid; gap: 1rem; }
+.fin-grid--money {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    margin-bottom: 1rem;
+}
+.fin-stat {
+    background: var(--c-white);
+    border: 1px solid var(--c-line);
+    border-left: 4px solid var(--c-line);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+}
+.fin-stat__label {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-muted);
+    margin-bottom: 0.4rem;
+}
+.fin-stat__value {
+    display: block;
+    font-family: var(--font-serif);
+    /* Fonte que não estoura a largura do card (evita a quebra do "R$"). */
+    font-size: 1.7rem;
+    line-height: 1.1;
+    color: var(--c-ink);
+    white-space: nowrap;
+}
+/* Acentos por tipo de valor */
+.fin-stat--highlight { border-left-color: var(--c-sage); }
+.fin-stat--highlight .fin-stat__value { color: var(--c-sage-dark); }
+.fin-stat--good { border-left-color: #7f9b57; }
+.fin-stat--warn { border-left-color: #c9a227; }
+.fin-stat--muted { border-left-color: var(--c-rose-soft); }
+
+/* ---- Contadores de transações (menores) ---- */
+.fin-grid--counts {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    margin-bottom: 1.5rem;
+}
+.fin-count {
+    background: var(--c-cream);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    padding: 0.9rem 1rem;
+    text-align: center;
+}
+.fin-count__value {
+    display: block;
+    font-family: var(--font-serif);
+    font-size: 1.9rem;
+    line-height: 1;
+    color: var(--c-ink);
+}
+.fin-count__label {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-sage-dark);
+}
+
 /* ---- Filtros do painel financeiro ---- */
 .finance-filters {
     display: flex;
