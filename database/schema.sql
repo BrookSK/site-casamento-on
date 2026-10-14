@@ -43,8 +43,10 @@ CREATE TABLE IF NOT EXISTS `guests` (
     `password_hash`  VARCHAR(255) NULL,
     -- Quando o convidado criou/assumiu a conta.
     `account_created_at` TIMESTAMP NULL,
-    -- Token para links de confirmação/convite sem necessidade de login.
+    -- Token para links de confirmação/convite e definição de senha.
     `invite_token`   CHAR(32) NULL,
+    -- Validade do token acima (NULL = sem expiração definida).
+    `invite_token_expires_at` TIMESTAMP NULL,
     `created_at`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),

@@ -42,6 +42,20 @@ final class Guest extends Model
     }
 
     /**
+     * Gera um token de convite/definição de senha (32 hex) seguro.
+     * Usado nos links enviados por e-mail/WhatsApp após a confirmação.
+     */
+    public static function generateToken(): string
+    {
+        try {
+            return bin2hex(random_bytes(16)); // 32 caracteres hex
+        } catch (\Throwable $e) {
+            // Fallback improvável (random_bytes indisponível).
+            return md5(uniqid((string) mt_rand(), true));
+        }
+    }
+
+    /**
      * Verifica credenciais: o identificador pode ser e-mail ou telefone.
      *
      * @return array{id:int,name:string,email:string}|null

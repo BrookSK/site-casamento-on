@@ -6,19 +6,20 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Csrf;
+use App\Core\GuestAuth;
 use App\Core\Mailer;
 use App\Core\Webhook;
 use App\Models\Rsvp;
 use App\Models\Setting;
-use PDOException;
 use Throwable;
 
 /**
  * Confirmação de presença (RSVP) — lado público.
  *
  * Formulário aberto: o convidado informa nome, contato, se vai, nº de
- * acompanhantes e uma mensagem. Grava em guests + rsvps. Sem login
- * (login de convidado fica para etapa futura).
+ * acompanhantes e uma mensagem. Grava em guests + rsvps e, em seguida, cria
+ * ou assume automaticamente a CONTA do convidado, deixando-o autenticado
+ * (ponto 6). Convidados existentes são reutilizados — sem duplicar e-mail.
  */
 final class RsvpController extends Controller
 {
@@ -73,17 +74,22 @@ final class RsvpController extends Controller
         ];
 
         try {
-            (new Rsvp($this->config))->createWithGuest($data, $rsvp, $companionNames);
-        } catch (PDOException $e) {
-            // 23000 / 1062 = violação de chave única (e-mail já cadastrado).
-            if ($e->getCode() === '23000' || ($e->errorInfo[1] ?? null) === 1062) {
-                $this->redirectHome('rsvp', 'erro-email');
-            }
-            error_log('[Rsvp] store (pdo): ' . $e->getMessage());
-            $this->redirectHome('rsvp', 'erro');
+            // Grava a confirmação e cria/assume a conta do convidado. O
+            // convidado existente é reutilizado (não há mais erro de e-mail
+            // duplicado — o registro anterior é aproveitado).
+            $result = (new Rsvp($this->config))->createWithGuest($data, $rsvp, $companionNames);
         } catch (Throwable $e) {
             error_log('[Rsvp] store: ' . $e->getMessage());
             $this->redirectHome('rsvp', 'erro');
+        }
+
+        // Login automático: mantém o convidado autenticado após confirmar,
+        // liberando o acesso à lista de presentes e aos pagamentos (ponto 6).
+        try {
+            GuestAuth::login($result['guest']);
+        } catch (Throwable $e) {
+            // Falha ao autenticar não impede a confirmação já gravada.
+            error_log('[Rsvp] autologin: ' . $e->getMessage());
         }
 
         // Confirmação já gravada: notifica o webhook (se configurado). Falhas

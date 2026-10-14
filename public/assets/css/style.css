@@ -756,7 +756,7 @@ p { margin: 0 0 1rem; }
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #d8c47a; /* amarelo-claro/pastel, harmônico com a paleta */
+    color: var(--c-heart); /* mesma cor do coração do "Sim" */
 }
 .rsvp-choice__icon--away svg { display: block; }
 .rsvp-choice__label { font-size: 0.95rem; color: var(--c-ink); }
