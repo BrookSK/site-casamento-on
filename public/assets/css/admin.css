@@ -289,7 +289,7 @@ a { color: var(--c-sage-dark); }
     font-family: var(--font-serif);
     font-size: 1.3rem;
     font-weight: 500;
-    margin: 0 0 0.9rem;
+    margin: 0 0 1.1rem;
 }
 .finance-card-title {
     font-family: var(--font-serif);
@@ -300,9 +300,10 @@ a { color: var(--c-sage-dark); }
 
 /* ---- Cards de valores (dinheiro) ---- */
 .fin-grid { display: grid; gap: 1rem; }
+/* 3 colunas fecham os 6 cards em 3+3 (sem card órfão). */
 .fin-grid--money {
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    margin-bottom: 1rem;
+    grid-template-columns: repeat(3, 1fr);
+    margin-bottom: 1.75rem;
 }
 .fin-stat {
     background: var(--c-white);
@@ -328,25 +329,39 @@ a { color: var(--c-sage-dark); }
     color: var(--c-ink);
     white-space: nowrap;
 }
-/* Acentos por tipo de valor */
+/* Acentos por tipo de valor (borda + número colorido) */
 .fin-stat--highlight { border-left-color: var(--c-sage); }
 .fin-stat--highlight .fin-stat__value { color: var(--c-sage-dark); }
 .fin-stat--good { border-left-color: #7f9b57; }
+.fin-stat--good .fin-stat__value { color: #5f7a3e; }
 .fin-stat--warn { border-left-color: #c9a227; }
-.fin-stat--muted { border-left-color: var(--c-rose-soft); }
+.fin-stat--warn .fin-stat__value { color: #a07d14; }
+.fin-stat--muted { border-left-color: var(--c-rose); }
+.fin-stat--muted .fin-stat__value { color: var(--c-rose); }
 
-/* ---- Contadores de transações (menores) ---- */
-.fin-grid--counts {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    margin-bottom: 1.5rem;
+@media (max-width: 900px) {
+    .fin-grid--money { grid-template-columns: repeat(2, 1fr); }
 }
-.fin-count {
-    background: var(--c-cream);
+@media (max-width: 520px) {
+    .fin-grid--money { grid-template-columns: 1fr; }
+}
+
+/* ---- Contadores de transações (faixa integrada, com respiro) ---- */
+.fin-grid--counts {
+    grid-template-columns: repeat(4, 1fr);
+    margin: 0 0 2rem;
+    background: var(--c-white);
     border: 1px solid var(--c-line);
     border-radius: var(--radius);
-    padding: 0.9rem 1rem;
-    text-align: center;
+    overflow: hidden;
+    gap: 0;
 }
+.fin-count {
+    padding: 1rem;
+    text-align: center;
+    border-right: 1px solid var(--c-line);
+}
+.fin-count:last-child { border-right: 0; }
 .fin-count__value {
     display: block;
     font-family: var(--font-serif);
@@ -361,6 +376,11 @@ a { color: var(--c-sage-dark); }
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--c-sage-dark);
+}
+@media (max-width: 520px) {
+    .fin-grid--counts { grid-template-columns: repeat(2, 1fr); }
+    .fin-count:nth-child(2) { border-right: 0; }
+    .fin-count:nth-child(1), .fin-count:nth-child(2) { border-bottom: 1px solid var(--c-line); }
 }
 
 /* ---- Filtros do painel financeiro ---- */
@@ -379,7 +399,23 @@ a { color: var(--c-sage-dark); }
     align-items: end;
 }
 .finance-filters .field { margin: 0; min-width: 0; }
-.finance-filters__actions { display: flex; gap: 0.5rem; }
+.finance-filters__actions { display: flex; gap: 0.9rem; align-items: center; }
+.finance-filters__clear {
+    font-size: 0.82rem;
+    color: var(--c-muted);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    white-space: nowrap;
+}
+.finance-filters__clear:hover { color: var(--c-sage-dark); }
+
+/* ---- Tabela financeira: dinheiro à direita, sem quebra, zebra ---- */
+.admin-table--finance .col-money { text-align: right; white-space: nowrap; }
+.admin-table--finance th.col-money { text-align: right; }
+.admin-table--finance .col-nowrap { white-space: nowrap; }
+.admin-table--finance .col-money--net { font-weight: 500; color: var(--c-sage-dark); }
+.admin-table--finance tbody tr:nth-child(even) td { background: var(--c-cream); }
+.admin-table--finance tbody tr:hover td { background: #eef0e4; }
 
 /* Em telas médias/estreitas, empilha em colunas de largura uniforme. */
 @media (max-width: 980px) {

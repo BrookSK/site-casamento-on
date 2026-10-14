@@ -56,7 +56,7 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
 <?php endif; ?>
 
 <!-- Dashboard financeiro: valores em destaque -->
-<h2 class="finance-section-title">Resumo financeiro</h2>
+<h2 class="finance-section-title">Visão geral</h2>
 <div class="fin-grid fin-grid--money">
     <div class="fin-stat fin-stat--highlight">
         <span class="fin-stat__label">Total vendido</span>
@@ -142,7 +142,7 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
         </div>
         <div class="finance-filters__actions">
             <button type="submit" class="btn-admin">Filtrar</button>
-            <a class="btn-admin btn-admin--ghost" href="<?= View::e(View::url('/admin/financeiro', $baseUrl)) ?>">Limpar</a>
+            <a class="finance-filters__clear" href="<?= View::e(View::url('/admin/financeiro', $baseUrl)) ?>">Limpar filtros</a>
         </div>
     </form>
 </div>
@@ -164,7 +164,7 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
         <p class="admin-empty">Nenhuma transação encontrada com esses filtros.</p>
     <?php else: ?>
         <div style="overflow-x:auto;">
-        <table class="admin-table">
+        <table class="admin-table admin-table--finance">
             <thead>
                 <tr>
                     <th>Presente</th>
@@ -172,9 +172,9 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
                     <th>Forma</th>
                     <th>Status</th>
                     <th>Criada em</th>
-                    <th style="text-align:right;">Bruto</th>
-                    <th style="text-align:right;">Taxas</th>
-                    <th style="text-align:right;">Líquido</th>
+                    <th class="col-money">Bruto</th>
+                    <th class="col-money">Taxas</th>
+                    <th class="col-money">Líquido</th>
                     <th></th>
                 </tr>
             </thead>
@@ -191,11 +191,11 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
                         <td><?= View::e($buyer !== '' ? $buyer : '—') ?></td>
                         <td><?= View::e($billingLabels[$bt] ?? $bt) ?></td>
                         <td><span class="badge <?= $cls ?>"><?= View::e($label) ?></span></td>
-                        <td><small><?= View::e($fmtDate($p['created_at'] ?? null)) ?></small></td>
-                        <td style="text-align:right;"><?= $money((int) ($p['amount_cents'] ?? 0)) ?></td>
-                        <td style="text-align:right;"><?= $money((int) ($p['fee_cents'] ?? 0)) ?></td>
-                        <td style="text-align:right;"><?= $money((int) ($p['net_cents'] ?? 0)) ?></td>
-                        <td>
+                        <td class="col-nowrap"><small><?= View::e($fmtDate($p['created_at'] ?? null)) ?></small></td>
+                        <td class="col-money"><?= $money((int) ($p['amount_cents'] ?? 0)) ?></td>
+                        <td class="col-money"><?= $money((int) ($p['fee_cents'] ?? 0)) ?></td>
+                        <td class="col-money col-money--net"><?= $money((int) ($p['net_cents'] ?? 0)) ?></td>
+                        <td class="col-nowrap">
                             <a class="btn-admin btn-admin--ghost btn-admin--sm"
                                href="<?= View::e(View::url('/admin/financeiro/transacao?id=' . (int) $p['id'], $baseUrl)) ?>">Detalhes</a>
                         </td>
