@@ -14,6 +14,14 @@ define('PUBLIC_PATH', __DIR__);
 define('BASE_PATH', dirname(__DIR__));
 define('APP_PATH', BASE_PATH . '/app');
 
+// Autoload do Composer (dependências de terceiros: PhpSpreadsheet, mPDF).
+// Carregado só quando presente — assim o site continua funcionando mesmo
+// antes de rodar `composer install` (apenas a exportação exigirá o vendor).
+$composerAutoload = BASE_PATH . '/vendor/autoload.php';
+if (is_file($composerAutoload)) {
+    require $composerAutoload;
+}
+
 // Carrega o bootstrap da aplicação.
 require APP_PATH . '/Core/App.php';
 

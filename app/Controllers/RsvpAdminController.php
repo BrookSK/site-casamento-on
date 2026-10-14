@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\Csrf;
+use App\Core\RsvpExport;
 use App\Models\Rsvp;
 use Throwable;
 
@@ -32,7 +33,10 @@ final class RsvpAdminController extends Controller
         $status  = in_array($status, $allowed, true) ? $status : '';
 
         $rows    = [];
-        $summary = ['total' => 0, 'confirmed' => 0, 'declined' => 0, 'pending' => 0, 'people' => 0];
+        $summary = [
+            'total' => 0, 'confirmed' => 0, 'declined' => 0, 'pending' => 0,
+            'people' => 0, 'companions' => 0, 'guests_total' => 0,
+        ];
         $error   = null;
 
         try {
@@ -55,6 +59,49 @@ final class RsvpAdminController extends Controller
             'csrfField' => Csrf::field(),
             'flash'     => $this->pullFlash(),
         ]);
+    }
+
+    /** Exporta a lista (respeitando o filtro) em Excel .xlsx. */
+    public function exportExcel(): void
+    {
+        $this->export('xlsx');
+    }
+
+    /** Exporta a lista (respeitando o filtro) em PDF. */
+    public function exportPdf(): void
+    {
+        $this->export('pdf');
+    }
+
+    /**
+     * Lógica comum de exportação: valida acesso, lê o filtro atual, busca as
+     * linhas (já ordenadas alfabeticamente no model) e delega ao RsvpExport.
+     */
+    private function export(string $format): void
+    {
+        $this->guard();
+
+        $allowed = ['confirmed', 'declined', 'pending'];
+        $status  = $_GET['status'] ?? '';
+        $status  = in_array($status, $allowed, true) ? $status : '';
+
+        try {
+            $rows = (new Rsvp($this->config))->listWithGuests($status !== '' ? $status : null);
+
+            $bride = (string) ($this->config['wedding']['bride'] ?? '');
+            $groom = (string) ($this->config['wedding']['groom'] ?? '');
+            $couple = trim($bride . ($bride && $groom ? ' & ' : '') . $groom);
+
+            if ($format === 'pdf') {
+                RsvpExport::downloadPdf($rows, $status, $couple);
+            } else {
+                RsvpExport::downloadXlsx($rows, $status, $couple);
+            }
+        } catch (Throwable $e) {
+            error_log('[RsvpAdmin] export ' . $format . ': ' . $e->getMessage());
+            $this->setFlash('error', 'Não foi possível gerar o relatório: ' . $e->getMessage());
+            $this->redirect('/admin/confirmacoes' . ($status !== '' ? '?status=' . $status : ''));
+        }
     }
 
     /** Remove uma confirmação. */

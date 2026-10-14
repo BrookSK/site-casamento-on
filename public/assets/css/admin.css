@@ -282,6 +282,39 @@ a { color: var(--c-sage-dark); }
 }
 .chip.is-active { background: var(--c-sage); color: var(--c-white); border-color: var(--c-sage); }
 .admin-toolbar .spacer { flex: 1; }
+.export-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* ---- Filtros do painel financeiro ---- */
+.finance-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+.finance-filters .field { margin: 0; min-width: 150px; flex: 1; }
+.finance-filters__actions { display: flex; gap: 0.5rem; align-items: flex-end; }
+
+/* ---- Detalhe da transação ---- */
+.finance-detail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+.finance-detail__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--c-line);
+}
+.finance-detail__item span {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-muted);
+}
+.finance-detail__item strong { font-size: 1rem; word-break: break-word; }
 
 /* ---- Botões admin ---- */
 .btn-admin {

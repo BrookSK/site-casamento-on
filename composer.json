@@ -1,0 +1,14 @@
+{
+    "name": "site-casamento-on/app",
+    "description": "Site de casamento — dependências de exportação (Excel/PDF).",
+    "type": "project",
+    "require": {
+        "php": ">=8.0",
+        "phpoffice/phpspreadsheet": "^1.29",
+        "mpdf/mpdf": "^8.2"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "platform-check": false
+    }
+}

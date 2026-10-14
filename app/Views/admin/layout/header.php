@@ -21,7 +21,7 @@ $nav = [
     'dashboard' => ['label' => 'Visão geral', 'url' => '/admin'],
     'rsvps'     => ['label' => 'Confirmações', 'url' => '/admin/confirmacoes'],
     'gifts'     => ['label' => 'Presentes',    'url' => '/admin/presentes'],
-    'purchases' => ['label' => 'Contribuições','url' => '/admin/presentes/compras'],
+    'finance'   => ['label' => 'Financeiro',   'url' => '/admin/financeiro'],
     'content'   => ['label' => 'Conteúdo', 'url' => '/admin/textos-e-imagens'],
     'settings'  => ['label' => 'Configurações','url' => '/admin/configuracoes'],
     'communications' => ['label' => 'Comunicações', 'url' => '/admin/comunicacoes'],

@@ -318,14 +318,18 @@ final class Rsvp extends Model
         }
 
         $sql .= 'GROUP BY r.id, r.status, r.companions, r.message, r.responded_at, g.name, g.email, g.phone ';
-        $sql .= 'ORDER BY r.responded_at DESC, r.id DESC';
+        // Ordem alfabética por nome (requisito dos relatórios); desempata por id.
+        $sql .= 'ORDER BY g.name ASC, r.id ASC';
         return $this->select($sql, $params);
     }
 
     /**
-     * Resumo para o dashboard: contagem por status e total de pessoas.
+     * Resumo para o dashboard: contagens por status, acompanhantes e totais.
      *
-     * @return array{total:int, confirmed:int, declined:int, pending:int, people:int}
+     * @return array{
+     *   total:int, confirmed:int, declined:int, pending:int,
+     *   people:int, companions:int, guests_total:int
+     * }
      */
     public function summary(): array
     {
@@ -335,16 +339,24 @@ final class Rsvp extends Model
             . "SUM(status = 'confirmed') AS confirmed, "
             . "SUM(status = 'declined') AS declined, "
             . "SUM(status = 'pending') AS pending, "
+            // Acompanhantes confirmados (apenas de quem confirmou presença).
+            . "SUM(CASE WHEN status = 'confirmed' THEN companions ELSE 0 END) AS companions, "
+            // Total estimado de participantes = confirmados + seus acompanhantes.
             . "SUM(CASE WHEN status = 'confirmed' THEN companions + 1 ELSE 0 END) AS people "
             . 'FROM rsvps'
         ) ?? [];
 
+        // Total de convidados cadastrados (tabela guests), independente de RSVP.
+        $guestsRow = $this->selectOne('SELECT COUNT(*) AS n FROM guests') ?? [];
+
         return [
-            'total'     => (int) ($row['total'] ?? 0),
-            'confirmed' => (int) ($row['confirmed'] ?? 0),
-            'declined'  => (int) ($row['declined'] ?? 0),
-            'pending'   => (int) ($row['pending'] ?? 0),
-            'people'    => (int) ($row['people'] ?? 0),
+            'total'        => (int) ($row['total'] ?? 0),
+            'confirmed'    => (int) ($row['confirmed'] ?? 0),
+            'declined'     => (int) ($row['declined'] ?? 0),
+            'pending'      => (int) ($row['pending'] ?? 0),
+            'companions'   => (int) ($row['companions'] ?? 0),
+            'people'       => (int) ($row['people'] ?? 0),
+            'guests_total' => (int) ($guestsRow['n'] ?? 0),
         ];
     }
 

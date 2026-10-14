@@ -53,28 +53,16 @@ final class GiftAdminController extends Controller
         ]);
     }
 
-    /** Lista as contribuições/compras recebidas (status de pagamento). */
+    /**
+     * Rota legada: "Contribuições" foi consolidada no painel Financeiro, que é
+     * um superconjunto (mesmos dados + taxas, líquido, filtros, detalhe,
+     * histórico e exportação). Mantida apenas para não quebrar links antigos:
+     * redireciona para /admin/financeiro.
+     */
     public function purchases(): void
     {
         $this->guard();
-
-        $rows  = [];
-        $error = null;
-        try {
-            $rows = (new GiftPurchase($this->config))->listWithGift();
-        } catch (Throwable $e) {
-            error_log('[GiftAdmin] purchases: ' . $e->getMessage());
-            $error = 'Não foi possível carregar as contribuições.';
-        }
-
-        $this->viewAdmin('admin/gifts/purchases', [
-            'pageTitle' => 'Contribuições',
-            'active'    => 'purchases',
-            'admin'     => Auth::user(),
-            'rows'      => $rows,
-            'error'     => $error,
-            'flash'     => $this->pullFlash(),
-        ]);
+        $this->redirect('/admin/financeiro');
     }
 
     /** Formulário de novo presente. */

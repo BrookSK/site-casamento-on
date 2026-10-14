@@ -127,7 +127,19 @@ CREATE TABLE IF NOT EXISTS `gift_purchases` (
     `buyer_name`      VARCHAR(150) NULL,
     `buyer_email`     VARCHAR(190) NULL,
     `amount_cents`    INT UNSIGNED NOT NULL DEFAULT 0,
+    -- Snapshot do preço do presente no momento da compra (preserva histórico).
+    `gift_price_cents` INT UNSIGNED NOT NULL DEFAULT 0,
+    -- Taxas do gateway e valor líquido recebido (em centavos).
+    `fee_cents`       INT UNSIGNED NOT NULL DEFAULT 0,
+    `net_cents`       INT UNSIGNED NOT NULL DEFAULT 0,
+    -- Datas do ciclo de vida da cobrança.
+    `paid_at`         TIMESTAMP NULL,
+    `confirmed_at`    TIMESTAMP NULL,
+    `settled_at`      TIMESTAMP NULL,
+    `refunded_at`     TIMESTAMP NULL,
     `payment_status`  ENUM('pending','paid','failed','refunded') NOT NULL DEFAULT 'pending',
+    -- Status financeiro granular (pending/confirmed/received/refused/canceled/refunded).
+    `finance_status`  VARCHAR(20) NOT NULL DEFAULT 'pending',
     -- Referência externa do gateway (preenchida no futuro).
     `payment_ref`     VARCHAR(190) NULL,
     `message`         TEXT NULL,
@@ -143,6 +155,24 @@ CREATE TABLE IF NOT EXISTS `gift_purchases` (
     CONSTRAINT `fk_purchases_guest`
         FOREIGN KEY (`guest_id`) REFERENCES `guests` (`id`)
         ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  gift_purchase_status_log — histórico de mudanças de status (ponto 11)
+--  Trilha de auditoria: cada transição de status de uma compra.
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `gift_purchase_status_log` (
+    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `purchase_id`  INT UNSIGNED NOT NULL,
+    `from_status`  VARCHAR(20) NULL,
+    `to_status`    VARCHAR(20) NOT NULL,
+    `note`         VARCHAR(255) NULL,
+    `created_at`   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_status_log_purchase` (`purchase_id`),
+    CONSTRAINT `fk_status_log_purchase`
+        FOREIGN KEY (`purchase_id`) REFERENCES `gift_purchases` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------

@@ -22,6 +22,11 @@ node_modules/
 /cache/
 /tmp/
 
+# ---- Storage de runtime (temporários do mPDF, etc.) ----
+# A pasta é mantida no repo via .gitkeep, mas o conteúdo é ignorado.
+/storage/mpdf/*
+!/storage/mpdf/.gitkeep
+
 # ---- Sistema operacional ----
 .DS_Store
 Thumbs.db

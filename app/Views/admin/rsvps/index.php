@@ -39,10 +39,12 @@ $filters = [
 <?php endif; ?>
 
 <div class="stat-grid">
-    <div class="stat"><span class="stat__value"><?= (int) $summary['confirmed'] ?></span><span class="stat__label">Confirmados</span></div>
-    <div class="stat"><span class="stat__value"><?= (int) $summary['people'] ?></span><span class="stat__label">Total de pessoas</span></div>
-    <div class="stat"><span class="stat__value"><?= (int) $summary['declined'] ?></span><span class="stat__label">Não vão</span></div>
-    <div class="stat"><span class="stat__value"><?= (int) $summary['total'] ?></span><span class="stat__label">Respostas</span></div>
+    <div class="stat"><span class="stat__value"><?= (int) ($summary['guests_total'] ?? 0) ?></span><span class="stat__label">Convidados cadastrados</span></div>
+    <div class="stat"><span class="stat__value"><?= (int) $summary['confirmed'] ?></span><span class="stat__label">Presenças confirmadas</span></div>
+    <div class="stat"><span class="stat__value"><?= (int) $summary['declined'] ?></span><span class="stat__label">Ausências</span></div>
+    <div class="stat"><span class="stat__value"><?= (int) ($summary['companions'] ?? 0) ?></span><span class="stat__label">Acompanhantes confirmados</span></div>
+    <div class="stat"><span class="stat__value"><?= (int) $summary['people'] ?></span><span class="stat__label">Total estimado de pessoas</span></div>
+    <div class="stat"><span class="stat__value"><?= (int) $summary['total'] ?></span><span class="stat__label">Respostas recebidas</span></div>
 </div>
 
 <div class="admin-card">
@@ -53,6 +55,23 @@ $filters = [
                 <a class="chip <?= $status === $key ? 'is-active' : '' ?>"
                    href="<?= View::e(View::url($url, $baseUrl)) ?>"><?= View::e($label) ?></a>
             <?php endforeach; ?>
+        </div>
+
+        <div class="spacer"></div>
+
+        <?php
+        // As exportações respeitam o filtro aplicado no painel.
+        $exportQs = $status !== '' ? ('?status=' . $status) : '';
+        ?>
+        <div class="export-actions">
+            <a class="btn-admin btn-admin--ghost btn-admin--sm"
+               href="<?= View::e(View::url('/admin/confirmacoes/exportar/excel' . $exportQs, $baseUrl)) ?>">
+                &#128202; Exportar Excel
+            </a>
+            <a class="btn-admin btn-admin--ghost btn-admin--sm"
+               href="<?= View::e(View::url('/admin/confirmacoes/exportar/pdf' . $exportQs, $baseUrl)) ?>">
+                &#128196; Exportar PDF
+            </a>
         </div>
     </div>
 

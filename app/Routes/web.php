@@ -45,11 +45,19 @@ $router->get('/admin', 'AdminController@index');
 
 // Confirmações
 $router->get('/admin/confirmacoes', 'RsvpAdminController@index');
+$router->get('/admin/confirmacoes/exportar/excel', 'RsvpAdminController@exportExcel');
+$router->get('/admin/confirmacoes/exportar/pdf', 'RsvpAdminController@exportPdf');
 $router->post('/admin/confirmacoes/remover', 'RsvpAdminController@destroy');
 
 // Presentes
 $router->get('/admin/presentes', 'GiftAdminController@index');
 $router->get('/admin/presentes/compras', 'GiftAdminController@purchases');
+
+// Financeiro (gestão das transações de presente)
+$router->get('/admin/financeiro', 'FinanceController@index');
+$router->get('/admin/financeiro/transacao', 'FinanceController@show');
+$router->get('/admin/financeiro/exportar/excel', 'FinanceController@exportExcel');
+$router->get('/admin/financeiro/exportar/pdf', 'FinanceController@exportPdf');
 $router->get('/admin/presentes/novo', 'GiftAdminController@create');
 $router->get('/admin/presentes/editar', 'GiftAdminController@edit');
 $router->post('/admin/presentes/salvar', 'GiftAdminController@save');
