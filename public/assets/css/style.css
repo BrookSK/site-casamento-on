@@ -1657,16 +1657,19 @@ p { margin: 0 0 1rem; }
     }
     .site-nav.is-open { transform: translateX(0); }
 
-    /* Enquanto o menu está aberto, remove o backdrop-filter do header. Esse
-       filtro cria um "contexto de posicionamento" que faz o painel fixo
-       (filho do header) se ancorar ao header e encolher — removê-lo garante
-       que o painel ocupe a tela inteira, com o fundo creme cobrindo tudo. */
+    /* Enquanto o menu está aberto:
+       - remove o backdrop-filter do header (evita o painel encolher);
+       - ELEVA o header acima do overlay. Como o painel (.site-nav) é filho do
+         header, seu z-index só tem efeito DENTRO do contexto do header; por
+         isso é o header que precisa ficar acima do overlay — assim o painel
+         fica clicável e o overlay cobre apenas o conteúdo da página. */
     body.nav-open .site-header,
     .site-header:has(.site-nav.is-open) {
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
         background: transparent;
         box-shadow: none;
+        z-index: 120;
     }
 
     /* Overlay escuro cobrindo a página atrás do painel (fecha ao tocar). */
@@ -1675,14 +1678,14 @@ p { margin: 0 0 1rem; }
         position: fixed;
         inset: 0;
         background: rgba(32, 30, 26, 0.45);
-        z-index: 110;
+        z-index: 110;         /* abaixo do header (120) e do painel */
         animation: navFade 0.3s var(--ease);
     }
     /* Trava o scroll do fundo enquanto o menu está aberto. */
     body.nav-open { overflow: hidden; }
     @keyframes navFade { from { opacity: 0; } to { opacity: 1; } }
 
-    /* Hamburguer acima do overlay e do painel, para fechar sempre clicável. */
+    /* Hamburguer acima do painel, para o X de fechar ser sempre clicável. */
     .nav-toggle { position: relative; z-index: 130; }
 
     .site-nav__list { flex-direction: column; align-items: flex-start; gap: 1.5rem; }

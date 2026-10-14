@@ -35,6 +35,14 @@
                 toggle.focus();
             }
         });
+
+        // Fecha ao tocar fora do painel (na área escurecida), sem fechar quando
+        // o toque é no próprio painel ou no botão de abrir/fechar.
+        document.addEventListener('click', function (e) {
+            if (!nav.classList.contains('is-open')) { return; }
+            if (nav.contains(e.target) || toggle.contains(e.target)) { return; }
+            setMenu(false);
+        });
     }
 
     /* ---- Header muda de aparência ao rolar ---- */
