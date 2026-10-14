@@ -168,23 +168,25 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
     <div class="gift-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="gift-modal-title">
         <button class="gift-modal__close" type="button" data-gift-close aria-label="Fechar">&times;</button>
 
-        <div class="gift-modal__head">
-            <p class="gift-modal__eyebrow">Presentear</p>
-            <h3 class="gift-modal__title" id="gift-modal-title" data-gift-modal-name>Presente</h3>
-            <p class="gift-modal__price" data-gift-modal-price>R$ ---</p>
+        <div class="gift-modal__aside">
+            <div class="gift-modal__head">
+                <p class="gift-modal__eyebrow">Presentear</p>
+                <h3 class="gift-modal__title" id="gift-modal-title" data-gift-modal-name>Presente</h3>
+                <p class="gift-modal__price" data-gift-modal-price>R$ ---</p>
+            </div>
+            <p class="gift-modal__intro">
+                Preencha os dados ao lado para contribuir. O pagamento é
+                processado com segurança &mdash; você escolhe entre PIX, cartão
+                de crédito ou boleto.
+            </p>
         </div>
-
-        <p class="gift-modal__intro">
-            Preencha os dados abaixo para contribuir. O pagamento é processado com
-            segurança &mdash; você escolhe entre PIX, cartão de crédito ou boleto.
-        </p>
 
         <form class="gift-modal__form" method="post"
               action="<?= View::e(View::url('/presentear', $baseUrl)) ?>">
             <?= $csrfField ?>
             <input type="hidden" name="gift_id" value="" data-gift-modal-id>
 
-            <div class="field">
+            <div class="field field--full">
                 <label for="gm_name">Seu nome</label>
                 <input type="text" id="gm_name" name="buyer_name"
                        value="<?= View::e((string) ($currentGuest['name'] ?? '')) ?>" required>
@@ -194,7 +196,6 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
                 <label for="gm_email">E-mail (opcional)</label>
                 <input type="email" id="gm_email" name="buyer_email"
                        value="<?= View::e((string) ($currentGuest['email'] ?? '')) ?>">
-                <small class="field__hint">Para enviarmos a confirmação do seu presente.</small>
             </div>
 
             <div class="field">
@@ -206,14 +207,14 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
                 </select>
             </div>
 
-            <div class="field" data-gift-modal-cpf hidden>
+            <div class="field field--full" data-gift-modal-cpf hidden>
                 <label for="gm_cpf">CPF/CNPJ</label>
                 <input type="text" id="gm_cpf" name="buyer_cpf" inputmode="numeric"
                        placeholder="Somente números">
                 <small class="field__hint">Necessário para gerar o boleto.</small>
             </div>
 
-            <div class="field">
+            <div class="field field--full">
                 <label for="gm_msg">Mensagem (opcional)</label>
                 <input type="text" id="gm_msg" name="message" maxlength="255"
                        placeholder="Uma mensagem carinhosa para o casal">

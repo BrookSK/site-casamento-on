@@ -1265,14 +1265,19 @@ p { margin: 0 0 1rem; }
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 440px;
+    max-width: 860px;              /* retangular (landscape) no PC */
     max-height: 90vh;
     overflow-y: auto;
     background: var(--c-white);
     border-radius: var(--radius);
     box-shadow: 0 30px 80px -30px rgba(0,0,0,0.5);
-    padding: clamp(1.75rem, 4vw, 2.5rem);
+    padding: clamp(1.75rem, 3.5vw, 2.75rem);
     animation: giftPop 0.28s var(--ease);
+    /* Duas colunas: apresentação à esquerda, formulário à direita. */
+    display: grid;
+    grid-template-columns: 1fr 1.15fr;
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+    align-items: start;
 }
 @keyframes giftFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes giftPop {
@@ -1295,7 +1300,8 @@ p { margin: 0 0 1rem; }
 }
 .gift-modal__close:hover { background: var(--c-cream); color: var(--c-ink); }
 
-.gift-modal__head { text-align: center; margin-bottom: 1rem; }
+/* Coluna da esquerda: apresentação do presente. */
+.gift-modal__head { text-align: left; margin: 0 0 1rem; }
 .gift-modal__eyebrow {
     font-size: 0.72rem;
     letter-spacing: 0.26em;
@@ -1303,21 +1309,31 @@ p { margin: 0 0 1rem; }
     color: var(--c-sage-dark);
     margin: 0 0 0.4rem;
 }
-.gift-modal__title { font-family: var(--font-serif); font-size: 1.9rem; margin: 0; }
+.gift-modal__title { font-family: var(--font-serif); font-size: 2rem; margin: 0; line-height: 1.1; }
 .gift-modal__price {
     color: var(--c-rose);
     font-weight: 500;
     letter-spacing: 0.05em;
-    margin: 0.3rem 0 0;
+    font-size: 1.2rem;
+    margin: 0.4rem 0 0;
 }
 .gift-modal__intro {
     font-size: 0.92rem;
     color: var(--c-muted);
-    text-align: center;
-    margin: 0 0 1.5rem;
+    text-align: left;
+    margin: 1rem 0 0;
 }
-.gift-modal__form { display: grid; gap: 1rem; }
+
+/* Coluna da direita: formulário em grade de 2 colunas. */
+.gift-modal__form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem 1rem;
+}
 .gift-modal__form .field { display: flex; flex-direction: column; gap: 0.35rem; }
+/* Campos que ocupam a linha inteira do formulário. */
+.gift-modal__form .field--full,
+.gift-modal__form .gift-modal__submit { grid-column: 1 / -1; }
 .gift-modal__form label {
     font-size: 0.74rem;
     letter-spacing: 0.1em;
@@ -1341,7 +1357,15 @@ p { margin: 0 0 1rem; }
     outline: none;
 }
 .field__hint { font-size: 0.78rem; color: var(--c-muted); }
-.gift-modal__submit { margin-top: 0.4rem; text-align: center; }
+.gift-modal__submit { margin-top: 0.5rem; text-align: center; justify-self: start; }
+
+/* Mobile: o popup volta a empilhar (uma coluna). */
+@media (max-width: 680px) {
+    .gift-modal__dialog { grid-template-columns: 1fr; max-width: 440px; }
+    .gift-modal__form { grid-template-columns: 1fr; }
+    .gift-modal__head, .gift-modal__intro { text-align: center; }
+    .gift-modal__submit { justify-self: stretch; }
+}
 
 /* =============================================================
    Rodapé
