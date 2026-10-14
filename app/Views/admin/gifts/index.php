@@ -60,43 +60,30 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
 <?php endif; ?>
 
 <div class="admin-card">
-    <div class="admin-toolbar">
-        <div class="spacer"></div>
-        <a class="btn-admin" href="<?= View::e(View::url('/admin/presentes/novo', $baseUrl)) ?>">+ Novo presente</a>
-    </div>
-
     <?php if ($rows === []): ?>
+        <div class="admin-toolbar">
+            <div class="spacer"></div>
+            <a class="btn-admin" href="<?= View::e(View::url('/admin/presentes/novo', $baseUrl)) ?>">+ Novo presente</a>
+        </div>
         <p class="admin-empty">Nenhum presente cadastrado. Clique em “Novo presente”.</p>
     <?php else: ?>
-        <!-- Resumo do catálogo: números do catálogo, lado a lado -->
-        <div class="gift-summary__stats">
-            <div class="gift-stat">
-                <span class="gift-stat__value"><?= (int) $countTotal ?></span>
-                <span class="gift-stat__label">Presentes</span>
-            </div>
-            <div class="gift-stat gift-stat--available">
-                <span class="gift-stat__value"><?= (int) $countAvail ?></span>
-                <span class="gift-stat__label">Disponíveis</span>
-            </div>
-            <div class="gift-stat gift-stat--reserved">
-                <span class="gift-stat__value"><?= (int) $countReserv ?></span>
-                <span class="gift-stat__label">Reservados</span>
-            </div>
-            <div class="gift-stat gift-stat--purchased">
-                <span class="gift-stat__value"><?= (int) $countBought ?></span>
-                <span class="gift-stat__label">Presenteados</span>
-            </div>
-            <div class="gift-stat gift-stat--value">
-                <span class="gift-stat__value"><?= $money((int) $sumCents) ?></span>
-                <span class="gift-stat__label">Valor da lista</span>
-            </div>
+        <!-- Resumo do catálogo (mesmo padrão de cards do painel de Confirmações) -->
+        <div class="stat-grid">
+            <div class="stat"><span class="stat__value"><?= (int) $countTotal ?></span><span class="stat__label">Presentes</span></div>
+            <div class="stat"><span class="stat__value"><?= (int) $countAvail ?></span><span class="stat__label">Disponíveis</span></div>
+            <div class="stat"><span class="stat__value"><?= (int) $countReserv ?></span><span class="stat__label">Reservados</span></div>
+            <div class="stat"><span class="stat__value"><?= (int) $countBought ?></span><span class="stat__label">Presenteados</span></div>
+            <div class="stat"><span class="stat__value"><?= $money((int) $sumCents) ?></span><span class="stat__label">Valor da lista</span></div>
         </div>
 
-        <p class="gift-reorder-hint" data-reorder-hint>
-            Arraste pela alça <span class="gift-drag-handle__mini" aria-hidden="true">&#9776;</span>
-            para reordenar. A nova ordem é salva automaticamente.
+        <!-- Ação "Novo presente" logo abaixo dos cards, à direita. -->
+        <div class="admin-toolbar">
+            <!-- Feedback discreto do salvamento da ordem (preenchido via JS). -->
             <span class="gift-reorder-status" data-reorder-status role="status" aria-live="polite"></span>
-        </p>
+            <div class="spacer"></div>
+            <a class="btn-admin" href="<?= View::e(View::url('/admin/presentes/novo', $baseUrl)) ?>">+ Novo presente</a>
+        </div>
+
         <div style="overflow-x:auto;">
         <table class="admin-table gift-reorder"
                data-gift-reorder

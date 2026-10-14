@@ -44,7 +44,6 @@ $filters = [
     <div class="stat"><span class="stat__value"><?= (int) $summary['declined'] ?></span><span class="stat__label">Ausências</span></div>
     <div class="stat"><span class="stat__value"><?= (int) ($summary['companions'] ?? 0) ?></span><span class="stat__label">Acompanhantes confirmados</span></div>
     <div class="stat"><span class="stat__value"><?= (int) $summary['people'] ?></span><span class="stat__label">Total estimado de pessoas</span></div>
-    <div class="stat"><span class="stat__value"><?= (int) $summary['total'] ?></span><span class="stat__label">Respostas recebidas</span></div>
 </div>
 
 <div class="admin-card">
