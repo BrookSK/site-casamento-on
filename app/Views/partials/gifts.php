@@ -264,6 +264,27 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
             cpf.hidden = billing.value !== 'BOLETO';
         });
     }
+
+    // Máscara de CPF/CNPJ: formata automaticamente enquanto digita.
+    // CPF: 000.000.000-00  |  CNPJ: 00.000.000/0000-00
+    var cpfInput = modal.querySelector('#gm_cpf');
+    if (cpfInput) {
+        cpfInput.addEventListener('input', function () {
+            var d = cpfInput.value.replace(/\D/g, '').slice(0, 14);
+            var out;
+            if (d.length <= 11) {
+                out = d.replace(/^(\d{3})(\d)/, '$1.$2')
+                       .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+                       .replace(/\.(\d{3})(\d)/, '.$1-$2');
+            } else {
+                out = d.replace(/^(\d{2})(\d)/, '$1.$2')
+                       .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+                       .replace(/\.(\d{3})(\d)/, '.$1/$2')
+                       .replace(/(\d{4})(\d)/, '$1-$2');
+            }
+            cpfInput.value = out;
+        });
+    }
 })();
 </script>
 <?php endif; ?>
