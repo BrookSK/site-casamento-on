@@ -1038,8 +1038,10 @@ p { margin: 0 0 1rem; }
     z-index: 1;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: clamp(0.5rem, 2vw, 1.75rem);
-    max-width: min(1040px, 94vw);
+    width: 100%;
+    max-width: min(1500px, 96vw);
 }
 
 /* Moldura estilo foto impressa (borda branca grossa + sombra). */
@@ -1051,7 +1053,7 @@ p { margin: 0 0 1rem; }
     box-shadow: 0 40px 90px -24px rgba(0, 0, 0, 0.75);
     display: flex;
     flex-direction: column;
-    max-height: 88vh;
+    max-height: 94vh;
     animation: lbPop 0.35s var(--ease);
 }
 @keyframes lbPop {
@@ -1064,10 +1066,13 @@ p { margin: 0 0 1rem; }
     align-items: center;
     justify-content: center;
     background: var(--c-sand);
+    flex: 1;
+    min-height: 0;
 }
 .lightbox__img {
-    max-width: min(880px, 86vw);
-    max-height: 74vh;
+    width: 100%;
+    max-width: min(1300px, 90vw);
+    max-height: 82vh;
     object-fit: contain;
     display: block;
 }
@@ -1140,7 +1145,7 @@ p { margin: 0 0 1rem; }
     }
     .lightbox__btn--prev { left: 1.25rem; }
     .lightbox__btn--next { right: 1.25rem; }
-    .lightbox__img { max-height: 68vh; max-width: 90vw; }
+    .lightbox__img { max-height: 76vh; max-width: 92vw; }
     .lightbox__caption-text { font-size: 0.95rem; }
 }
 
