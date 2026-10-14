@@ -24,6 +24,25 @@ $statusLabels = [
 
 $money = static fn (int $cents): string => 'R$ ' . number_format($cents / 100, 2, ',', '.');
 
+// Resumo do catálogo (calculado a partir das linhas já carregadas — não há
+// consulta extra ao banco nem mudança de comportamento).
+$rows        = $rows ?? [];
+$countTotal  = count($rows);
+$countAvail  = 0;
+$countReserv = 0;
+$countBought = 0;
+$sumCents    = 0;
+foreach ($rows as $g) {
+    $sumCents += (int) ($g['price_cents'] ?? 0);
+    switch ((string) ($g['status'] ?? '')) {
+        case 'available':  $countAvail++;  break;
+        case 'reserved':   $countReserv++; break;
+        case 'purchased':  $countBought++; break;
+    }
+}
+// Progresso = presentes já presenteados sobre o total.
+$progressPct = $countTotal > 0 ? (int) round(($countBought / $countTotal) * 100) : 0;
+
 // Resolve a URL de uma imagem salva (http, absoluta, ou relativa a assets/img).
 $imageUrl = static function (string $image) use ($baseUrl): string {
     $image = trim($image);
@@ -52,6 +71,47 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
     <?php if ($rows === []): ?>
         <p class="admin-empty">Nenhum presente cadastrado. Clique em “Novo presente”.</p>
     <?php else: ?>
+        <!-- Resumo do catálogo: números + progresso de "quanto já foi presenteado" -->
+        <div class="gift-summary">
+            <div class="gift-summary__stats">
+                <div class="gift-stat">
+                    <span class="gift-stat__value"><?= (int) $countTotal ?></span>
+                    <span class="gift-stat__label">Presentes</span>
+                </div>
+                <div class="gift-stat gift-stat--available">
+                    <span class="gift-stat__value"><?= (int) $countAvail ?></span>
+                    <span class="gift-stat__label">Disponíveis</span>
+                </div>
+                <div class="gift-stat gift-stat--reserved">
+                    <span class="gift-stat__value"><?= (int) $countReserv ?></span>
+                    <span class="gift-stat__label">Reservados</span>
+                </div>
+                <div class="gift-stat gift-stat--purchased">
+                    <span class="gift-stat__value"><?= (int) $countBought ?></span>
+                    <span class="gift-stat__label">Presenteados</span>
+                </div>
+                <div class="gift-stat gift-stat--value">
+                    <span class="gift-stat__value"><?= $money((int) $sumCents) ?></span>
+                    <span class="gift-stat__label">Valor da lista</span>
+                </div>
+            </div>
+
+            <div class="gift-progress">
+                <div class="gift-progress__head">
+                    <span class="gift-progress__label">Presentes já escolhidos</span>
+                    <span class="gift-progress__pct"><?= (int) $progressPct ?>%</span>
+                </div>
+                <div class="gift-progress__track" role="progressbar"
+                     aria-valuenow="<?= (int) $progressPct ?>" aria-valuemin="0" aria-valuemax="100"
+                     aria-label="Progresso de presentes escolhidos">
+                    <div class="gift-progress__fill" style="width:<?= (int) $progressPct ?>%"></div>
+                </div>
+                <p class="gift-progress__caption">
+                    <?= (int) $countBought ?> de <?= (int) $countTotal ?> presentes já foram escolhidos pelos convidados.
+                </p>
+            </div>
+        </div>
+
         <p class="gift-reorder-hint" data-reorder-hint>
             Arraste pela alça <span class="gift-drag-handle__mini" aria-hidden="true">&#9776;</span>
             para reordenar. A nova ordem é salva automaticamente.

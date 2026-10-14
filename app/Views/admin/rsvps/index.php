@@ -83,10 +83,8 @@ $filters = [
             <thead>
                 <tr>
                     <th>Nome</th>
-                    <th>Contato</th>
                     <th>Status</th>
                     <th>Acomp.</th>
-                    <th>Mensagem</th>
                     <th>Quando</th>
                     <th></th>
                 </tr>
@@ -98,35 +96,32 @@ $filters = [
                     // Nomes dos acompanhantes vêm agregados com separador '||'.
                     $companionNames = [];
                     if (!empty($r['companion_names'])) {
-                        $companionNames = array_filter(explode('||', (string) $r['companion_names']));
+                        $companionNames = array_values(array_filter(explode('||', (string) $r['companion_names'])));
                     }
+                    // Dados para o modal de detalhes (sem navegar para outra tela).
+                    $rsvpData = [
+                        'id'         => (int) $r['id'],
+                        'name'       => (string) $r['name'],
+                        'email'      => (string) ($r['email'] ?? ''),
+                        'phone'      => (string) ($r['phone'] ?? ''),
+                        'status'     => $label,
+                        'companions' => (int) $r['companions'],
+                        'companion_names' => $companionNames,
+                        'message'    => (string) ($r['message'] ?? ''),
+                        'when'       => (string) ($r['responded_at'] ?? ''),
+                    ];
                     ?>
                     <tr>
-                        <td>
-                            <strong><?= View::e((string) $r['name']) ?></strong>
-                            <?php if ($companionNames !== []): ?>
-                                <ul class="companion-list">
-                                    <?php foreach ($companionNames as $cn): ?>
-                                        <li>+ <?= View::e((string) $cn) ?></li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if (!empty($r['email'])): ?><?= View::e((string) $r['email']) ?><br><?php endif; ?>
-                            <?php if (!empty($r['phone'])): ?><small><?= View::e((string) $r['phone']) ?></small><?php endif; ?>
-                        </td>
+                        <td><strong><?= View::e((string) $r['name']) ?></strong></td>
                         <td><span class="badge <?= $cls ?>"><?= View::e($label) ?></span></td>
                         <td><?= (int) $r['companions'] ?></td>
-                        <td><?= nl2br(View::e((string) ($r['message'] ?? ''))) ?></td>
-                        <td><small><?= View::e((string) ($r['responded_at'] ?? '')) ?></small></td>
-                        <td>
-                            <form method="post" action="<?= View::e(View::url('/admin/confirmacoes/remover', $baseUrl)) ?>"
-                                  onsubmit="return confirm('Remover esta confirmação?');">
-                                <?= $csrfField ?>
-                                <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
-                                <button type="submit" class="btn-admin btn-admin--danger btn-admin--sm">Remover</button>
-                            </form>
+                        <td class="col-nowrap"><small><?= View::e((string) ($r['responded_at'] ?? '')) ?></small></td>
+                        <td class="col-nowrap">
+                            <button type="button" class="btn-admin btn-admin--ghost btn-admin--sm"
+                                    data-rsvp-open
+                                    data-rsvp='<?= View::e(json_encode($rsvpData, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
+                                Detalhes
+                            </button>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -135,3 +130,104 @@ $filters = [
         </div>
     <?php endif; ?>
 </div>
+
+<!-- Modal: detalhe da confirmação -->
+<div class="modal" data-rsvp-modal hidden>
+    <div class="modal__backdrop" data-rsvp-close></div>
+    <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="rsvp-modal-title">
+        <div class="modal__head">
+            <h3 class="modal__title" id="rsvp-modal-title">Confirmação</h3>
+            <button type="button" class="modal__close" data-rsvp-close aria-label="Fechar">&times;</button>
+        </div>
+        <div class="modal__body">
+            <div class="finance-detail" data-rsvp-detail></div>
+            <div class="rsvp-detail__companions" data-rsvp-companions hidden>
+                <h4 class="rsvp-detail__subtitle">Acompanhantes</h4>
+                <ul class="companion-list" data-rsvp-companions-list></ul>
+            </div>
+            <p class="finance-detail__msg" data-rsvp-msg hidden></p>
+        </div>
+        <div class="modal__foot">
+            <form method="post" action="<?= View::e(View::url('/admin/confirmacoes/remover', $baseUrl)) ?>"
+                  data-rsvp-remove-form onsubmit="return confirm('Remover esta confirmação? Esta ação não pode ser desfeita.');"
+                  style="margin-right:auto;">
+                <?= $csrfField ?>
+                <input type="hidden" name="id" value="" data-rsvp-remove-id>
+                <button type="submit" class="btn-admin btn-admin--danger btn-admin--sm">Remover convidado</button>
+            </form>
+            <button type="button" class="btn-admin btn-admin--sm" data-rsvp-close>Fechar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var modal = document.querySelector('[data-rsvp-modal]');
+    if (!modal) { return; }
+
+    var detailBox = modal.querySelector('[data-rsvp-detail]');
+    var compBox = modal.querySelector('[data-rsvp-companions]');
+    var compList = modal.querySelector('[data-rsvp-companions-list]');
+    var msgBox = modal.querySelector('[data-rsvp-msg]');
+    var removeId = modal.querySelector('[data-rsvp-remove-id]');
+
+    var esc = function (s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    };
+    var row = function (label, value) {
+        return '<div class="finance-detail__item"><span>' + esc(label) + '</span>'
+             + '<strong>' + esc(value || '—') + '</strong></div>';
+    };
+
+    var open = function (d) {
+        detailBox.innerHTML =
+            row('Nome completo', d.name)
+          + row('Status', d.status)
+          + row('E-mail', d.email)
+          + row('Telefone', d.phone)
+          + row('Acompanhantes', d.companions)
+          + row('Respondido em', d.when);
+
+        // Lista de nomes dos acompanhantes (quando houver).
+        var names = d.companion_names || [];
+        if (names.length) {
+            compList.innerHTML = names.map(function (n) { return '<li>+ ' + esc(n) + '</li>'; }).join('');
+            compBox.hidden = false;
+        } else {
+            compBox.hidden = true;
+        }
+
+        if (d.message && d.message.trim() !== '') {
+            msgBox.innerHTML = '<span style="color:var(--c-muted)">Recado:</span> ' + esc(d.message);
+            msgBox.hidden = false;
+        } else {
+            msgBox.hidden = true;
+        }
+
+        if (removeId) { removeId.value = d.id; }
+
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    };
+    var close = function () {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+    };
+
+    document.querySelectorAll('[data-rsvp-open]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            try { open(JSON.parse(btn.getAttribute('data-rsvp'))); }
+            catch (e) { /* ignora dado inválido */ }
+        });
+    });
+    modal.querySelectorAll('[data-rsvp-close]').forEach(function (el) {
+        el.addEventListener('click', close);
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.hidden) { close(); }
+    });
+})();
+</script>
