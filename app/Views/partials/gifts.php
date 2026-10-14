@@ -68,31 +68,27 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
             <p class="flash flash--error" style="text-align:center"><?= View::e($giftMsg) ?></p>
         <?php endif; ?>
 
-        <div class="gift-layout <?= $showFilter ? 'gift-layout--with-filter' : '' ?>">
         <?php if ($showFilter): ?>
-            <aside class="gift-sidebar">
-                <div class="gift-filter" data-gift-filter
-                     data-min="<?= (int) $minCents ?>" data-max="<?= (int) $maxCents ?>">
-                    <div class="gift-filter__head">
-                        <label for="gift-range">Escolha pelo seu orçamento</label>
-                        <span class="gift-filter__value" data-gift-filter-label>
-                            Até R$ <?= number_format($maxCents / 100, 2, ',', '.') ?>
-                        </span>
-                    </div>
-                    <input type="range" id="gift-range"
-                           min="<?= (int) $minCents ?>" max="<?= (int) $maxCents ?>"
-                           value="<?= (int) $maxCents ?>" step="1000"
-                           data-gift-range
-                           aria-label="Valor máximo do presente">
-                    <div class="gift-filter__scale">
-                        <span>R$ <?= number_format($minCents / 100, 2, ',', '.') ?></span>
-                        <span>R$ <?= number_format($maxCents / 100, 2, ',', '.') ?></span>
-                    </div>
+            <div class="gift-filterbar" data-gift-filter
+                 data-min="<?= (int) $minCents ?>" data-max="<?= (int) $maxCents ?>">
+                <div class="gift-filter__head">
+                    <label for="gift-range">Escolha pelo seu orçamento</label>
+                    <span class="gift-filter__value" data-gift-filter-label>
+                        Até R$ <?= number_format($maxCents / 100, 2, ',', '.') ?>
+                    </span>
                 </div>
-            </aside>
+                <input type="range" id="gift-range"
+                       min="<?= (int) $minCents ?>" max="<?= (int) $maxCents ?>"
+                       value="<?= (int) $maxCents ?>" step="1000"
+                       data-gift-range
+                       aria-label="Valor máximo do presente">
+                <div class="gift-filter__scale">
+                    <span>R$ <?= number_format($minCents / 100, 2, ',', '.') ?></span>
+                    <span>R$ <?= number_format($maxCents / 100, 2, ',', '.') ?></span>
+                </div>
+            </div>
         <?php endif; ?>
 
-        <div class="gift-main">
         <div class="gift-grid" data-gift-grid>
             <?php foreach ($gifts as $gift): ?>
                 <?php
@@ -138,52 +134,12 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
                         </button>
                     <?php elseif ($canBuy): ?>
                         <button class="btn btn--outline" type="button"
-                                data-gift-toggle="gift-form-<?= $giftId ?>">
+                                data-gift-open
+                                data-gift-id="<?= $giftId ?>"
+                                data-gift-name="<?= View::e($gift['name'] ?? 'Presente') ?>"
+                                data-gift-price="<?= View::e($gift['price'] ?? '') ?>">
                             Presentear
                         </button>
-
-                        <form class="gift-form" id="gift-form-<?= $giftId ?>" hidden
-                              method="post"
-                              action="<?= View::e(View::url('/presentear', $baseUrl)) ?>">
-                            <?= $csrfField ?>
-                            <input type="hidden" name="gift_id" value="<?= $giftId ?>">
-
-                            <div class="field">
-                                <label for="buyer_name_<?= $giftId ?>">Seu nome</label>
-                                <input type="text" id="buyer_name_<?= $giftId ?>" name="buyer_name"
-                                       value="<?= View::e((string) ($currentGuest['name'] ?? '')) ?>" required>
-                            </div>
-
-                            <div class="field">
-                                <label for="buyer_email_<?= $giftId ?>">E-mail (opcional)</label>
-                                <input type="email" id="buyer_email_<?= $giftId ?>" name="buyer_email"
-                                       value="<?= View::e((string) ($currentGuest['email'] ?? '')) ?>">
-                            </div>
-
-                            <div class="field">
-                                <label for="billing_<?= $giftId ?>">Forma de pagamento</label>
-                                <select id="billing_<?= $giftId ?>" name="billing_type"
-                                        data-gift-billing="<?= $giftId ?>">
-                                    <option value="PIX">PIX</option>
-                                    <option value="CREDIT_CARD">Cartão de crédito</option>
-                                    <option value="BOLETO">Boleto</option>
-                                </select>
-                            </div>
-
-                            <div class="field" data-gift-cpf="<?= $giftId ?>" hidden>
-                                <label for="buyer_cpf_<?= $giftId ?>">CPF/CNPJ (necessário para boleto)</label>
-                                <input type="text" id="buyer_cpf_<?= $giftId ?>" name="buyer_cpf"
-                                       inputmode="numeric" placeholder="Somente números">
-                            </div>
-
-                            <div class="field">
-                                <label for="buyer_msg_<?= $giftId ?>">Mensagem (opcional)</label>
-                                <input type="text" id="buyer_msg_<?= $giftId ?>" name="message"
-                                       maxlength="255" placeholder="Uma mensagem para o casal">
-                            </div>
-
-                            <button class="btn btn--primary" type="submit">Continuar para o pagamento</button>
-                        </form>
                     <?php else: ?>
                         <button class="btn btn--outline" type="button" disabled aria-disabled="true">
                             Em breve
@@ -196,8 +152,6 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
         <?php if ($showFilter): ?>
             <p class="gift-empty" data-gift-empty hidden>Nenhum presente dentro desse valor.</p>
         <?php endif; ?>
-        </div><!-- /.gift-main -->
-        </div><!-- /.gift-layout -->
 
         <?php if (!$paymentsEnabled): ?>
             <p class="gift-note">
@@ -208,21 +162,107 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
 </section>
 
 <?php if ($paymentsEnabled): ?>
+<!-- Modal de contribuição: um só, reutilizado para qualquer presente. -->
+<div class="gift-modal" data-gift-modal hidden>
+    <div class="gift-modal__overlay" data-gift-close></div>
+    <div class="gift-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="gift-modal-title">
+        <button class="gift-modal__close" type="button" data-gift-close aria-label="Fechar">&times;</button>
+
+        <div class="gift-modal__head">
+            <p class="gift-modal__eyebrow">Presentear</p>
+            <h3 class="gift-modal__title" id="gift-modal-title" data-gift-modal-name>Presente</h3>
+            <p class="gift-modal__price" data-gift-modal-price>R$ ---</p>
+        </div>
+
+        <p class="gift-modal__intro">
+            Preencha os dados abaixo para contribuir. O pagamento é processado com
+            segurança &mdash; você escolhe entre PIX, cartão de crédito ou boleto.
+        </p>
+
+        <form class="gift-modal__form" method="post"
+              action="<?= View::e(View::url('/presentear', $baseUrl)) ?>">
+            <?= $csrfField ?>
+            <input type="hidden" name="gift_id" value="" data-gift-modal-id>
+
+            <div class="field">
+                <label for="gm_name">Seu nome</label>
+                <input type="text" id="gm_name" name="buyer_name"
+                       value="<?= View::e((string) ($currentGuest['name'] ?? '')) ?>" required>
+            </div>
+
+            <div class="field">
+                <label for="gm_email">E-mail (opcional)</label>
+                <input type="email" id="gm_email" name="buyer_email"
+                       value="<?= View::e((string) ($currentGuest['email'] ?? '')) ?>">
+                <small class="field__hint">Para enviarmos a confirmação do seu presente.</small>
+            </div>
+
+            <div class="field">
+                <label for="gm_billing">Forma de pagamento</label>
+                <select id="gm_billing" name="billing_type" data-gift-modal-billing>
+                    <option value="PIX">PIX (aprovação na hora)</option>
+                    <option value="CREDIT_CARD">Cartão de crédito</option>
+                    <option value="BOLETO">Boleto bancário</option>
+                </select>
+            </div>
+
+            <div class="field" data-gift-modal-cpf hidden>
+                <label for="gm_cpf">CPF/CNPJ</label>
+                <input type="text" id="gm_cpf" name="buyer_cpf" inputmode="numeric"
+                       placeholder="Somente números">
+                <small class="field__hint">Necessário para gerar o boleto.</small>
+            </div>
+
+            <div class="field">
+                <label for="gm_msg">Mensagem (opcional)</label>
+                <input type="text" id="gm_msg" name="message" maxlength="255"
+                       placeholder="Uma mensagem carinhosa para o casal">
+            </div>
+
+            <button class="btn btn--primary gift-modal__submit" type="submit">
+                Continuar para o pagamento
+            </button>
+        </form>
+    </div>
+</div>
+
 <script>
-// Mostra/oculta o formulário de cada presente e o campo de CPF (só p/ boleto).
-document.querySelectorAll('[data-gift-toggle]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-        var id = btn.getAttribute('data-gift-toggle');
-        var form = document.getElementById(id);
-        if (form) { form.hidden = !form.hidden; }
+(function () {
+    var modal   = document.querySelector('[data-gift-modal]');
+    if (!modal) { return; }
+    var nameEl  = modal.querySelector('[data-gift-modal-name]');
+    var priceEl = modal.querySelector('[data-gift-modal-price]');
+    var idEl    = modal.querySelector('[data-gift-modal-id]');
+    var billing = modal.querySelector('[data-gift-modal-billing]');
+    var cpf     = modal.querySelector('[data-gift-modal-cpf]');
+
+    var openModal = function (btn) {
+        idEl.value = btn.getAttribute('data-gift-id') || '';
+        nameEl.textContent = btn.getAttribute('data-gift-name') || 'Presente';
+        priceEl.textContent = btn.getAttribute('data-gift-price') || '';
+        if (cpf) { cpf.hidden = billing.value !== 'BOLETO'; }
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    };
+    var closeModal = function () {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+    };
+
+    document.querySelectorAll('[data-gift-open]').forEach(function (btn) {
+        btn.addEventListener('click', function () { openModal(btn); });
     });
-});
-document.querySelectorAll('[data-gift-billing]').forEach(function (sel) {
-    sel.addEventListener('change', function () {
-        var id = sel.getAttribute('data-gift-billing');
-        var cpf = document.querySelector('[data-gift-cpf="' + id + '"]');
-        if (cpf) { cpf.hidden = sel.value !== 'BOLETO'; }
+    modal.querySelectorAll('[data-gift-close]').forEach(function (el) {
+        el.addEventListener('click', closeModal);
     });
-});
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.hidden) { closeModal(); }
+    });
+    if (billing && cpf) {
+        billing.addEventListener('change', function () {
+            cpf.hidden = billing.value !== 'BOLETO';
+        });
+    }
+})();
 </script>
 <?php endif; ?>

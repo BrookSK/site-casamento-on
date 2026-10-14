@@ -62,7 +62,7 @@ $tab     = $tab ?? 'login';
                 </div>
                 <button type="submit" class="btn btn--primary account__submit">Entrar</button>
                 <p style="text-align:center;margin:.8rem 0 0;">
-                    <a href="<?= View::e(View::url('/recuperar-senha', $baseUrl)) ?>" style="color:#8a8f6f;font-size:.9rem;">Esqueci minha senha</a>
+                    <a href="<?= View::e(View::url('/recuperar-senha', $baseUrl)) ?>" style="color:#8a8f6f;font-size:.9rem;">Esqueci minha senha/Não possuo senha</a>
                 </p>
             </form>
 
