@@ -201,6 +201,101 @@ final class Rsvp extends Model
     }
 
     /**
+     * Busca a confirmação mais recente de um convidado, com os nomes dos
+     * acompanhantes. Usado na área pública para mostrar a confirmação já
+     * registrada do convidado logado (em vez de novo formulário).
+     *
+     * @return array{
+     *   id:int, status:string, companions:int, message:?string,
+     *   responded_at:?string, companion_names:array<int,string>
+     * }|null
+     */
+    public function findLatestForGuest(int $guestId): ?array
+    {
+        $row = $this->selectOne(
+            'SELECT id, status, companions, message, responded_at '
+            . 'FROM rsvps WHERE guest_id = :gid '
+            . 'ORDER BY id DESC LIMIT 1',
+            ['gid' => $guestId]
+        );
+
+        if ($row === null) {
+            return null;
+        }
+
+        $companions = $this->select(
+            'SELECT name FROM rsvp_companions WHERE rsvp_id = :rid ORDER BY id ASC',
+            ['rid' => (int) $row['id']]
+        );
+
+        return [
+            'id'              => (int) $row['id'],
+            'status'          => (string) $row['status'],
+            'companions'      => (int) $row['companions'],
+            'message'         => $row['message'] !== null ? (string) $row['message'] : null,
+            'responded_at'    => $row['responded_at'] !== null ? (string) $row['responded_at'] : null,
+            'companion_names' => array_map(static fn ($c): string => (string) $c['name'], $companions),
+        ];
+    }
+
+    /**
+     * Substitui a lista de acompanhantes de um RSVP, validando que ele
+     * pertence ao convidado informado (segurança: ninguém edita o RSVP de
+     * outro). Atualiza também a contagem em rsvps.companions.
+     *
+     * @param array<int, string> $names
+     * @return bool true se atualizou; false se o RSVP não é do convidado.
+     */
+    public function replaceCompanions(int $rsvpId, int $guestId, array $names): bool
+    {
+        $pdo = $this->db();
+        $pdo->beginTransaction();
+
+        try {
+            // Confirma a posse do RSVP.
+            $stmt = $pdo->prepare('SELECT status FROM rsvps WHERE id = :id AND guest_id = :gid');
+            $stmt->execute(['id' => $rsvpId, 'gid' => $guestId]);
+            $status = $stmt->fetchColumn();
+
+            if ($status === false) {
+                $pdo->rollBack();
+                return false;
+            }
+
+            // Normaliza a lista (remove vazios, limita tamanho e quantidade).
+            $clean = [];
+            foreach ($names as $n) {
+                $n = trim((string) $n);
+                if ($n !== '') {
+                    $clean[] = mb_substr($n, 0, 150);
+                }
+            }
+            $clean = array_slice($clean, 0, 20);
+
+            // Substitui: apaga os atuais e insere os novos.
+            $pdo->prepare('DELETE FROM rsvp_companions WHERE rsvp_id = :rid')
+                ->execute(['rid' => $rsvpId]);
+
+            if ($clean !== []) {
+                $ins = $pdo->prepare('INSERT INTO rsvp_companions (rsvp_id, name) VALUES (:rid, :name)');
+                foreach ($clean as $n) {
+                    $ins->execute(['rid' => $rsvpId, 'name' => $n]);
+                }
+            }
+
+            // Atualiza a contagem de acompanhantes.
+            $pdo->prepare('UPDATE rsvps SET companions = :c WHERE id = :id')
+                ->execute(['c' => count($clean), 'id' => $rsvpId]);
+
+            $pdo->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
      * Lista as confirmações com os dados do convidado, para o painel.
      *
      * @param string|null $status Filtra por status (ou null = todos)

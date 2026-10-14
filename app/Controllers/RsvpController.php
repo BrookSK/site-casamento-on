@@ -273,6 +273,50 @@ final class RsvpController extends Controller
             . 'Sentiremos a sua falta, mas agradecemos por avisar!';
     }
 
+    /**
+     * Atualiza APENAS a lista de acompanhantes da confirmação do convidado
+     * logado. O status (vai/não vai) não é alterado por aqui. Exige login e
+     * valida que o RSVP pertence ao convidado (dentro do Model).
+     */
+    public function updateCompanions(): void
+    {
+        if (!GuestAuth::check()) {
+            $this->redirectHome('rsvp', 'erro-sessao');
+        }
+
+        if (!Csrf::validate($_POST[Csrf::fieldName()] ?? null)) {
+            $this->redirectHome('rsvp', 'erro-sessao');
+        }
+
+        $guest  = GuestAuth::user();
+        $rsvpId = (int) ($_POST['rsvp_id'] ?? 0);
+
+        // Coleta e valida os nomes (não permite campo em branco).
+        $names = [];
+        $raw = $_POST['companion_names'] ?? [];
+        if (is_array($raw)) {
+            foreach ($raw as $cn) {
+                $cn = trim((string) $cn);
+                if ($cn === '') {
+                    $this->redirectHome('rsvp', 'erro-acompanhantes');
+                }
+                $names[] = $cn;
+            }
+        }
+
+        try {
+            $ok = (new Rsvp($this->config))->replaceCompanions($rsvpId, (int) $guest['id'], $names);
+            if (!$ok) {
+                $this->redirectHome('rsvp', 'erro');
+            }
+        } catch (Throwable $e) {
+            error_log('[Rsvp] updateCompanions: ' . $e->getMessage());
+            $this->redirectHome('rsvp', 'erro');
+        }
+
+        $this->redirectHome('rsvp', 'acompanhantes-ok');
+    }
+
     /** Redireciona para a home, numa âncora, com um status de retorno. */
     private function redirectHome(string $anchor, string $status): void
     {

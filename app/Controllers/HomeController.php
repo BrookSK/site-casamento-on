@@ -10,6 +10,7 @@ use App\Core\Controller;
 use App\Core\Csrf;
 use App\Core\GuestAuth;
 use App\Models\Gift;
+use App\Models\Rsvp;
 use Throwable;
 
 /**
@@ -29,6 +30,18 @@ final class HomeController extends Controller
         $bride = $content->text('bride', (string) ($this->config['wedding']['bride'] ?? 'Noiva'));
         $groom = $content->text('groom', (string) ($this->config['wedding']['groom'] ?? 'Noivo'));
 
+        // Convidado logado: busca a confirmação já registrada (se houver), para
+        // mostrar o resumo com edição de acompanhantes em vez do formulário.
+        $currentGuest = GuestAuth::user();
+        $myRsvp       = null;
+        if ($currentGuest !== null) {
+            try {
+                $myRsvp = (new Rsvp($this->config))->findLatestForGuest((int) $currentGuest['id']);
+            } catch (Throwable $e) {
+                error_log('[Home] findLatestForGuest: ' . $e->getMessage());
+            }
+        }
+
         $this->view('home', [
             'pageTitle'       => $bride . ' & ' . $groom,
             'gifts'           => $gifts,
@@ -37,7 +50,8 @@ final class HomeController extends Controller
             'rsvpStatus'      => isset($_GET['rsvp']) ? (string) $_GET['rsvp'] : null,
             'giftStatus'      => isset($_GET['gift']) ? (string) $_GET['gift'] : null,
             'paymentsEnabled' => Asaas::isConfigured($this->config),
-            'currentGuest'    => GuestAuth::user(),
+            'currentGuest'    => $currentGuest,
+            'myRsvp'          => $myRsvp,
         ]);
     }
 

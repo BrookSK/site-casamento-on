@@ -828,6 +828,40 @@ p { margin: 0 0 1rem; }
 
 .rsvp-form__submit { justify-self: center; margin-top: 0.5rem; min-width: 240px; }
 
+/* Resumo da confirmação já registrada (convidado logado) */
+.rsvp-done { display: grid; gap: 1rem; }
+.rsvp-done__badge {
+    justify-self: start;
+    display: inline-block;
+    padding: 0.3rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+.rsvp-done__badge--yes { background: #e3ead3; color: #4a5a28; }
+.rsvp-done__badge--no  { background: #efe7d5; color: #8a6d2f; }
+.rsvp-done__title { font-family: var(--font-serif); font-size: 1.8rem; margin: 0; }
+.rsvp-done__text { color: var(--c-muted); margin: 0; }
+.rsvp-done__message {
+    background: var(--c-cream);
+    border-left: 3px solid var(--c-sage);
+    border-radius: var(--radius);
+    padding: 0.85rem 1.1rem;
+}
+.rsvp-done__message span {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-sage-dark);
+    margin-bottom: 0.25rem;
+}
+.rsvp-done__message p { margin: 0; }
+.rsvp-done__form { margin-top: 0.5rem; gap: 1rem; }
+/* No resumo, a lista de acompanhantes já aparece aberta. */
+.rsvp-companions--open { display: grid; }
+
 @media (max-width: 760px) {
     .rsvp { grid-template-columns: 1fr; }
     .rsvp__aside { min-height: 200px; }

@@ -89,9 +89,14 @@ $receptionDetails = $content->text('reception_details', (string) ($wedding['rece
             'erro-email'  => ['error', 'Este e-mail já foi usado em uma confirmação.'],
             'erro-acompanhantes' => ['error', 'Por favor, informe o nome de cada acompanhante.'],
             'erro-sessao' => ['error', 'A sessão expirou. Recarregue a página e tente de novo.'],
+            'acompanhantes-ok' => ['success', 'Lista de acompanhantes atualizada!'],
         ];
         // Imagem decorativa da coluna esquerda (fixa: gallery-2 em assets/img).
         $rsvpImg = View::image('gallery-2', $app['base_url'] ?? '');
+
+        // Convidado logado que já confirmou: mostra o resumo (não o formulário).
+        $myRsvp = $myRsvp ?? null;
+        $alreadyConfirmed = $myRsvp !== null;
         ?>
         <div class="rsvp" id="rsvp">
             <div class="rsvp__aside" <?= $rsvpImg['exists'] ? 'style="background-image:url(\'' . View::e($rsvpImg['url']) . '\')"' : '' ?>>
@@ -109,6 +114,66 @@ $receptionDetails = $content->text('reception_details', (string) ($wedding['rece
                     </p>
                 <?php endif; ?>
 
+                <?php if ($alreadyConfirmed): ?>
+                    <?php
+                    $isAttending = $myRsvp['status'] === 'confirmed';
+                    $respondedAt = $myRsvp['responded_at'] ?? '';
+                    $respondedFmt = $respondedAt !== ''
+                        ? date('d/m/Y', strtotime($respondedAt))
+                        : '';
+                    ?>
+                    <div class="rsvp-done">
+                        <span class="rsvp-done__badge rsvp-done__badge--<?= $isAttending ? 'yes' : 'no' ?>">
+                            <?= $isAttending ? 'Presença confirmada' : 'Você informou que não poderá ir' ?>
+                        </span>
+
+                        <h3 class="rsvp-done__title">Olá, <?= View::e((string) ($currentGuest['name'] ?? 'convidado(a)')) ?>!</h3>
+                        <p class="rsvp-done__text">
+                            Sua confirmação já está registrada
+                            <?= $respondedFmt !== '' ? 'em ' . View::e($respondedFmt) : '' ?>.
+                            <?php if ($isAttending): ?>
+                                Você pode ajustar a lista de acompanhantes abaixo quando quiser.
+                            <?php endif; ?>
+                        </p>
+
+                        <?php if (!empty($myRsvp['message'])): ?>
+                            <div class="rsvp-done__message">
+                                <span>Seu recado</span>
+                                <p><?= nl2br(View::e((string) $myRsvp['message'])) ?></p>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if ($isAttending): ?>
+                            <form class="rsvp-form rsvp-done__form" method="post" data-rsvp-edit
+                                  action="<?= View::e(View::url('/confirmar-presenca/acompanhantes', $app['base_url'] ?? '')) ?>">
+                                <?= $csrfField ?? '' ?>
+                                <input type="hidden" name="rsvp_id" value="<?= (int) $myRsvp['id'] ?>">
+
+                                <div class="rsvp-companions rsvp-companions--open" data-companions>
+                                    <p class="rsvp-companions__hint">Acompanhantes</p>
+                                    <div class="rsvp-companions__list" data-companions-list>
+                                        <?php foreach (($myRsvp['companion_names'] ?? []) as $i => $cn): ?>
+                                            <div class="rsvp-companion-row" data-companion-row>
+                                                <div class="rsvp-field">
+                                                    <label for="rsvp-companion-<?= (int) $i + 1 ?>">Acompanhante <?= (int) $i + 1 ?></label>
+                                                    <input type="text" id="rsvp-companion-<?= (int) $i + 1 ?>"
+                                                           name="companion_names[]" value="<?= View::e((string) $cn) ?>" required>
+                                                </div>
+                                                <button type="button" class="rsvp-companion-row__remove"
+                                                        data-companion-remove aria-label="Remover acompanhante">&times;</button>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <button type="button" class="rsvp-companions__add" data-companions-add>
+                                        + Adicionar acompanhante
+                                    </button>
+                                </div>
+
+                                <button class="btn btn--primary rsvp-form__submit" type="submit">Salvar acompanhantes</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
                 <form class="rsvp-form" method="post" data-rsvp-form
                       action="<?= View::e(View::url('/confirmar-presenca', $app['base_url'] ?? '')) ?>">
                     <?= $csrfField ?? '' ?>
@@ -167,6 +232,7 @@ $receptionDetails = $content->text('reception_details', (string) ($wedding['rece
 
                     <button class="btn btn--primary rsvp-form__submit" type="submit">Enviar confirmação</button>
                 </form>
+                <?php endif; ?>
             </div>
         </div>
     </div>

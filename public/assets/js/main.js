@@ -105,16 +105,18 @@
     }
 
     /* ---- RSVP: acompanhantes adicionados um a um ---- */
-    var rsvpForm = document.querySelector('[data-rsvp-form]');
-    if (rsvpForm) {
-        var companionsBox = rsvpForm.querySelector('[data-companions]');
-        var companionsList = rsvpForm.querySelector('[data-companions-list]');
-        var addBtn = rsvpForm.querySelector('[data-companions-add]');
-        var attendingRadios = rsvpForm.querySelectorAll('[data-attending]');
+    var MAX_COMPANIONS = 20;
 
-        var MAX = 20;
+    // Configura a lista dinâmica de acompanhantes de um formulário RSVP.
+    // Funciona tanto para o formulário de nova confirmação (com o seletor
+    // "vai/não vai") quanto para o formulário de edição (sempre visível).
+    function setupCompanions(form) {
+        var companionsBox = form.querySelector('[data-companions]');
+        var companionsList = form.querySelector('[data-companions-list]');
+        var addBtn = form.querySelector('[data-companions-add]');
+        var attendingRadios = form.querySelectorAll('[data-attending]');
+        if (!companionsList) { return; }
 
-        // Renumera os rótulos (Acompanhante 1, 2, 3...) após adicionar/remover.
         var renumber = function () {
             var rows = companionsList.querySelectorAll('[data-companion-row]');
             Array.prototype.forEach.call(rows, function (row, i) {
@@ -124,13 +126,11 @@
                 if (label) { label.textContent = 'Acompanhante ' + (i + 1); label.setAttribute('for', id); }
                 if (input) { input.id = id; }
             });
-            // Esconde o botão ao atingir o máximo.
-            if (addBtn) { addBtn.hidden = rows.length >= MAX; }
+            if (addBtn) { addBtn.hidden = rows.length >= MAX_COMPANIONS; }
         };
 
-        var addCompanion = function () {
-            if (companionsList.querySelectorAll('[data-companion-row]').length >= MAX) { return; }
-
+        var addCompanion = function (focus) {
+            if (companionsList.querySelectorAll('[data-companion-row]').length >= MAX_COMPANIONS) { return; }
             var row = document.createElement('div');
             row.className = 'rsvp-companion-row';
             row.setAttribute('data-companion-row', '');
@@ -159,29 +159,43 @@
             row.appendChild(remove);
             companionsList.appendChild(row);
             renumber();
-            input.focus();
+            if (focus !== false) { input.focus(); }
         };
+
+        // Liga os botões "remover" de linhas já presentes (formulário de edição).
+        Array.prototype.forEach.call(companionsList.querySelectorAll('[data-companion-remove]'), function (btn) {
+            btn.addEventListener('click', function () {
+                var row = btn.closest('[data-companion-row]');
+                if (row) { row.parentNode.removeChild(row); renumber(); }
+            });
+        });
 
         if (addBtn) {
-            addBtn.addEventListener('click', addCompanion);
+            addBtn.addEventListener('click', function () { addCompanion(true); });
         }
 
-        var updateCompanions = function () {
-            var checked = rsvpForm.querySelector('[data-attending]:checked');
-            var isYes = checked && checked.getAttribute('data-attending') === 'yes';
-            if (companionsBox) { companionsBox.hidden = !isYes; }
-            // Ao escolher "não", limpa todos os acompanhantes.
-            if (!isYes && companionsList) {
-                companionsList.innerHTML = '';
-                renumber();
-            }
-        };
-
-        attendingRadios.forEach(function (radio) {
-            radio.addEventListener('change', updateCompanions);
-        });
-        updateCompanions();
+        // Só o formulário de nova confirmação tem o seletor vai/não vai.
+        if (attendingRadios.length) {
+            var updateCompanions = function () {
+                var checked = form.querySelector('[data-attending]:checked');
+                var isYes = checked && checked.getAttribute('data-attending') === 'yes';
+                if (companionsBox) { companionsBox.hidden = !isYes; }
+                if (!isYes) { companionsList.innerHTML = ''; renumber(); }
+            };
+            attendingRadios.forEach(function (radio) {
+                radio.addEventListener('change', updateCompanions);
+            });
+            updateCompanions();
+        } else {
+            renumber();
+        }
     }
+
+    var newRsvpForm = document.querySelector('[data-rsvp-form]');
+    if (newRsvpForm) { setupCompanions(newRsvpForm); }
+
+    var editRsvpForm = document.querySelector('[data-rsvp-edit]');
+    if (editRsvpForm) { setupCompanions(editRsvpForm); }
 
     /* ---- Lista de presentes: filtro por valor máximo (slider) ---- */
     var giftFilter = document.querySelector('[data-gift-filter]');

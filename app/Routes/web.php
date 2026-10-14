@@ -14,6 +14,7 @@ declare(strict_types=1);
 $router->get('/', 'HomeController@index');
 $router->get('/galeria', 'GalleryController@index');
 $router->post('/confirmar-presenca', 'RsvpController@store');
+$router->post('/confirmar-presenca/acompanhantes', 'RsvpController@updateCompanions');
 
 // Presentes (pagamento real via ASAAS)
 $router->post('/presentear', 'GiftController@store');
