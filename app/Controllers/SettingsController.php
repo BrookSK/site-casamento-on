@@ -22,9 +22,10 @@ use Throwable;
 final class SettingsController extends Controller
 {
     /** Chaves públicas (texto puro) por grupo. */
-    private const SMTP_PLAIN    = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_security', 'smtp_from_email', 'smtp_from_name'];
-    private const ASAAS_PLAIN   = ['asaas_environment', 'asaas_webhook_token'];
-    private const WEBHOOK_PLAIN = ['webhook_rsvp_url', 'webhook_rsvp_enabled'];
+    private const SMTP_PLAIN     = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_security', 'smtp_from_email', 'smtp_from_name'];
+    private const ASAAS_PLAIN    = ['asaas_environment', 'asaas_webhook_token'];
+    private const WEBHOOK_PLAIN  = ['webhook_rsvp_url', 'webhook_rsvp_enabled'];
+    private const COMM_PLAIN     = ['whatsapp_api_url', 'whatsapp_default_country', 'comm_signature'];
 
     private function guard(): void
     {
@@ -43,12 +44,13 @@ final class SettingsController extends Controller
 
         try {
             $model = new Setting($this->config);
-            $keys  = array_merge(self::SMTP_PLAIN, self::ASAAS_PLAIN, self::WEBHOOK_PLAIN);
+            $keys  = array_merge(self::SMTP_PLAIN, self::ASAAS_PLAIN, self::WEBHOOK_PLAIN, self::COMM_PLAIN);
             $values = $model->getMany($keys);
 
             // Para os segredos, não devolvemos o valor; só indicamos se já existe.
-            $values['smtp_password_set'] = $model->get('smtp_password') !== null ? '1' : '';
-            $values['asaas_api_key_set'] = $model->get('asaas_api_key') !== null ? '1' : '';
+            $values['smtp_password_set']        = $model->get('smtp_password') !== null ? '1' : '';
+            $values['asaas_api_key_set']        = $model->get('asaas_api_key') !== null ? '1' : '';
+            $values['whatsapp_api_token_set']   = $model->get('whatsapp_api_token') !== null ? '1' : '';
         } catch (Throwable $e) {
             error_log('[Settings] ' . $e->getMessage());
             $error = 'Não foi possível carregar as configurações.';
@@ -231,6 +233,70 @@ final class SettingsController extends Controller
             $this->setFlash('success', 'Configurações do webhook salvas.');
         } catch (Throwable $e) {
             error_log('[Settings] saveWebhook: ' . $e->getMessage());
+            $this->setFlash('error', 'Não foi possível salvar: ' . $e->getMessage());
+        }
+
+        $this->redirect('/admin/configuracoes');
+    }
+
+    /** Lista o histórico de comunicações automáticas (envios e falhas). */
+    public function communications(): void
+    {
+        $this->guard();
+
+        $logs  = [];
+        $error = null;
+        try {
+            $logs = (new \App\Models\CommunicationLog($this->config))->recent(200);
+        } catch (Throwable $e) {
+            error_log('[Settings] communications: ' . $e->getMessage());
+            $error = 'Não foi possível carregar o histórico de comunicações.';
+        }
+
+        $this->viewAdmin('admin/communications/index', [
+            'pageTitle' => 'Comunicações',
+            'active'    => 'communications',
+            'admin'     => Auth::user(),
+            'logs'      => $logs,
+            'error'     => $error,
+        ]);
+    }
+
+    /** Salva as configurações de comunicação automática (WhatsApp + assinatura). */
+    public function saveComm(): void
+    {
+        $this->guard();
+        if (!Csrf::validate($_POST[Csrf::fieldName()] ?? null)) {
+            $this->setFlash('error', 'Sessão expirada. Tente novamente.');
+            $this->redirect('/admin/configuracoes');
+        }
+
+        try {
+            $model = new Setting($this->config);
+
+            $apiUrl = trim((string) ($_POST['whatsapp_api_url'] ?? ''));
+            if ($apiUrl !== '' && filter_var($apiUrl, FILTER_VALIDATE_URL) === false) {
+                $this->setFlash('error', 'Informe uma URL de API de WhatsApp válida (http/https).');
+                $this->redirect('/admin/configuracoes');
+            }
+
+            $country = preg_replace('/\D+/', '', (string) ($_POST['whatsapp_default_country'] ?? '55')) ?: '55';
+
+            $model->setMany([
+                'whatsapp_api_url'         => $apiUrl,
+                'whatsapp_default_country' => $country,
+                'comm_signature'           => trim((string) ($_POST['comm_signature'] ?? '')),
+            ]);
+
+            // Token da API (cifrado): só atualiza se enviado. Em branco mantém.
+            $token = (string) ($_POST['whatsapp_api_token'] ?? '');
+            if ($token !== '') {
+                $this->saveSecret($model, 'whatsapp_api_token', $token);
+            }
+
+            $this->setFlash('success', 'Configurações de comunicação salvas.');
+        } catch (Throwable $e) {
+            error_log('[Settings] saveComm: ' . $e->getMessage());
             $this->setFlash('error', 'Não foi possível salvar: ' . $e->getMessage());
         }
 

@@ -28,6 +28,12 @@ $router->post('/cadastrar', 'GuestAuthController@register');
 $router->get('/sair', 'GuestAuthController@logout');
 $router->get('/minha-conta', 'AccountController@index');
 
+// Senha do convidado via link seguro (definição e recuperação)
+$router->get('/definir-senha', 'PasswordController@showDefine');
+$router->post('/definir-senha', 'PasswordController@define');
+$router->get('/recuperar-senha', 'PasswordController@showRequest');
+$router->post('/recuperar-senha', 'PasswordController@request');
+
 // ---- Autenticação admin ----
 $router->get('/admin/login', 'AuthController@showLogin');
 $router->post('/admin/login', 'AuthController@login');
@@ -59,3 +65,7 @@ $router->post('/admin/configuracoes/smtp/testar', 'SettingsController@testSmtp')
 $router->post('/admin/configuracoes/asaas', 'SettingsController@saveAsaas');
 $router->post('/admin/configuracoes/asaas/testar', 'SettingsController@testAsaas');
 $router->post('/admin/configuracoes/webhook', 'SettingsController@saveWebhook');
+$router->post('/admin/configuracoes/comunicacao', 'SettingsController@saveComm');
+
+// Histórico de comunicações automáticas (envios e falhas)
+$router->get('/admin/comunicacoes', 'SettingsController@communications');

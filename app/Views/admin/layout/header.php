@@ -24,6 +24,7 @@ $nav = [
     'purchases' => ['label' => 'Contribuições','url' => '/admin/presentes/compras'],
     'content'   => ['label' => 'Conteúdo', 'url' => '/admin/textos-e-imagens'],
     'settings'  => ['label' => 'Configurações','url' => '/admin/configuracoes'],
+    'communications' => ['label' => 'Comunicações', 'url' => '/admin/comunicacoes'],
 ];
 ?>
 <!DOCTYPE html>

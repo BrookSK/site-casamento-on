@@ -56,6 +56,90 @@ final class Guest extends Model
     }
 
     /**
+     * Busca um convidado por e-mail OU telefone (login/recuperação).
+     * @return array<string,mixed>|null
+     */
+    public function findByIdentifier(string $identifier): ?array
+    {
+        $identifier = trim($identifier);
+        if ($identifier === '') {
+            return null;
+        }
+        if (str_contains($identifier, '@')) {
+            return $this->findByEmail($identifier);
+        }
+        return $this->findByPhone(self::normalizePhone($identifier));
+    }
+
+    /**
+     * Localiza um convidado por um token de convite VÁLIDO (não expirado).
+     * Usado no link seguro de 1ª definição de senha enviado após o RSVP.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function findByInviteToken(string $token): ?array
+    {
+        $token = trim($token);
+        if ($token === '') {
+            return null;
+        }
+        return $this->selectOne(
+            'SELECT * FROM ' . $this->table . ' WHERE invite_token = :t '
+            . 'AND (invite_token_expires_at IS NULL OR invite_token_expires_at > NOW()) LIMIT 1',
+            ['t' => $token]
+        );
+    }
+
+    /**
+     * Localiza um convidado por um token de RECUPERAÇÃO de senha válido.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function findByResetToken(string $token): ?array
+    {
+        $token = trim($token);
+        if ($token === '') {
+            return null;
+        }
+        return $this->selectOne(
+            'SELECT * FROM ' . $this->table . ' WHERE password_reset_token = :t '
+            . 'AND password_reset_expires_at IS NOT NULL AND password_reset_expires_at > NOW() LIMIT 1',
+            ['t' => $token]
+        );
+    }
+
+    /**
+     * Gera e grava um token de recuperação de senha (validade em horas).
+     * Retorna o token em claro para montar o link enviado ao convidado.
+     */
+    public function startPasswordReset(int $id, int $validHours = 2): string
+    {
+        $token = self::generateToken();
+        $this->execute(
+            'UPDATE ' . $this->table . ' SET password_reset_token = :t, '
+            . 'password_reset_expires_at = DATE_ADD(NOW(), INTERVAL :h HOUR) WHERE id = :id',
+            ['t' => $token, 'h' => $validHours, 'id' => $id]
+        );
+        return $token;
+    }
+
+    /**
+     * Define a senha do convidado e invalida AMBOS os tokens (convite e
+     * recuperação), encerrando o link usado. Hash sempre via password_hash.
+     */
+    public function setPassword(int $id, string $password): void
+    {
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $this->execute(
+            'UPDATE ' . $this->table . ' SET password_hash = :hash, '
+            . 'invite_token = NULL, invite_token_expires_at = NULL, '
+            . 'password_reset_token = NULL, password_reset_expires_at = NULL, '
+            . 'account_created_at = COALESCE(account_created_at, NOW()) WHERE id = :id',
+            ['hash' => $hash, 'id' => $id]
+        );
+    }
+
+    /**
      * Verifica credenciais: o identificador pode ser e-mail ou telefone.
      *
      * @return array{id:int,name:string,email:string}|null

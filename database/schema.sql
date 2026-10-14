@@ -43,16 +43,20 @@ CREATE TABLE IF NOT EXISTS `guests` (
     `password_hash`  VARCHAR(255) NULL,
     -- Quando o convidado criou/assumiu a conta.
     `account_created_at` TIMESTAMP NULL,
-    -- Token para links de confirmação/convite e definição de senha.
+    -- Token para links de confirmação/convite e 1ª definição de senha.
     `invite_token`   CHAR(32) NULL,
     -- Validade do token acima (NULL = sem expiração definida).
     `invite_token_expires_at` TIMESTAMP NULL,
+    -- Token de RECUPERAÇÃO de senha (fluxo "esqueci minha senha").
+    `password_reset_token`     CHAR(32) NULL,
+    `password_reset_expires_at` TIMESTAMP NULL,
     `created_at`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_guests_email` (`email`),
     UNIQUE KEY `uq_guests_phone_normalized` (`phone_normalized`),
-    UNIQUE KEY `uq_guests_invite_token` (`invite_token`)
+    UNIQUE KEY `uq_guests_invite_token` (`invite_token`),
+    UNIQUE KEY `uq_guests_password_reset_token` (`password_reset_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
@@ -137,6 +141,29 @@ CREATE TABLE IF NOT EXISTS `gift_purchases` (
         FOREIGN KEY (`gift_id`) REFERENCES `gifts` (`id`)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT `fk_purchases_guest`
+        FOREIGN KEY (`guest_id`) REFERENCES `guests` (`id`)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  communication_logs — histórico das mensagens automáticas (ponto 7)
+--  Registra cada tentativa de envio (sucesso/falha), por canal.
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `communication_logs` (
+    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `guest_id`     INT UNSIGNED NULL,
+    `channel`      ENUM('email','whatsapp') NOT NULL,
+    `type`         VARCHAR(40) NOT NULL,
+    `recipient`    VARCHAR(190) NULL,
+    `status`       ENUM('sent','failed','skipped') NOT NULL,
+    `error`        TEXT NULL,
+    `created_at`   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_commlog_guest` (`guest_id`),
+    KEY `idx_commlog_channel` (`channel`),
+    KEY `idx_commlog_type` (`type`),
+    KEY `idx_commlog_status` (`status`),
+    CONSTRAINT `fk_commlog_guest`
         FOREIGN KEY (`guest_id`) REFERENCES `guests` (`id`)
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

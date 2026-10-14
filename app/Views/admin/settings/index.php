@@ -217,3 +217,57 @@ $webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
         </div>
     </form>
 </div>
+
+<!-- ===================== COMUNICAÇÃO AUTOMÁTICA ===================== -->
+<div class="admin-card">
+    <h2>Comunicação automática (WhatsApp e assinatura)</h2>
+    <p>Ao confirmar presença, o site cria a conta do convidado e envia
+    automaticamente as <strong>boas-vindas</strong> por e-mail (e por WhatsApp,
+    se configurado) com o endereço do site, o e-mail cadastrado e um
+    <strong>link seguro</strong> para definir a senha. O histórico de envios
+    fica em <a href="<?= View::e(View::url('/admin/comunicacoes', $baseUrl)) ?>">Comunicações</a>.</p>
+
+    <p><strong>WhatsApp (opcional):</strong> informe a URL de uma API de envio
+    (gateway próprio ou provedor como Z-API, Evolution API etc.). O site envia um
+    <code>POST</code> JSON <code>{ phone, message }</code>, com o token como
+    <code>Bearer</code>. Em branco desativa o canal de WhatsApp (os e-mails
+    continuam).</p>
+
+    <form class="form-grid" method="post" action="<?= View::e(View::url('/admin/configuracoes/comunicacao', $baseUrl)) ?>">
+        <?= $csrfField ?>
+
+        <div class="field">
+            <label for="whatsapp_api_url">URL da API de WhatsApp</label>
+            <input type="url" id="whatsapp_api_url" name="whatsapp_api_url" value="<?= $v('whatsapp_api_url') ?>" placeholder="https://api.exemplo.com/send-message" autocomplete="off">
+        </div>
+
+        <?php $waTokenSet = (string) ($values['whatsapp_api_token_set'] ?? '') !== ''; ?>
+        <div class="form-row">
+            <div class="field">
+                <label for="whatsapp_api_token">Token da API (opcional)</label>
+                <input type="password" id="whatsapp_api_token" name="whatsapp_api_token" autocomplete="off"
+                       placeholder="<?= $waTokenSet ? '••••••••••••••••' : 'token do provedor' ?>">
+                <?php if ($waTokenSet): ?>
+                    <small>Já existe um token salvo (ocultado). Deixe em branco para manter.</small>
+                <?php endif; ?>
+            </div>
+            <div class="field">
+                <label for="whatsapp_default_country">DDI padrão</label>
+                <input type="text" id="whatsapp_default_country" name="whatsapp_default_country"
+                       value="<?= View::e((string) ($values['whatsapp_default_country'] ?? '55')) ?>"
+                       inputmode="numeric" placeholder="55">
+                <small>Prefixo do país aplicado a telefones sem DDI (Brasil = 55).</small>
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="comm_signature">Assinatura das mensagens</label>
+            <input type="text" id="comm_signature" name="comm_signature" value="<?= $v('comm_signature') ?>" placeholder="Ex.: Maria &amp; João" autocomplete="off">
+            <small>Aparece no rodapé dos e-mails. Em branco usa os nomes do casal.</small>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-admin">Salvar comunicação</button>
+        </div>
+    </form>
+</div>

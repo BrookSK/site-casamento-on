@@ -6,9 +6,12 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Csrf;
+use App\Core\EmailTemplate;
 use App\Core\GuestAuth;
 use App\Core\Mailer;
+use App\Core\Notifier;
 use App\Core\Webhook;
+use App\Models\CommunicationLog;
 use App\Models\Rsvp;
 use App\Models\Setting;
 use Throwable;
@@ -96,43 +99,136 @@ final class RsvpController extends Controller
         // aqui NÃO afetam o convidado — apenas são registradas no log.
         $this->notifyWebhook($data, $rsvp['status']);
 
+        // Comunicação automática de cadastro/acesso (ponto 7). Quando a conta
+        // é nova / ainda sem senha, há um invite_token: enviamos as boas-vindas
+        // com o endereço do site, o e-mail cadastrado e o link seguro de
+        // definição de senha (e-mail e, se configurado, WhatsApp). Tolerante a
+        // falhas: cada tentativa é registrada em communication_logs.
+        $this->sendWelcome($result);
+
         // Envia o e-mail de confirmação ao convidado (se houver e-mail e o SMTP
         // estiver configurado). Também é tolerante a falhas: só registra no log.
-        $this->sendConfirmationEmail($data, $rsvp['status']);
+        $this->sendConfirmationEmail($result['guest'], $data, $rsvp['status']);
 
         $this->redirectHome('rsvp', 'ok');
     }
 
     /**
-     * Envia o e-mail de confirmação de presença ao convidado.
+     * Dispara as boas-vindas (ponto 7) quando a conta foi criada/assumida sem
+     * senha — nesse caso há um invite_token e montamos o link seguro de
+     * definição de senha. Para contas já ativas (com senha) não há token e,
+     * portanto, não reenviamos o link.
      *
-     * @param array{name:string, email:?string, phone:?string} $guest
-     * @param string $status 'confirmed' ou 'declined'
+     * @param array{
+     *   rsvp_id:int,
+     *   guest:array{id:int,name:string,email:string},
+     *   invite_token:?string,
+     *   has_password:bool
+     * } $result
      */
-    private function sendConfirmationEmail(array $guest, string $status): void
+    private function sendWelcome(array $result): void
     {
         try {
-            $email = trim((string) ($guest['email'] ?? ''));
-            if ($email === '' || !Mailer::isConfigured($this->config)) {
+            $guest = $result['guest'];
+            $token = $result['invite_token'] ?? null;
+
+            // Só há boas-vindas com link quando a conta ainda não tem senha.
+            if (!empty($result['has_password']) || $token === null || $token === '') {
                 return;
             }
 
-            $mailer  = Mailer::fromSettings($this->config);
-            $subject = $status === 'confirmed'
-                ? 'Presença confirmada'
-                : 'Resposta recebida';
+            // Recupera o telefone (o retorno do RSVP não o traz) para o canal
+            // WhatsApp. Falha de leitura não impede o e-mail.
+            $phone = null;
+            try {
+                $full  = (new \App\Models\Guest($this->config))->find((int) $guest['id']);
+                $phone = $full['phone'] ?? null;
+            } catch (Throwable $e) {
+                error_log('[Rsvp] sendWelcome phone: ' . $e->getMessage());
+            }
 
-            $mailer->send($email, $subject, $this->buildEmailBody($guest['name'], $status), $guest['name']);
+            (new Notifier($this->config))->sendWelcome([
+                'id'    => (int) $guest['id'],
+                'name'  => (string) $guest['name'],
+                'email' => $guest['email'] ?? null,
+                'phone' => $phone,
+            ], $this->passwordLink((string) $token));
         } catch (Throwable $e) {
-            error_log('[Rsvp] sendConfirmationEmail: ' . $e->getMessage());
+            error_log('[Rsvp] sendWelcome: ' . $e->getMessage());
         }
     }
 
-    /** Monta o corpo HTML do e-mail a partir da mensagem pré-pronta. */
-    private function buildEmailBody(string $name, string $status): string
+    /** Monta a URL absoluta do link seguro de definição de senha. */
+    private function passwordLink(string $token): string
     {
-        $message = $this->buildMessage($name, $status);
-        return '<p>' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</p>';
+        $baseUrl = rtrim((string) ($this->config['app']['base_url'] ?? ''), '/');
+        if ($baseUrl === '') {
+            $scheme  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host    = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $baseUrl = $scheme . '://' . $host;
+        }
+        return $baseUrl . '/definir-senha?token=' . urlencode($token);
+    }
+
+    /**
+     * Envia o e-mail de confirmação de presença ao convidado, usando o
+     * template HTML, e registra o resultado em communication_logs (ponto 7).
+     *
+     * @param array{id:int,name:string,email:string} $guest
+     * @param array{name:string, email:?string, phone:?string} $data
+     * @param string $status 'confirmed' ou 'declined'
+     */
+    private function sendConfirmationEmail(array $guest, array $data, string $status): void
+    {
+        $log   = new CommunicationLog($this->config);
+        $email = trim((string) ($data['email'] ?? ''));
+        $gid   = (int) ($guest['id'] ?? 0) ?: null;
+
+        if ($email === '' || !Mailer::isConfigured($this->config)) {
+            $log->record([
+                'guest_id'  => $gid,
+                'channel'   => CommunicationLog::CHANNEL_EMAIL,
+                'type'      => 'rsvp',
+                'recipient' => $email ?: null,
+                'status'    => CommunicationLog::STATUS_SKIPPED,
+                'error'     => $email === '' ? 'Convidado sem e-mail.' : 'SMTP não configurado.',
+            ]);
+            return;
+        }
+
+        try {
+            $site    = (string) ($this->config['app']['name'] ?? 'Nosso casamento');
+            $baseUrl = rtrim((string) ($this->config['app']['base_url'] ?? ''), '/');
+            $subject = $status === 'confirmed' ? 'Presença confirmada' : 'Resposta recebida';
+
+            $html = EmailTemplate::rsvp([
+                'name'      => (string) $data['name'],
+                'siteName'  => $site,
+                'message'   => $this->buildMessage((string) $data['name'], $status),
+                'siteUrl'   => $baseUrl !== '' ? $baseUrl : null,
+                'signature' => null,
+            ]);
+
+            Mailer::fromSettings($this->config)->send($email, $subject, $html, (string) $data['name']);
+
+            $log->record([
+                'guest_id'  => $gid,
+                'channel'   => CommunicationLog::CHANNEL_EMAIL,
+                'type'      => 'rsvp',
+                'recipient' => $email,
+                'status'    => CommunicationLog::STATUS_SENT,
+            ]);
+        } catch (Throwable $e) {
+            error_log('[Rsvp] sendConfirmationEmail: ' . $e->getMessage());
+            $log->record([
+                'guest_id'  => $gid,
+                'channel'   => CommunicationLog::CHANNEL_EMAIL,
+                'type'      => 'rsvp',
+                'recipient' => $email,
+                'status'    => CommunicationLog::STATUS_FAILED,
+                'error'     => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
