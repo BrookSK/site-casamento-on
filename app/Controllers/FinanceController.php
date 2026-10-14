@@ -40,11 +40,16 @@ final class FinanceController extends Controller
         $gifts   = [];
         $error   = null;
 
+        $history = [];
         try {
             $model   = new GiftPurchase($this->config);
             $rows    = $model->listFinance($filters);
             $summary = $model->financeSummary($filters);
             $gifts   = (new Gift($this->config))->listAll(false);
+            // Histórico de status de todas as transações da página (para os
+            // modais de detalhe/histórico, sem navegar para outra tela).
+            $ids     = array_map(static fn ($r) => (int) ($r['id'] ?? 0), $rows);
+            $history = $model->statusHistoryForMany($ids);
         } catch (Throwable $e) {
             error_log('[Finance] index: ' . $e->getMessage());
             $error = 'Não foi possível carregar os dados financeiros.';
@@ -58,6 +63,7 @@ final class FinanceController extends Controller
             'summary'   => $summary,
             'gifts'     => $gifts,
             'filters'   => $filters,
+            'history'   => $history,
             'error'     => $error,
             'flash'     => $this->pullFlash(),
         ]);

@@ -428,6 +428,80 @@ a { color: var(--c-sage-dark); }
     .finance-filters { grid-template-columns: 1fr; }
 }
 
+/* ---- Modal (popup) genérico do admin ---- */
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+.modal[hidden] { display: none; }
+.modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 18, 16, 0.55);
+    backdrop-filter: blur(2px);
+}
+.modal__box {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 720px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--c-white);
+    border-radius: var(--radius);
+    box-shadow: 0 30px 80px -24px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+.modal__box--sm { max-width: 560px; }
+.modal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--c-line);
+    background: var(--c-cream);
+}
+.modal__title {
+    font-family: var(--font-serif);
+    font-size: 1.4rem;
+    font-weight: 500;
+    margin: 0;
+}
+.modal__close {
+    border: 0;
+    background: transparent;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--c-muted);
+    cursor: pointer;
+    padding: 0 0.25rem;
+}
+.modal__close:hover { color: var(--c-ink); }
+.modal__body {
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+.modal__body .finance-detail { margin-top: 0; }
+.finance-detail__msg {
+    margin: 1rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--c-line);
+}
+.modal__foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--c-line);
+    background: var(--c-cream);
+}
+
 /* ---- Detalhe da transação ---- */
 .finance-detail {
     display: grid;
@@ -485,6 +559,33 @@ a { color: var(--c-sage-dark); }
     border: 1px solid var(--c-line);
     border-radius: var(--radius);
     background: var(--c-cream);
+}
+
+/* Padroniza TODO select da área admin (remove o visual nativo do browser e
+   casa com os inputs: fundo creme, borda clara, cantos arredondados, seta
+   própria na cor da paleta). */
+.admin-main select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 100%;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    padding: 0.7rem 2.2rem 0.7rem 0.9rem;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    background-color: var(--c-cream);
+    color: var(--c-ink);
+    cursor: pointer;
+    /* Seta desenhada em SVG, na cor sálvia escura. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236e7256' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+}
+.admin-main select:focus {
+    border-color: var(--c-sage);
+    background-color: var(--c-white);
+    outline: none;
 }
 .form-grid textarea { min-height: 90px; resize: vertical; }
 .field small {

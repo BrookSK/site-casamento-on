@@ -11,6 +11,7 @@ use App\Core\View;
  * @var array<int, array<string, mixed>> $rows
  * @var array<string, int> $summary
  * @var array<int, array<string, mixed>> $gifts
+ * @var array<int, array<int, array<string, mixed>>> $history
  * @var array{status:string,gift_id:int,guest:string,date_from:string,date_to:string} $filters
  * @var string|null $error
  * @var array{type:string,message:string}|null $flash
@@ -18,6 +19,7 @@ use App\Core\View;
 
 $baseUrl = $app['base_url'] ?? '';
 $summary = $summary ?? [];
+$history = $history ?? [];
 $filters = $filters ?? ['status' => '', 'gift_id' => 0, 'guest' => '', 'date_from' => '', 'date_to' => ''];
 
 $money = static fn (int $cents): string => 'R$ ' . number_format($cents / 100, 2, ',', '.');
@@ -196,8 +198,44 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
                         <td class="col-money"><?= $money((int) ($p['fee_cents'] ?? 0)) ?></td>
                         <td class="col-money col-money--net"><?= $money((int) ($p['net_cents'] ?? 0)) ?></td>
                         <td class="col-nowrap">
-                            <a class="btn-admin btn-admin--ghost btn-admin--sm"
-                               href="<?= View::e(View::url('/admin/financeiro/transacao?id=' . (int) $p['id'], $baseUrl)) ?>">Detalhes</a>
+                            <?php
+                            // Monta os dados da transação para o modal (sem nova
+                            // navegação). O histórico vem agrupado por id.
+                            $pid = (int) ($p['id'] ?? 0);
+                            $modalData = [
+                                'id'           => $pid,
+                                'gift'         => (string) ($p['gift_name'] ?? '—'),
+                                'buyer'        => $buyer !== '' ? $buyer : '—',
+                                'email'        => (string) ($p['buyer_email'] ?? ''),
+                                'billing'      => $billingLabels[$bt] ?? $bt,
+                                'status'       => $label,
+                                'status_cls'   => $cls,
+                                'ref'          => (string) ($p['payment_ref'] ?? ''),
+                                'amount'       => $money((int) ($p['amount_cents'] ?? 0)),
+                                'fee'          => $money((int) ($p['fee_cents'] ?? 0)),
+                                'net'          => $money((int) ($p['net_cents'] ?? 0)),
+                                'gift_price'   => $money((int) ($p['gift_price_cents'] ?? 0)),
+                                'created_at'   => $fmtDate($p['created_at'] ?? null),
+                                'paid_at'      => $fmtDate($p['paid_at'] ?? null),
+                                'confirmed_at' => $fmtDate($p['confirmed_at'] ?? null),
+                                'settled_at'   => $fmtDate($p['settled_at'] ?? null),
+                                'refunded_at'  => $fmtDate($p['refunded_at'] ?? null),
+                                'message'      => (string) ($p['message'] ?? ''),
+                                'history'      => array_map(static function ($h) use ($fmtDate) {
+                                    return [
+                                        'when' => $fmtDate($h['created_at'] ?? null),
+                                        'from' => (string) ($h['from_status'] ?? '—'),
+                                        'to'   => (string) ($h['to_status'] ?? '—'),
+                                        'note' => (string) ($h['note'] ?? ''),
+                                    ];
+                                }, $history[$pid] ?? []),
+                            ];
+                            ?>
+                            <button type="button" class="btn-admin btn-admin--ghost btn-admin--sm"
+                                    data-fin-open
+                                    data-fin='<?= View::e(json_encode($modalData, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
+                                Detalhes
+                            </button>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -206,3 +244,154 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
         </div>
     <?php endif; ?>
 </div>
+
+<!-- Modal: detalhe da transação -->
+<div class="modal" data-fin-modal hidden>
+    <div class="modal__backdrop" data-fin-close></div>
+    <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="fin-modal-title">
+        <div class="modal__head">
+            <h3 class="modal__title" id="fin-modal-title">Transação</h3>
+            <button type="button" class="modal__close" data-fin-close aria-label="Fechar">&times;</button>
+        </div>
+        <div class="modal__body">
+            <div class="finance-detail" data-fin-detail></div>
+            <p class="finance-detail__msg" data-fin-msg hidden></p>
+        </div>
+        <div class="modal__foot">
+            <button type="button" class="btn-admin btn-admin--ghost btn-admin--sm" data-fin-history-open>
+                Ver histórico
+            </button>
+            <button type="button" class="btn-admin btn-admin--sm" data-fin-close>Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: histórico de status -->
+<div class="modal" data-fin-history-modal hidden>
+    <div class="modal__backdrop" data-fin-history-close></div>
+    <div class="modal__box modal__box--sm" role="dialog" aria-modal="true" aria-labelledby="fin-hist-title">
+        <div class="modal__head">
+            <h3 class="modal__title" id="fin-hist-title">Histórico de status</h3>
+            <button type="button" class="modal__close" data-fin-history-close aria-label="Fechar">&times;</button>
+        </div>
+        <div class="modal__body">
+            <div data-fin-history></div>
+        </div>
+        <div class="modal__foot">
+            <button type="button" class="btn-admin btn-admin--ghost btn-admin--sm" data-fin-history-close>Voltar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var modal = document.querySelector('[data-fin-modal]');
+    var histModal = document.querySelector('[data-fin-history-modal]');
+    if (!modal) { return; }
+
+    var detailBox = modal.querySelector('[data-fin-detail]');
+    var msgBox = modal.querySelector('[data-fin-msg]');
+    var histBox = histModal ? histModal.querySelector('[data-fin-history]') : null;
+    var current = null; // dados da transação aberta
+
+    var esc = function (s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    };
+
+    var row = function (label, value) {
+        return '<div class="finance-detail__item"><span>' + esc(label) + '</span>'
+             + '<strong>' + esc(value || '—') + '</strong></div>';
+    };
+
+    var openDetail = function (data) {
+        current = data;
+        modal.querySelector('[data-fin-detail]').innerHTML =
+            row('Presente', data.gift)
+          + row('Convidado/Comprador', data.buyer)
+          + row('E-mail', data.email)
+          + row('Forma de pagamento', data.billing)
+          + row('Status', data.status)
+          + row('Referência (gateway)', data.ref)
+          + row('Valor bruto', data.amount)
+          + row('Taxas', data.fee)
+          + row('Valor líquido', data.net)
+          + row('Preço original', data.gift_price)
+          + row('Criada em', data.created_at)
+          + row('Pagamento', data.paid_at)
+          + row('Confirmação', data.confirmed_at)
+          + row('Liquidação', data.settled_at)
+          + row('Estorno', data.refunded_at);
+
+        if (msgBox) {
+            if (data.message && data.message.trim() !== '') {
+                msgBox.innerHTML = '<span style="color:var(--c-muted)">Mensagem:</span> ' + esc(data.message);
+                msgBox.hidden = false;
+            } else {
+                msgBox.hidden = true;
+            }
+        }
+        modal.querySelector('[data-fin-history-open]').style.display =
+            (data.history && data.history.length) ? '' : 'none';
+
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    };
+
+    var closeDetail = function () {
+        modal.hidden = true;
+        if (!histModal || histModal.hidden) { document.body.style.overflow = ''; }
+    };
+
+    var openHistory = function () {
+        if (!histModal || !histBox || !current) { return; }
+        var items = current.history || [];
+        if (!items.length) {
+            histBox.innerHTML = '<p class="admin-empty">Nenhuma mudança de status registrada.</p>';
+        } else {
+            var html = '<table class="admin-table"><thead><tr>'
+                     + '<th>Quando</th><th>De</th><th>Para</th><th>Observação</th>'
+                     + '</tr></thead><tbody>';
+            items.forEach(function (h) {
+                html += '<tr><td class="col-nowrap"><small>' + esc(h.when) + '</small></td>'
+                     +  '<td>' + esc(h.from) + '</td>'
+                     +  '<td><strong>' + esc(h.to) + '</strong></td>'
+                     +  '<td>' + esc(h.note) + '</td></tr>';
+            });
+            html += '</tbody></table>';
+            histBox.innerHTML = html;
+        }
+        histModal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    };
+
+    var closeHistory = function () {
+        if (histModal) { histModal.hidden = true; }
+        if (modal.hidden) { document.body.style.overflow = ''; }
+    };
+
+    document.querySelectorAll('[data-fin-open]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            try { openDetail(JSON.parse(btn.getAttribute('data-fin'))); }
+            catch (e) { /* dado inválido: ignora */ }
+        });
+    });
+    modal.querySelectorAll('[data-fin-close]').forEach(function (el) {
+        el.addEventListener('click', closeDetail);
+    });
+    var histOpenBtn = modal.querySelector('[data-fin-history-open]');
+    if (histOpenBtn) { histOpenBtn.addEventListener('click', openHistory); }
+    if (histModal) {
+        histModal.querySelectorAll('[data-fin-history-close]').forEach(function (el) {
+            el.addEventListener('click', closeHistory);
+        });
+    }
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') { return; }
+        if (histModal && !histModal.hidden) { closeHistory(); }
+        else if (!modal.hidden) { closeDetail(); }
+    });
+})();
+</script>

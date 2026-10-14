@@ -178,6 +178,36 @@ final class GiftPurchase extends Model
         );
     }
 
+    /**
+     * Histórico de várias transações de uma vez, agrupado por purchase_id.
+     * Usado para alimentar os modais do painel financeiro sem uma consulta
+     * por linha.
+     *
+     * @param array<int, int> $purchaseIds
+     * @return array<int, array<int, array<string, mixed>>> mapa id => eventos
+     */
+    public function statusHistoryForMany(array $purchaseIds): array
+    {
+        $ids = array_values(array_filter(array_map('intval', $purchaseIds)));
+        if ($ids === []) {
+            return [];
+        }
+        // Placeholders posicionais seguros (ids já são inteiros saneados).
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $rows = $this->select(
+            'SELECT * FROM gift_purchase_status_log '
+            . 'WHERE purchase_id IN (' . $in . ') ORDER BY id ASC',
+            $ids
+        );
+
+        $grouped = [];
+        foreach ($rows as $r) {
+            $pid = (int) $r['purchase_id'];
+            $grouped[$pid][] = $r;
+        }
+        return $grouped;
+    }
+
     /** Registra uma transição de status no histórico (trilha de auditoria). */
     public function logStatus(int $purchaseId, ?string $from, string $to, ?string $note = null): void
     {
