@@ -123,7 +123,13 @@ $receptionDetails = $content->text('reception_details', (string) ($wedding['rece
                             </label>
                             <label class="rsvp-choice__card">
                                 <input type="radio" name="attending" value="no" data-attending="no">
-                                <span class="rsvp-choice__icon rsvp-choice__icon--sad" aria-hidden="true">&#128542;</span>
+                                <span class="rsvp-choice__icon rsvp-choice__icon--away" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+                                         stroke="currentColor" stroke-width="1.6"
+                                         stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/>
+                                    </svg>
+                                </span>
                                 <span class="rsvp-choice__label">Não poderei ir</span>
                             </label>
                         </div>

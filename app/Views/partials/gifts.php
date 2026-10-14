@@ -68,27 +68,31 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
             <p class="flash flash--error" style="text-align:center"><?= View::e($giftMsg) ?></p>
         <?php endif; ?>
 
+        <div class="gift-layout <?= $showFilter ? 'gift-layout--with-filter' : '' ?>">
         <?php if ($showFilter): ?>
-            <div class="gift-filter" data-gift-filter
-                 data-min="<?= (int) $minCents ?>" data-max="<?= (int) $maxCents ?>">
-                <div class="gift-filter__head">
-                    <label for="gift-range">Escolha pelo seu orçamento</label>
-                    <span class="gift-filter__value" data-gift-filter-label>
-                        Até R$ <?= number_format($maxCents / 100, 2, ',', '.') ?>
-                    </span>
+            <aside class="gift-sidebar">
+                <div class="gift-filter" data-gift-filter
+                     data-min="<?= (int) $minCents ?>" data-max="<?= (int) $maxCents ?>">
+                    <div class="gift-filter__head">
+                        <label for="gift-range">Escolha pelo seu orçamento</label>
+                        <span class="gift-filter__value" data-gift-filter-label>
+                            Até R$ <?= number_format($maxCents / 100, 2, ',', '.') ?>
+                        </span>
+                    </div>
+                    <input type="range" id="gift-range"
+                           min="<?= (int) $minCents ?>" max="<?= (int) $maxCents ?>"
+                           value="<?= (int) $maxCents ?>" step="1000"
+                           data-gift-range
+                           aria-label="Valor máximo do presente">
+                    <div class="gift-filter__scale">
+                        <span>R$ <?= number_format($minCents / 100, 2, ',', '.') ?></span>
+                        <span>R$ <?= number_format($maxCents / 100, 2, ',', '.') ?></span>
+                    </div>
                 </div>
-                <input type="range" id="gift-range"
-                       min="<?= (int) $minCents ?>" max="<?= (int) $maxCents ?>"
-                       value="<?= (int) $maxCents ?>" step="1000"
-                       data-gift-range
-                       aria-label="Valor máximo do presente">
-                <div class="gift-filter__scale">
-                    <span>R$ <?= number_format($minCents / 100, 2, ',', '.') ?></span>
-                    <span>R$ <?= number_format($maxCents / 100, 2, ',', '.') ?></span>
-                </div>
-            </div>
+            </aside>
         <?php endif; ?>
 
+        <div class="gift-main">
         <div class="gift-grid" data-gift-grid>
             <?php foreach ($gifts as $gift): ?>
                 <?php
@@ -161,6 +165,8 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
         <?php if ($showFilter): ?>
             <p class="gift-empty" data-gift-empty hidden>Nenhum presente dentro desse valor.</p>
         <?php endif; ?>
+        </div><!-- /.gift-main -->
+        </div><!-- /.gift-layout -->
 
         <?php if (!$paymentsEnabled): ?>
             <p class="gift-note">

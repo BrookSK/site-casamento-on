@@ -560,7 +560,9 @@ p { margin: 0 0 1rem; }
 
 /* Bloco único tipo convite (data/horário + cerimônia/recepção) */
 .invite {
-    max-width: 720px;
+    /* Mesma largura do bloco "Confirmar presença" (ocupa o container),
+       para harmonia visual entre as duas seções. */
+    width: 100%;
     margin: 2.5rem auto 0;
     background: var(--c-white);
     border: 1px solid var(--c-line);
@@ -749,8 +751,14 @@ p { margin: 0 0 1rem; }
 .rsvp-choice__icon { font-size: 1.4rem; color: var(--c-sage-dark); line-height: 1; }
 /* Coração do "Sim" sempre no cinza delicado padrão. */
 .rsvp-choice__icon.heart { color: var(--c-heart); }
-/* Carinha triste do "Não": emoji colorido natural, discreto. */
-.rsvp-choice__icon--sad { font-size: 1.3rem; opacity: 0.85; }
+/* Ícone discreto do "Não poderei ir": lua minguante em amarelo-pastel. */
+.rsvp-choice__icon--away {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #d8c47a; /* amarelo-claro/pastel, harmônico com a paleta */
+}
+.rsvp-choice__icon--away svg { display: block; }
 .rsvp-choice__label { font-size: 0.95rem; color: var(--c-ink); }
 /* Estado selecionado (quando o radio interno está marcado) */
 .rsvp-choice__card:has(input:checked) {
@@ -1038,10 +1046,24 @@ p { margin: 0 0 1rem; }
    ============================================================= */
 .section--gifts { background: var(--c-cream); }
 
-/* Filtro de preço (slider) — compacto, à esquerda e discreto */
+/* Layout de duas colunas: filtros à esquerda, produtos à direita. */
+.gift-layout { margin-top: 2.5rem; }
+.gift-layout--with-filter {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    align-items: start;
+}
+.gift-sidebar {
+    position: sticky;
+    top: 90px; /* acompanha a rolagem, abaixo do cabeçalho fixo */
+}
+.gift-main { min-width: 0; }
+
+/* Filtro de preço (slider) — ocupa a largura da coluna lateral. */
 .gift-filter {
-    max-width: 320px;
-    margin: 2rem 0 0;
+    width: 100%;
+    margin: 0;
     background: transparent;
     border: none;
     padding: 0;
@@ -1114,9 +1136,10 @@ p { margin: 0 0 1rem; }
 
 .gift-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    /* Colunas fluidas: dentro da coluna direita, se ajusta ao espaço. */
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: clamp(1rem, 2.5vw, 1.75rem);
-    margin-top: 2.5rem;
+    margin-top: 0;
 }
 /* Card oculto pelo filtro (some suavemente) */
 .gift-card--hidden { display: none; }
@@ -1229,6 +1252,10 @@ p { margin: 0 0 1rem; }
     /* Composição sobreposta: um pouco maior no celular, sem cortes. */
     .photo-stack { max-width: 420px; }
     .gift-grid { grid-template-columns: repeat(2, 1fr); }
+
+    /* Presentes: empilha filtro (topo) e produtos (abaixo) em telas médias */
+    .gift-layout--with-filter { grid-template-columns: 1fr; }
+    .gift-sidebar { position: static; top: auto; }
 
     /* Hero no mobile: ajusta enquadramento da imagem e suaviza o overlay */
     .hero__content { max-width: 560px; padding-top: 5rem; }
