@@ -1350,6 +1350,9 @@ p { margin: 0 0 1rem; }
     background: var(--c-cream);
     width: 100%;
 }
+/* Espaço extra à direita para a seta nativa não encobrir o texto da opção
+   (ex.: "PIX (aprovação na hora)"). */
+.gift-modal__form select { padding-right: 2.25rem; }
 .gift-modal__form input:focus,
 .gift-modal__form select:focus {
     border-color: var(--c-sage);

@@ -54,6 +54,7 @@ $router->get('/admin/presentes/novo', 'GiftAdminController@create');
 $router->get('/admin/presentes/editar', 'GiftAdminController@edit');
 $router->post('/admin/presentes/salvar', 'GiftAdminController@save');
 $router->post('/admin/presentes/remover', 'GiftAdminController@destroy');
+$router->post('/admin/presentes/ordenar', 'GiftAdminController@reorder');
 
 // Textos e imagens (conteúdo das telas públicas)
 $router->get('/admin/textos-e-imagens', 'ContentController@index');

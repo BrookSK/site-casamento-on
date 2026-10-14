@@ -52,10 +52,20 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
     <?php if ($rows === []): ?>
         <p class="admin-empty">Nenhum presente cadastrado. Clique em “Novo presente”.</p>
     <?php else: ?>
+        <p class="gift-reorder-hint" data-reorder-hint>
+            Arraste pela alça <span class="gift-drag-handle__mini" aria-hidden="true">&#9776;</span>
+            para reordenar. A nova ordem é salva automaticamente.
+            <span class="gift-reorder-status" data-reorder-status role="status" aria-live="polite"></span>
+        </p>
         <div style="overflow-x:auto;">
-        <table class="admin-table">
+        <table class="admin-table gift-reorder"
+               data-gift-reorder
+               data-reorder-url="<?= View::e(View::url('/admin/presentes/ordenar', $baseUrl)) ?>"
+               data-csrf-name="<?= View::e(\App\Core\Csrf::fieldName()) ?>"
+               data-csrf-token="<?= View::e(\App\Core\Csrf::token()) ?>">
             <thead>
                 <tr>
+                    <th aria-label="Reordenar"></th>
                     <th>Ordem</th>
                     <th>Foto</th>
                     <th>Nome</th>
@@ -64,14 +74,19 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
                     <th></th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody data-reorder-body>
                 <?php foreach ($rows as $g): ?>
                     <?php
                     [$label, $cls] = $statusLabels[$g['status']] ?? ['—', ''];
                     $thumb = $imageUrl((string) ($g['image'] ?? ''));
                     ?>
-                    <tr>
-                        <td><?= (int) $g['sort_order'] ?></td>
+                    <tr data-gift-row data-id="<?= (int) $g['id'] ?>">
+                        <td class="gift-drag-cell">
+                            <span class="gift-drag-handle" data-drag-handle
+                                  title="Arraste para reordenar" aria-label="Arraste para reordenar"
+                                  role="button" tabindex="0" draggable="true">&#9776;</span>
+                        </td>
+                        <td class="gift-order-num" data-order-num><?= (int) $g['sort_order'] ?></td>
                         <td>
                             <?php if ($thumb !== ''): ?>
                                 <img class="gift-thumb" src="<?= View::e($thumb) ?>"

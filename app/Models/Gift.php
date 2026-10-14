@@ -28,6 +28,16 @@ final class Gift extends Model
     }
 
     /**
+     * Retorna a próxima posição livre (MAX(sort_order) + 1), para novos
+     * presentes entrarem automaticamente no fim da fila.
+     */
+    public function nextSortOrder(): int
+    {
+        $row = $this->selectOne('SELECT MAX(sort_order) AS m FROM ' . $this->table);
+        return (int) ($row['m'] ?? 0) + 1;
+    }
+
+    /**
      * @param array{name:string, description:?string, price_cents:int, image:?string, status:string, sort_order:int} $data
      */
     public function createGift(array $data): int
@@ -46,6 +56,104 @@ final class Gift extends Model
             ]
         );
         return (int) $this->lastInsertId();
+    }
+
+    /**
+     * Reordena os presentes conforme a lista de IDs informada, gravando
+     * sort_order = 1, 2, 3, ... numa única transação. IDs inexistentes são
+     * ignorados; presentes não citados mantêm-se após os citados, na ordem
+     * atual (defensivo contra listas parciais).
+     *
+     * @param array<int, int> $orderedIds IDs na ordem desejada (1º = topo).
+     * @return bool true se a ordem foi aplicada.
+     */
+    public function reorder(array $orderedIds): bool
+    {
+        // IDs válidos existentes no banco.
+        $valid = [];
+        foreach ($this->select('SELECT id FROM ' . $this->table) as $r) {
+            $valid[(int) $r['id']] = true;
+        }
+
+        // Mantém só os IDs recebidos que existem, sem duplicar.
+        $final = [];
+        $seen  = [];
+        foreach ($orderedIds as $id) {
+            $id = (int) $id;
+            if (isset($valid[$id]) && !isset($seen[$id])) {
+                $final[] = $id;
+                $seen[$id] = true;
+            }
+        }
+        // Anexa, ao fim, quaisquer presentes que não vieram na lista (ordem atual).
+        foreach ($this->select('SELECT id FROM ' . $this->table . ' ORDER BY sort_order ASC, id ASC') as $r) {
+            $id = (int) $r['id'];
+            if (!isset($seen[$id])) {
+                $final[] = $id;
+                $seen[$id] = true;
+            }
+        }
+
+        if ($final === []) {
+            return false;
+        }
+
+        $pdo = $this->db();
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare('UPDATE ' . $this->table . ' SET sort_order = :o WHERE id = :id');
+            $pos = 1;
+            foreach ($final as $id) {
+                $stmt->execute(['o' => $pos, 'id' => $id]);
+                $pos++;
+            }
+            $pdo->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Garante que os sort_order formem uma sequência contígua 1..N seguindo a
+     * ordem atual (sort_order ASC, id ASC). Idempotente: só grava quando algo
+     * está fora de sequência. Usado ao abrir a lista do admin, para o número
+     * exibido fazer sentido mesmo em bases antigas (vários "0").
+     *
+     * @return bool true se precisou normalizar.
+     */
+    public function normalizeOrder(): bool
+    {
+        $rows = $this->select('SELECT id, sort_order FROM ' . $this->table . ' ORDER BY sort_order ASC, id ASC');
+        $needs = false;
+        $pos = 1;
+        foreach ($rows as $r) {
+            if ((int) $r['sort_order'] !== $pos) {
+                $needs = true;
+                break;
+            }
+            $pos++;
+        }
+        if (!$needs) {
+            return false;
+        }
+
+        $pdo = $this->db();
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare('UPDATE ' . $this->table . ' SET sort_order = :o WHERE id = :id');
+            $pos = 1;
+            foreach ($rows as $r) {
+                $stmt->execute(['o' => $pos, 'id' => (int) $r['id']]);
+                $pos++;
+            }
+            $pdo->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 
     /**

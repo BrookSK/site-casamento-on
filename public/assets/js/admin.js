@@ -69,7 +69,23 @@
         var preview = box.querySelector('[data-image-preview]');
         var img = box.querySelector('[data-image-preview-img]');
         var removeChk = box.querySelector('input[name="remove_image"]');
+        var nameEl = box.querySelector('[data-image-name]');
         if (!input || !preview || !img) { return; }
+
+        // Mostra o nome do arquivo escolhido ao lado do botão estilizado.
+        var defaultName = nameEl ? nameEl.textContent : '';
+        var showFileName = function () {
+            if (!nameEl) { return; }
+            var f = input.files && input.files[0];
+            if (f) {
+                nameEl.textContent = f.name;
+                nameEl.classList.add('has-file');
+            } else {
+                nameEl.textContent = defaultName;
+                nameEl.classList.remove('has-file');
+            }
+        };
+        input.addEventListener('change', showFileName);
 
         input.addEventListener('change', function () {
             var file = input.files && input.files[0];
@@ -96,5 +112,140 @@
                 else if (img.getAttribute('src')) { preview.hidden = false; }
             });
         }
+    });
+})();
+
+/* =============================================================
+   Reordenação de presentes por arrastar-e-soltar (apenas DESKTOP).
+   - O arraste é iniciado SOMENTE pela alça (≡) de cada linha.
+   - Ao soltar, a nova ordem é renumerada e salva automaticamente
+     via fetch (POST) para data-reorder-url, com feedback discreto.
+   - Mobile fica para uma etapa futura (layout será replanejado).
+   ============================================================= */
+(function () {
+    'use strict';
+
+    var table = document.querySelector('[data-gift-reorder]');
+    if (!table) { return; }
+
+    var body = table.querySelector('[data-reorder-body]');
+    if (!body) { return; }
+
+    var statusEl = document.querySelector('[data-reorder-status]');
+    var url      = table.getAttribute('data-reorder-url') || '';
+    var csrfName = table.getAttribute('data-csrf-name') || '';
+    var csrfTok  = table.getAttribute('data-csrf-token') || '';
+
+    var dragRow = null;        // linha sendo arrastada
+    var statusTimer = null;
+
+    var setStatus = function (text, kind) {
+        if (!statusEl) { return; }
+        statusEl.textContent = text;
+        statusEl.className = 'gift-reorder-status' + (kind ? ' is-' + kind : '');
+        if (statusTimer) { clearTimeout(statusTimer); }
+        if (kind === 'ok') {
+            statusTimer = setTimeout(function () {
+                statusEl.textContent = '';
+                statusEl.className = 'gift-reorder-status';
+            }, 2500);
+        }
+    };
+
+    // Renumera a coluna "Ordem" (1..N) conforme a ordem atual do DOM.
+    var renumber = function () {
+        var rows = body.querySelectorAll('[data-gift-row]');
+        Array.prototype.forEach.call(rows, function (row, i) {
+            var cell = row.querySelector('[data-order-num]');
+            if (cell) { cell.textContent = String(i + 1); }
+        });
+    };
+
+    // Coleta os IDs na ordem atual do DOM.
+    var currentOrder = function () {
+        var rows = body.querySelectorAll('[data-gift-row]');
+        return Array.prototype.map.call(rows, function (row) {
+            return row.getAttribute('data-id');
+        });
+    };
+
+    // Persiste a ordem no servidor.
+    var save = function () {
+        if (!url) { return; }
+        setStatus('Salvando…', 'saving');
+
+        var form = new FormData();
+        if (csrfName) { form.append(csrfName, csrfTok); }
+        currentOrder().forEach(function (id) { form.append('order[]', id); });
+
+        fetch(url, {
+            method: 'POST',
+            body: form,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        }).then(function (r) {
+            return r.json().catch(function () { return { ok: r.ok }; });
+        }).then(function (data) {
+            if (data && data.ok) { setStatus('Ordem salva \u2713', 'ok'); }
+            else { setStatus((data && data.error) || 'Falha ao salvar a ordem.', 'error'); }
+        }).catch(function () {
+            setStatus('Falha de conexão ao salvar a ordem.', 'error');
+        });
+    };
+
+    // Dado o ponteiro Y, encontra a linha após a qual soltar.
+    var rowAfter = function (y) {
+        var rows = Array.prototype.slice.call(
+            body.querySelectorAll('[data-gift-row]:not(.is-dragging)')
+        );
+        var closest = { offset: Number.NEGATIVE_INFINITY, el: null };
+        rows.forEach(function (row) {
+            var box = row.getBoundingClientRect();
+            var offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                closest = { offset: offset, el: row };
+            }
+        });
+        return closest.el;
+    };
+
+    var handles = table.querySelectorAll('[data-drag-handle]');
+    Array.prototype.forEach.call(handles, function (handle) {
+        var row = handle.closest('[data-gift-row]');
+        if (!row) { return; }
+
+        handle.addEventListener('dragstart', function (e) {
+            dragRow = row;
+            row.classList.add('is-dragging');
+            if (e.dataTransfer) {
+                e.dataTransfer.effectAllowed = 'move';
+                // Necessário no Firefox para o arraste iniciar.
+                try { e.dataTransfer.setData('text/plain', row.getAttribute('data-id') || ''); } catch (err) {}
+            }
+        });
+
+        handle.addEventListener('dragend', function () {
+            if (dragRow) { dragRow.classList.remove('is-dragging'); }
+            dragRow = null;
+        });
+    });
+
+    body.addEventListener('dragover', function (e) {
+        if (!dragRow) { return; }
+        e.preventDefault();                 // permite o drop
+        if (e.dataTransfer) { e.dataTransfer.dropEffect = 'move'; }
+        var after = rowAfter(e.clientY);
+        if (after == null) {
+            body.appendChild(dragRow);
+        } else if (after !== dragRow) {
+            body.insertBefore(dragRow, after);
+        }
+    });
+
+    body.addEventListener('drop', function (e) {
+        if (!dragRow) { return; }
+        e.preventDefault();
+        renumber();
+        save();
     });
 })();

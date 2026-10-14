@@ -418,3 +418,102 @@ a { color: var(--c-sage-dark); }
     .admin-sidebar__footer { border-top: 0; }
     .form-row { grid-template-columns: 1fr; }
 }
+
+/* ---- Upload de arquivo estilizado (substitui o visual nativo) ----
+   O <input type="file"> nativo é escondido de forma acessível e um <label>
+   ligado a ele vira o botão. Um <span> mostra o nome do arquivo escolhido. */
+.file-input__native {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+.file-input {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+.file-input__button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid var(--c-sage);
+    background: var(--c-white);
+    color: var(--c-sage-dark);
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.file-input__button:hover {
+    background: var(--c-sage);
+    color: var(--c-white);
+}
+.file-input__button svg { flex: none; }
+/* Realce quando o input recebe foco pelo teclado (acessibilidade). */
+.file-input__native:focus-visible + .file-input .file-input__button {
+    outline: 2px solid var(--c-sage-dark);
+    outline-offset: 2px;
+}
+.file-input__name {
+    font-size: 0.85rem;
+    color: var(--c-muted);
+    word-break: break-word;
+}
+.file-input__name.has-file { color: var(--c-ink); }
+
+/* ---- Reordenação de presentes (arrastar pela alça) ---- */
+.gift-reorder-hint {
+    font-size: 0.85rem;
+    color: var(--c-muted);
+    margin: 0 0 0.75rem;
+}
+.gift-drag-handle__mini {
+    display: inline-block;
+    padding: 0 0.15rem;
+    color: var(--c-sage-dark);
+}
+.gift-reorder-status { margin-left: 0.5rem; font-weight: 500; }
+.gift-reorder-status.is-saving { color: var(--c-muted); }
+.gift-reorder-status.is-ok     { color: var(--c-sage-dark); }
+.gift-reorder-status.is-error  { color: var(--c-error-fg); }
+
+/* Coluna da alça: estreita, à esquerda da linha. */
+.gift-reorder .gift-drag-cell { width: 2.25rem; text-align: center; }
+.gift-drag-handle {
+    display: inline-block;
+    cursor: grab;
+    color: var(--c-muted);
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0.35rem 0.4rem;
+    border-radius: var(--radius);
+    user-select: none;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+.gift-drag-handle:hover { background: var(--c-cream); color: var(--c-sage-dark); }
+.gift-drag-handle:active { cursor: grabbing; }
+
+.gift-order-num { font-variant-numeric: tabular-nums; color: var(--c-muted); }
+
+/* Linha sendo arrastada: destaque sutil. */
+.gift-reorder tr.is-dragging {
+    opacity: 0.6;
+    background: var(--c-cream);
+}
+
+/* O arraste é um recurso de desktop nesta etapa: oculta a alça no mobile,
+   onde o layout ainda será replanejado. A lista continua legível/editável. */
+@media (max-width: 680px) {
+    .gift-reorder .gift-drag-cell,
+    .gift-reorder thead th:first-child { display: none; }
+    .gift-reorder-hint { display: none; }
+}

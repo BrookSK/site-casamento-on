@@ -192,13 +192,13 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
                        value="<?= View::e((string) ($currentGuest['name'] ?? '')) ?>" required>
             </div>
 
-            <div class="field">
-                <label for="gm_email">E-mail (opcional)</label>
+            <div class="field field--full">
+                <label for="gm_email">E-mail</label>
                 <input type="email" id="gm_email" name="buyer_email"
                        value="<?= View::e((string) ($currentGuest['email'] ?? '')) ?>">
             </div>
 
-            <div class="field">
+            <div class="field field--full">
                 <label for="gm_billing">Forma de pagamento</label>
                 <select id="gm_billing" name="billing_type" data-gift-modal-billing>
                     <option value="PIX">PIX (aprovação na hora)</option>
@@ -211,7 +211,6 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
                 <label for="gm_cpf">CPF/CNPJ</label>
                 <input type="text" id="gm_cpf" name="buyer_cpf" inputmode="numeric"
                        placeholder="Somente números">
-                <small class="field__hint">Necessário para gerar o boleto.</small>
             </div>
 
             <div class="field field--full">

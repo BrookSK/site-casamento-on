@@ -32,7 +32,11 @@ final class GiftAdminController extends Controller
         $rows  = [];
         $error = null;
         try {
-            $rows = (new Gift($this->config))->listAll();
+            $model = new Gift($this->config);
+            // Normaliza a sequência (1..N) para a coluna "Ordem" fazer sentido
+            // mesmo em bases antigas com vários sort_order iguais a 0.
+            $model->normalizeOrder();
+            $rows = $model->listAll();
         } catch (Throwable $e) {
             error_log('[GiftAdmin] ' . $e->getMessage());
             $error = 'Não foi possível carregar os presentes.';
@@ -180,13 +184,22 @@ final class GiftAdminController extends Controller
             }
         }
 
+        // Ordem de exibição: não vem mais do formulário. Ao criar, o presente
+        // entra no FIM da fila; ao editar, preserva a ordem atual (a reordenação
+        // é feita por arrastar-e-soltar na lista).
+        if ($id > 0) {
+            $sortOrder = isset($existing['sort_order']) ? (int) $existing['sort_order'] : $model->nextSortOrder();
+        } else {
+            $sortOrder = $model->nextSortOrder();
+        }
+
         $data = [
             'name'        => $name,
             'description' => trim((string) ($_POST['description'] ?? '')) ?: null,
             'price_cents' => max(0, $priceCents),
             'image'       => $image ?: null,
             'status'      => $status,
-            'sort_order'  => (int) ($_POST['sort_order'] ?? 0),
+            'sort_order'  => $sortOrder,
         ];
 
         try {
@@ -248,6 +261,49 @@ final class GiftAdminController extends Controller
         }
 
         $this->redirect('/admin/presentes');
+    }
+
+    /**
+     * Salva a nova ordenação (arrastar-e-soltar). Recebe os IDs na ordem
+     * desejada e responde JSON. Chamado via fetch pela lista do admin.
+     */
+    public function reorder(): void
+    {
+        $this->guard();
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        if (!Csrf::validate($_POST[Csrf::fieldName()] ?? null)) {
+            http_response_code(419);
+            echo json_encode(['ok' => false, 'error' => 'Sessão expirada.']);
+            return;
+        }
+
+        // Aceita order[]=1&order[]=2... ou um campo "order" com IDs separados
+        // por vírgula (fallback). Converte tudo para inteiros.
+        $raw = $_POST['order'] ?? [];
+        if (is_string($raw)) {
+            $raw = array_filter(array_map('trim', explode(',', $raw)), static fn ($s) => $s !== '');
+        }
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $ids = array_map('intval', $raw);
+
+        if ($ids === []) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => 'Nenhuma ordem recebida.']);
+            return;
+        }
+
+        try {
+            (new Gift($this->config))->reorder($ids);
+            echo json_encode(['ok' => true]);
+        } catch (Throwable $e) {
+            error_log('[GiftAdmin] reorder: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'error' => 'Não foi possível salvar a ordem.']);
+        }
     }
 
     // ---- Flash ----

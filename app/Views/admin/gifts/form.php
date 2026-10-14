@@ -21,7 +21,6 @@ $description = $isEdit ? (string) ($gift['description'] ?? '') : '';
 $priceVal    = $isEdit ? number_format(((int) $gift['price_cents']) / 100, 2, ',', '.') : '';
 $image       = $isEdit ? (string) ($gift['image'] ?? '') : '';
 $statusCur   = $isEdit ? (string) $gift['status'] : 'available';
-$sortOrder   = $isEdit ? (int) $gift['sort_order'] : 0;
 
 $statuses = ['available' => 'Disponível', 'reserved' => 'Reservado', 'purchased' => 'Presenteado'];
 ?>
@@ -53,19 +52,13 @@ if ($image !== '') {
             <textarea id="description" name="description"><?= View::e($description) ?></textarea>
         </div>
 
-        <div class="form-row">
-            <div class="field">
-                <label for="price">Preço (R$)</label>
-                <input type="text" id="price" name="price" value="<?= View::e($priceVal) ?>"
-                       placeholder="5.000,00" inputmode="numeric" autocomplete="off" data-mask="money">
-                <small style="color:var(--c-muted);font-size:0.8rem;">
-                    Use vírgula para os centavos e ponto para o milhar. Ex.: 5.000,00
-                </small>
-            </div>
-            <div class="field">
-                <label for="sort_order">Ordem de exibição</label>
-                <input type="number" id="sort_order" name="sort_order" value="<?= (int) $sortOrder ?>">
-            </div>
+        <div class="field">
+            <label for="price">Preço (R$)</label>
+            <input type="text" id="price" name="price" value="<?= View::e($priceVal) ?>"
+                   placeholder="5.000,00" inputmode="numeric" autocomplete="off" data-mask="money">
+            <small style="color:var(--c-muted);font-size:0.8rem;">
+                Use vírgula para os centavos e ponto para o milhar. Ex.: 5.000,00
+            </small>
         </div>
 
         <div class="field">
@@ -92,7 +85,21 @@ if ($image !== '') {
 
                 <input type="file" id="image_file" name="image_file"
                        accept="image/jpeg,image/png,image/webp"
-                       data-image-input>
+                       class="file-input__native" data-image-input>
+
+                <div class="file-input">
+                    <label for="image_file" class="file-input__button">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                             stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>Escolher imagem</span>
+                    </label>
+                    <span class="file-input__name" data-image-name>Nenhum arquivo escolhido</span>
+                </div>
 
                 <small style="color:var(--c-muted);font-size:0.8rem;">
                     JPG, PNG ou WebP (até 5 MB). A imagem é recortada e
