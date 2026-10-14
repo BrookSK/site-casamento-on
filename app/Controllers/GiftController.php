@@ -35,6 +35,13 @@ final class GiftController extends Controller
             $this->redirectHome('presentes', 'erro-sessao');
         }
 
+        // Ponto 6.5: exige autenticação para prosseguir ao pagamento. Barreira
+        // no servidor (o aviso no front é apenas UX; aqui garante a regra mesmo
+        // num POST direto). Visitante não logado volta com a mensagem de login.
+        if (!GuestAuth::check()) {
+            $this->redirectHome('presentes', 'login');
+        }
+
         $giftId      = (int) ($_POST['gift_id'] ?? 0);
         $billingType = strtoupper(trim((string) ($_POST['billing_type'] ?? 'PIX')));
         if (!in_array($billingType, self::BILLING_TYPES, true)) {

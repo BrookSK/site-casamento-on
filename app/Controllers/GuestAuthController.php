@@ -24,7 +24,9 @@ final class GuestAuthController extends Controller
             $this->redirect('/minha-conta');
         }
 
-        $this->renderAuth();
+        // Permite abrir já na aba de cadastro (ex.: botão "Criar conta").
+        $tab = ($_GET['tab'] ?? '') === 'register' ? 'register' : 'login';
+        $this->renderAuth($tab);
     }
 
     /** Processa o login (identificador = e-mail ou telefone). */

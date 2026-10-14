@@ -42,12 +42,14 @@ $valueText = 'R$ ' . number_format((float) $value, 2, ',', '.');
                 <?php endif; ?>
 
                 <?php if ($pixPayload): ?>
-                    <label for="pix-code">Ou use o PIX copia e cola:</label>
-                    <div class="pay-copy">
-                        <input type="text" id="pix-code" readonly
-                               value="<?= View::e($pixPayload) ?>">
-                        <button type="button" class="btn btn--outline"
-                                data-copy-target="#pix-code">Copiar</button>
+                    <div class="pay-copy-wrap">
+                        <label for="pix-code">Ou use o PIX copia e cola</label>
+                        <div class="pay-copy">
+                            <input type="text" id="pix-code" readonly
+                                   value="<?= View::e($pixPayload) ?>">
+                            <button type="button" class="btn btn--outline"
+                                    data-copy-target="#pix-code">Copiar</button>
+                        </div>
                     </div>
                 <?php endif; ?>
 

@@ -44,6 +44,8 @@ $giftMessages = [
     'erro-cpf'        => 'Para boleto, informe um CPF/CNPJ válido.',
     'erro-indisponivel' => 'Este presente não está mais disponível.',
     'erro-valor'      => 'Este presente ainda não tem um valor definido.',
+    'login'           => 'Você ainda não possui uma conta ou não está conectado. '
+                       . 'Crie uma conta ou faça login para continuar com seu presente.',
 ];
 $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
 
@@ -173,8 +175,9 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
 </section>
 
 <?php if ($paymentsEnabled): ?>
+<?php $guestLogged = $currentGuest !== null; ?>
 <!-- Popup 1: detalhes do presente (foto, nome, descrição, preço + Presentear) -->
-<div class="gift-modal" data-gift-detail-modal hidden>
+<div class="gift-modal" data-gift-detail-modal data-logged="<?= $guestLogged ? '1' : '0' ?>" hidden>
     <div class="gift-modal__overlay" data-gift-detail-close></div>
     <div class="gift-modal__dialog gift-modal__dialog--detail" role="dialog" aria-modal="true"
          aria-labelledby="gift-detail-title">
@@ -197,6 +200,19 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
             <p class="gift-detail__unavailable" data-gift-detail-unavailable hidden>
                 Este presente já foi escolhido. Que tal escolher outro?
             </p>
+
+            <!-- Aviso de login: exibido quando um visitante NÃO autenticado
+                 tenta presentear (ponto 6.5). -->
+            <div class="gift-detail__authwall" data-gift-authwall hidden>
+                <p class="gift-detail__authwall-msg">
+                    Você ainda não possui uma conta ou não está conectado.
+                    Crie uma conta ou faça login para continuar com seu presente.
+                </p>
+                <div class="gift-detail__authwall-actions">
+                    <a class="btn btn--primary" href="<?= View::e(View::url('/entrar?tab=register', $baseUrl)) ?>">Criar conta</a>
+                    <a class="btn btn--outline" href="<?= View::e(View::url('/entrar', $baseUrl)) ?>">Fazer login</a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -286,6 +302,10 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
     var dIcon   = detail.querySelector('[data-gift-detail-icon]');
     var dBuy    = detail.querySelector('[data-gift-detail-buy]');
     var dUnav   = detail.querySelector('[data-gift-detail-unavailable]');
+    var dAuth   = detail.querySelector('[data-gift-authwall]');
+
+    // Visitante autenticado? (definido no servidor via data-logged).
+    var isLogged = detail.getAttribute('data-logged') === '1';
 
     // Guarda os dados do presente atualmente aberto no popup de detalhes.
     var current = null;
@@ -321,6 +341,9 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
             if (dIcon) { dIcon.hidden = false; }
         }
 
+        // Volta ao estado inicial: esconde o aviso de login a cada abertura.
+        if (dAuth) { dAuth.hidden = true; }
+
         // Valida a disponibilidade antes de permitir a compra.
         if (canBuy) {
             dBuy.hidden = false;
@@ -341,6 +364,15 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
     // Abre o popup 2 (pagamento) com os dados do presente atual.
     var openPayment = function () {
         if (!current || !current.canBuy) { return; }
+
+        // Ponto 6.5: exige login/cadastro antes de prosseguir ao pagamento.
+        // Em vez de abrir o pagamento, mostra o aviso com as opções.
+        if (!isLogged) {
+            if (dBuy) { dBuy.hidden = true; }
+            if (dAuth) { dAuth.hidden = false; }
+            return;
+        }
+
         idEl.value = current.id;
         nameEl.textContent = current.name;
         priceEl.textContent = current.price;
