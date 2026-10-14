@@ -1217,28 +1217,18 @@ p { margin: 0 0 1rem; }
     transform: none;
     box-shadow: none;
 }
-/* Dessatura apenas o conteúdo do card (mídia, nome, preço e botão),
-   preservando o selo "Presente já escolhido" colorido e legível. */
-.gift-card--taken .gift-card__media,
-.gift-card--taken .gift-card__name,
-.gift-card--taken .gift-card__price,
-.gift-card--taken .btn {
+/* Dessatura só a mídia do card tomado (nome e preço continuam legíveis;
+   a notificação de "já escolhido" tem destaque próprio). */
+.gift-card--taken .gift-card__media {
     filter: grayscale(1);
-    opacity: 0.75;
+    opacity: 0.7;
 }
-.gift-card__ribbon {
-    position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
-    z-index: 2;
-    background: var(--c-ink);
-    color: var(--c-white);
-    font-size: 0.68rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 0.35rem 0.7rem;
-    border-radius: 999px;
+.gift-card--taken .gift-card__name,
+.gift-card--taken .gift-card__price {
+    opacity: 0.85;
 }
+/* O card já escolhido não é clicável (não abre pagamento). */
+.gift-card--taken { cursor: default; }
 
 .gift-note { text-align: center; margin-top: 2rem; color: var(--c-muted); }
 
@@ -1373,38 +1363,32 @@ p { margin: 0 0 1rem; }
 /* -------------------------------------------------------------
    Status do presente no card ("Já escolhido" / "Não escolhido")
    ------------------------------------------------------------- */
+/* Notificação discreta de "presente já escolhido" (ocupa o lugar do botão). */
 .gift-status {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
     margin-top: 0.7rem;
-    padding: 0.3rem 0.95rem;
+    padding: 0.4rem 1rem;
     border-radius: 999px;
     font-family: var(--font-sans);
     font-size: 0.74rem;
     font-weight: 300;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     line-height: 1;
 }
-.gift-status::before {
-    content: "";
+.gift-status__dot {
     width: 7px;
     height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
+    background: var(--c-rose-soft);
 }
-.gift-status--free {
-    background: rgba(138, 143, 111, 0.1);
-    color: var(--c-sage-dark);
-    border: 1px solid rgba(138, 143, 111, 0.35);
-}
-.gift-status--free::before { background: var(--c-sage); }
 .gift-status--taken {
     background: #f3efe8;
     color: var(--c-muted);
     border: 1px solid var(--c-line);
 }
-.gift-status--taken::before { background: var(--c-rose-soft); }
 
 /* Card clicável: dica visual de que abre os detalhes. */
 .gift-card--clickable { cursor: pointer; }
@@ -1412,7 +1396,6 @@ p { margin: 0 0 1rem; }
     outline: 2px solid var(--c-sage-dark);
     outline-offset: 3px;
 }
-.gift-card--taken.gift-card--clickable { cursor: pointer; }
 
 /* -------------------------------------------------------------
    Popup 1: detalhes do presente (mesma identidade do popup 2)

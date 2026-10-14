@@ -384,22 +384,29 @@ a { color: var(--c-sage-dark); }
 }
 
 /* ---- Filtros do painel financeiro ---- */
-/* Grid responsivo: campos com larguras coerentes (sem vãos no meio) e os
-   botões de ação alinhados ao fim da mesma linha. */
+/* Os 5 campos num grid fluido; as ações numa linha própria à direita, para
+   nunca estourarem a largura do card. */
 .finance-filters {
     display: grid;
     grid-template-columns:
-        minmax(130px, 0.8fr)   /* status */
-        minmax(150px, 1.2fr)   /* presente */
-        minmax(180px, 1.6fr)   /* convidado */
-        minmax(140px, 1fr)     /* de */
-        minmax(140px, 1fr)     /* até */
-        auto;                  /* ações */
+        minmax(120px, 0.8fr)   /* status */
+        minmax(140px, 1.1fr)   /* presente */
+        minmax(170px, 1.6fr)   /* convidado */
+        minmax(130px, 1fr)     /* de */
+        minmax(130px, 1fr);    /* até */
     gap: 1rem;
     align-items: end;
 }
 .finance-filters .field { margin: 0; min-width: 0; }
-.finance-filters__actions { display: flex; gap: 0.9rem; align-items: center; }
+/* Linha de ações: ocupa toda a largura abaixo dos campos, alinhada à direita. */
+.finance-filters__actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 0.25rem;
+}
 .finance-filters__clear {
     font-size: 0.82rem;
     color: var(--c-muted);
@@ -419,13 +426,11 @@ a { color: var(--c-sage-dark); }
 
 /* Em telas médias/estreitas, empilha em colunas de largura uniforme. */
 @media (max-width: 980px) {
-    .finance-filters {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    .finance-filters__actions { grid-column: 1 / -1; }
+    .finance-filters { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 520px) {
     .finance-filters { grid-template-columns: 1fr; }
+    .finance-filters__actions { justify-content: space-between; }
 }
 
 /* ---- Modal (popup) genérico do admin ---- */
@@ -686,11 +691,17 @@ a { color: var(--c-sage-dark); }
     overflow: hidden;
 }
 .gift-stat {
-    padding: 0.75rem 0.6rem;
+    padding: 0.85rem 0.6rem;
     text-align: center;
     border-right: 1px solid var(--c-line);
     position: relative;
     min-width: 0;
+    /* Alinha o conteúdo de todos os cards pelo centro vertical, para que o
+       "Valor da lista" (rótulo em 2 linhas) fique no mesmo eixo dos demais. */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 .gift-stat::before {
     content: "";
@@ -701,7 +712,12 @@ a { color: var(--c-sage-dark); }
 }
 .gift-stat:last-child { border-right: 0; }
 .gift-stat__value {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Mesma altura para todos (número grande e o R$ menor), mantendo os
+       rótulos alinhados na mesma linha de base entre os cards. */
+    min-height: 1.6rem;
     font-family: var(--font-serif);
     font-size: 1.4rem;
     line-height: 1.1;

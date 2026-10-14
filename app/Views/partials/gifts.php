@@ -120,8 +120,9 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                 // Só pode comprar se há pagamento ativo, id/preço válidos E não
                 // estiver indisponível (reservado/comprado).
                 $canBuy     = $paymentsEnabled && $giftId > 0 && $priceCents > 0 && !$taken;
-                // Card clicável (abre detalhes) sempre que há pagamento ativo.
-                $clickable  = $paymentsEnabled;
+                // Card clicável (abre detalhes) só quando há pagamento ativo e o
+                // presente ainda está disponível. Já escolhido não abre nada.
+                $clickable  = $paymentsEnabled && !$taken;
                 ?>
                 <article class="gift-card<?= $taken ? ' gift-card--taken' : '' ?><?= $clickable ? ' gift-card--clickable' : '' ?>"
                          data-gift-card data-price="<?= $priceCents ?>"
@@ -137,10 +138,6 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                          data-gift-image="<?= View::e($imageUrl) ?>"
                          data-gift-canbuy="<?= $canBuy ? '1' : '0' ?>"
                          <?php endif; ?>>
-                    <?php if ($taken): ?>
-                        <span class="gift-card__ribbon">Presente já escolhido</span>
-                    <?php endif; ?>
-
                     <div class="gift-card__media">
                         <?php if ($imageUrl !== ''): ?>
                             <img class="gift-card__img" src="<?= View::e($imageUrl) ?>"
@@ -154,9 +151,11 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                     <p class="gift-card__price"><?= View::e($priceText) ?></p>
 
                     <?php if ($taken): ?>
-                        <span class="gift-status gift-status--taken">Já escolhido</span>
-                    <?php else: ?>
-                        <span class="gift-status gift-status--free">Não escolhido</span>
+                        <!-- Já escolhido: notificação discreta no lugar do "Presentear". -->
+                        <span class="gift-status gift-status--taken">
+                            <span class="gift-status__dot" aria-hidden="true"></span>
+                            Presente já escolhido
+                        </span>
                     <?php endif; ?>
                 </article>
             <?php endforeach; ?>
