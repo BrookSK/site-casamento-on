@@ -1370,6 +1370,85 @@ p { margin: 0 0 1rem; }
     .gift-modal__submit { justify-self: stretch; }
 }
 
+/* -------------------------------------------------------------
+   Status do presente no card ("Já escolhido" / "Não escolhido")
+   ------------------------------------------------------------- */
+.gift-status {
+    display: inline-block;
+    margin-top: 0.6rem;
+    padding: 0.32rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.gift-status--free {
+    background: var(--c-cream);
+    color: var(--c-sage-dark);
+    border: 1px solid var(--c-sage);
+}
+.gift-status--taken {
+    background: #f1ede6;
+    color: var(--c-muted);
+    border: 1px solid var(--c-line);
+}
+
+/* Card clicável: dica visual de que abre os detalhes. */
+.gift-card--clickable { cursor: pointer; }
+.gift-card--clickable:focus-visible {
+    outline: 2px solid var(--c-sage-dark);
+    outline-offset: 3px;
+}
+.gift-card--taken.gift-card--clickable { cursor: pointer; }
+
+/* -------------------------------------------------------------
+   Popup 1: detalhes do presente (mesma identidade do popup 2)
+   ------------------------------------------------------------- */
+.gift-modal__dialog--detail {
+    grid-template-columns: 1fr 1.15fr;
+    align-items: center;
+}
+.gift-detail__media {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--c-cream);
+    display: grid;
+    place-items: center;
+}
+.gift-detail__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.gift-detail__icon { font-size: 3.2rem; }
+.gift-detail__body { text-align: left; }
+.gift-detail__desc {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--c-muted);
+    margin: 1rem 0 0;
+}
+.gift-detail__cta { margin-top: 1.4rem; }
+.gift-detail__unavailable {
+    margin-top: 1.2rem;
+    font-size: 0.95rem;
+    color: var(--c-muted);
+    background: var(--c-cream);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+}
+
+@media (max-width: 680px) {
+    .gift-modal__dialog--detail { grid-template-columns: 1fr; max-width: 440px; }
+    .gift-detail__body { text-align: center; }
+    .gift-detail__cta { width: 100%; }
+}
+
 /* =============================================================
    Rodapé
    ============================================================= */
