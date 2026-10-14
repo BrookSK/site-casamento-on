@@ -11,25 +11,27 @@
     var nav = document.querySelector('[data-nav]');
 
     if (toggle && nav) {
+        var setMenu = function (open) {
+            nav.classList.toggle('is-open', open);
+            document.body.classList.toggle('nav-open', open);
+            toggle.setAttribute('aria-expanded', String(open));
+            var sr = toggle.querySelector('.sr-only');
+            if (sr) { sr.textContent = open ? 'Fechar menu' : 'Abrir menu'; }
+        };
+
         toggle.addEventListener('click', function () {
-            var isOpen = nav.classList.toggle('is-open');
-            toggle.setAttribute('aria-expanded', String(isOpen));
-            toggle.querySelector('.sr-only').textContent = isOpen ? 'Fechar menu' : 'Abrir menu';
+            setMenu(!nav.classList.contains('is-open'));
         });
 
         // Fecha o menu ao clicar em um link
         nav.querySelectorAll('a').forEach(function (link) {
-            link.addEventListener('click', function () {
-                nav.classList.remove('is-open');
-                toggle.setAttribute('aria-expanded', 'false');
-            });
+            link.addEventListener('click', function () { setMenu(false); });
         });
 
         // Fecha com a tecla Escape
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && nav.classList.contains('is-open')) {
-                nav.classList.remove('is-open');
-                toggle.setAttribute('aria-expanded', 'false');
+                setMenu(false);
                 toggle.focus();
             }
         });

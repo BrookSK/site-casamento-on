@@ -96,7 +96,7 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                 </div>
                 <input type="range" id="gift-range"
                        min="<?= (int) $minCents ?>" max="<?= (int) $maxCents ?>"
-                       value="<?= (int) $maxCents ?>" step="1000"
+                       value="<?= (int) $maxCents ?>" step="100"
                        data-gift-range
                        aria-label="Valor máximo do presente">
                 <div class="gift-filter__scale">
@@ -120,9 +120,10 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                 // Só pode comprar se há pagamento ativo, id/preço válidos E não
                 // estiver indisponível (reservado/comprado).
                 $canBuy     = $paymentsEnabled && $giftId > 0 && $priceCents > 0 && !$taken;
-                // Card clicável (abre detalhes) só quando há pagamento ativo e o
-                // presente ainda está disponível. Já escolhido não abre nada.
-                $clickable  = $paymentsEnabled && !$taken;
+                // Card clicável (abre o popup de detalhes) sempre que há
+                // pagamento ativo — inclusive os já escolhidos, que abrem o
+                // popup só para ver a descrição (sem a opção de presentear).
+                $clickable  = $paymentsEnabled;
                 ?>
                 <article class="gift-card<?= $taken ? ' gift-card--taken' : '' ?><?= $clickable ? ' gift-card--clickable' : '' ?>"
                          data-gift-card data-price="<?= $priceCents ?>"

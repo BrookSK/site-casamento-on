@@ -1305,8 +1305,8 @@ p { margin: 0 0 1rem; }
 .gift-card--taken .gift-card__price {
     opacity: 0.85;
 }
-/* O card já escolhido não é clicável (não abre pagamento). */
-.gift-card--taken { cursor: default; }
+/* O card já escolhido continua clicável (abre o popup de detalhes, apenas
+   para ver a descrição — sem a opção de presentear). */
 
 .gift-note { text-align: center; margin-top: 2rem; color: var(--c-muted); }
 
@@ -1645,16 +1645,54 @@ p { margin: 0 0 1rem; }
     .nav-toggle { display: flex; }
     .site-nav {
         position: fixed;
-        inset: 0 0 0 auto;
-        width: min(78vw, 320px);
+        top: 0;
+        right: 0;
+        bottom: 0;
+        /* Altura total da tela — evita que o painel encolha para a altura do
+           header quando um ancestral com backdrop-filter cria um contexto de
+           posicionamento. Usa dvh quando disponível (barra do navegador móvel). */
+        height: 100vh;
+        height: 100dvh;
+        width: min(80vw, 320px);
         background: var(--c-cream);
         box-shadow: -20px 0 60px -30px rgba(0,0,0,0.5);
         transform: translateX(100%);
         transition: transform 0.4s var(--ease);
         padding: 6rem 2rem 2rem;
-        z-index: 90;
+        overflow-y: auto;
+        z-index: 120; /* acima do header fixo */
+        -webkit-overflow-scrolling: touch;
     }
     .site-nav.is-open { transform: translateX(0); }
+
+    /* Enquanto o menu está aberto, remove o backdrop-filter do header. Esse
+       filtro cria um "contexto de posicionamento" que faz o painel fixo
+       (filho do header) se ancorar ao header e encolher — removê-lo garante
+       que o painel ocupe a tela inteira, com o fundo creme cobrindo tudo. */
+    body.nav-open .site-header,
+    .site-header:has(.site-nav.is-open) {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    /* Overlay escuro cobrindo a página atrás do painel (fecha ao tocar). */
+    body.nav-open::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(32, 30, 26, 0.45);
+        z-index: 110;
+        animation: navFade 0.3s var(--ease);
+    }
+    /* Trava o scroll do fundo enquanto o menu está aberto. */
+    body.nav-open { overflow: hidden; }
+    @keyframes navFade { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Hamburguer acima do overlay e do painel, para fechar sempre clicável. */
+    .nav-toggle { position: relative; z-index: 130; }
+
     .site-nav__list { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
     .site-nav a { color: var(--c-ink); font-size: 1rem; }
     .site-nav__cta { border-color: var(--c-sage); }
