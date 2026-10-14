@@ -87,7 +87,7 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
 
         <div style="overflow-x:auto;">
         <table class="admin-table gift-reorder"
-               data-gift-reorder
+               data-reorder
                data-reorder-url="<?= View::e(View::url('/admin/presentes/ordenar', $baseUrl)) ?>"
                data-csrf-name="<?= View::e(\App\Core\Csrf::fieldName()) ?>"
                data-csrf-token="<?= View::e(\App\Core\Csrf::token()) ?>">
@@ -108,13 +108,13 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
                     [$label, $cls] = $statusLabels[$g['status']] ?? ['—', ''];
                     $thumb = $imageUrl((string) ($g['image'] ?? ''));
                     ?>
-                    <tr data-gift-row data-id="<?= (int) $g['id'] ?>">
+                    <tr data-reorder-row data-id="<?= (int) $g['id'] ?>">
                         <td class="gift-drag-cell">
                             <span class="gift-drag-handle" data-drag-handle
                                   title="Arraste para reordenar" aria-label="Arraste para reordenar"
                                   role="button" tabindex="0" draggable="true">&#9776;</span>
                         </td>
-                        <td class="gift-order-num" data-order-num><?= (int) $g['sort_order'] ?></td>
+                        <td class="gift-order-num" data-reorder-num><?= (int) $g['sort_order'] ?></td>
                         <td>
                             <?php if ($thumb !== ''): ?>
                                 <img class="gift-thumb" src="<?= View::e($thumb) ?>"

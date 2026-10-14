@@ -73,6 +73,7 @@ $router->get('/admin/galeria', 'AlbumAdminController@index');
 $router->get('/admin/galeria/novo', 'AlbumAdminController@create');
 $router->get('/admin/galeria/editar', 'AlbumAdminController@edit');
 $router->post('/admin/galeria/salvar', 'AlbumAdminController@save');
+$router->post('/admin/galeria/ordenar', 'AlbumAdminController@reorder');
 $router->post('/admin/galeria/remover', 'AlbumAdminController@destroy');
 $router->post('/admin/galeria/fotos/upload', 'AlbumAdminController@uploadPhotos');
 $router->post('/admin/galeria/fotos/remover', 'AlbumAdminController@destroyPhoto');

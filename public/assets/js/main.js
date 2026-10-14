@@ -381,6 +381,8 @@
     if (lightbox) {
         var lbImg = lightbox.querySelector('[data-lightbox-img]');
         var lbCaption = lightbox.querySelector('[data-lightbox-caption]');
+        var lbCounter = lightbox.querySelector('[data-lightbox-counter]');
+        var lbImgWrap = lightbox.querySelector('.lightbox__imgwrap');
         var prevBtn = lightbox.querySelector('[data-lightbox-prev]');
         var nextBtn = lightbox.querySelector('[data-lightbox-next]');
         var closeEls = lightbox.querySelectorAll('[data-lightbox-close]');
@@ -395,6 +397,17 @@
             lbImg.setAttribute('src', photo.src);
             lbImg.setAttribute('alt', photo.alt);
             if (lbCaption) { lbCaption.textContent = photo.alt; }
+            // Contador "atual / total".
+            if (lbCounter) {
+                lbCounter.textContent = (currentIndex + 1) + ' / ' + currentAlbum.length;
+            }
+            // Pequena animação de troca de imagem (fade suave).
+            if (lbImgWrap) {
+                lbImgWrap.classList.remove('is-swapping');
+                // reflow para reiniciar a animação
+                void lbImgWrap.offsetWidth;
+                lbImgWrap.classList.add('is-swapping');
+            }
             // Esconde as setas quando o álbum tem só uma foto.
             var multiple = currentAlbum.length > 1;
             if (prevBtn) { prevBtn.style.display = multiple ? '' : 'none'; }

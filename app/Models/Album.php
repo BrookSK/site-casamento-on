@@ -81,4 +81,55 @@ final class Album extends Model
         // As fotos são removidas em cascata pela FK (ON DELETE CASCADE).
         return $this->execute('DELETE FROM ' . $this->table . ' WHERE id = :id', ['id' => $id]);
     }
+
+    /**
+     * Aplica a ordem recebida (1º = topo). IDs ausentes são anexados ao fim na
+     * ordem atual. Defensivo contra listas parciais ou IDs inexistentes.
+     *
+     * @param array<int, int> $orderedIds
+     */
+    public function reorder(array $orderedIds): bool
+    {
+        $valid = [];
+        foreach ($this->select('SELECT id FROM ' . $this->table) as $r) {
+            $valid[(int) $r['id']] = true;
+        }
+
+        $final = [];
+        $seen  = [];
+        foreach ($orderedIds as $id) {
+            $id = (int) $id;
+            if (isset($valid[$id]) && !isset($seen[$id])) {
+                $final[] = $id;
+                $seen[$id] = true;
+            }
+        }
+        foreach ($this->select('SELECT id FROM ' . $this->table . ' ORDER BY sort_order ASC, id ASC') as $r) {
+            $id = (int) $r['id'];
+            if (!isset($seen[$id])) {
+                $final[] = $id;
+                $seen[$id] = true;
+            }
+        }
+
+        if ($final === []) {
+            return false;
+        }
+
+        $pdo = $this->db();
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare('UPDATE ' . $this->table . ' SET sort_order = :o WHERE id = :id');
+            $pos = 1;
+            foreach ($final as $id) {
+                $stmt->execute(['o' => $pos, 'id' => $id]);
+                $pos++;
+            }
+            $pdo->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
 }

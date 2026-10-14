@@ -51,16 +51,12 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
             <input type="text" id="title" name="title" value="<?= View::e($title) ?>" required autofocus>
         </div>
 
-        <div class="form-row">
-            <div class="field">
-                <label for="subtitle">Subtítulo (opcional)</label>
-                <input type="text" id="subtitle" name="subtitle" value="<?= View::e($subtitle) ?>">
-            </div>
-            <div class="field">
-                <label for="sort_order">Ordem de exibição</label>
-                <input type="number" id="sort_order" name="sort_order" value="<?= $sortOrder ?>">
-            </div>
+        <div class="field">
+            <label for="subtitle">Subtítulo (opcional)</label>
+            <input type="text" id="subtitle" name="subtitle" value="<?= View::e($subtitle) ?>">
         </div>
+        <!-- A ordem é definida por arraste na lista de álbuns; preserva o valor atual. -->
+        <input type="hidden" name="sort_order" value="<?= $sortOrder ?>">
 
         <div class="field">
             <label for="description">Descrição (opcional)</label>

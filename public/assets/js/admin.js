@@ -125,127 +125,137 @@
 (function () {
     'use strict';
 
-    var table = document.querySelector('[data-gift-reorder]');
-    if (!table) { return; }
+    // Ativa a reordenação por arraste em QUALQUER tabela marcada com
+    // [data-reorder] (presentes, álbuns, etc.). Seletores genéricos de linha
+    // (data-reorder-row) e de número de ordem (data-reorder-num).
+    var tables = document.querySelectorAll('[data-reorder]');
+    Array.prototype.forEach.call(tables, function (table) {
+        initReorder(table);
+    });
 
-    var body = table.querySelector('[data-reorder-body]');
-    if (!body) { return; }
+    function initReorder(table) {
+        var body = table.querySelector('[data-reorder-body]');
+        if (!body) { return; }
 
-    var statusEl = document.querySelector('[data-reorder-status]');
-    var url      = table.getAttribute('data-reorder-url') || '';
-    var csrfName = table.getAttribute('data-csrf-name') || '';
-    var csrfTok  = table.getAttribute('data-csrf-token') || '';
+        // O status pode ser específico da tabela (data-reorder-status dentro
+        // do mesmo card) ou global; procura primeiro no documento.
+        var statusEl = document.querySelector('[data-reorder-status]');
+        var url      = table.getAttribute('data-reorder-url') || '';
+        var csrfName = table.getAttribute('data-csrf-name') || '';
+        var csrfTok  = table.getAttribute('data-csrf-token') || '';
 
-    var dragRow = null;        // linha sendo arrastada
-    var statusTimer = null;
+        var dragRow = null;        // linha sendo arrastada
+        var statusTimer = null;
 
-    var setStatus = function (text, kind) {
-        if (!statusEl) { return; }
-        statusEl.textContent = text;
-        statusEl.className = 'gift-reorder-status' + (kind ? ' is-' + kind : '');
-        if (statusTimer) { clearTimeout(statusTimer); }
-        if (kind === 'ok') {
-            statusTimer = setTimeout(function () {
-                statusEl.textContent = '';
-                statusEl.className = 'gift-reorder-status';
-            }, 2500);
-        }
-    };
+        var setStatus = function (text, kind) {
+            if (!statusEl) { return; }
+            statusEl.textContent = text;
+            statusEl.className = 'gift-reorder-status' + (kind ? ' is-' + kind : '');
+            if (statusTimer) { clearTimeout(statusTimer); }
+            if (kind === 'ok') {
+                statusTimer = setTimeout(function () {
+                    statusEl.textContent = '';
+                    statusEl.className = 'gift-reorder-status';
+                }, 2500);
+            }
+        };
 
-    // Renumera a coluna "Ordem" (1..N) conforme a ordem atual do DOM.
-    var renumber = function () {
-        var rows = body.querySelectorAll('[data-gift-row]');
-        Array.prototype.forEach.call(rows, function (row, i) {
-            var cell = row.querySelector('[data-order-num]');
-            if (cell) { cell.textContent = String(i + 1); }
+        var rowSel = '[data-reorder-row]';
+
+        // Renumera a coluna "Ordem" (1..N) conforme a ordem atual do DOM.
+        var renumber = function () {
+            var rows = body.querySelectorAll(rowSel);
+            Array.prototype.forEach.call(rows, function (row, i) {
+                var cell = row.querySelector('[data-reorder-num]');
+                if (cell) { cell.textContent = String(i + 1); }
+            });
+        };
+
+        // Coleta os IDs na ordem atual do DOM.
+        var currentOrder = function () {
+            var rows = body.querySelectorAll(rowSel);
+            return Array.prototype.map.call(rows, function (row) {
+                return row.getAttribute('data-id');
+            });
+        };
+
+        // Persiste a ordem no servidor.
+        var save = function () {
+            if (!url) { return; }
+            setStatus('Salvando…', 'saving');
+
+            var form = new FormData();
+            if (csrfName) { form.append(csrfName, csrfTok); }
+            currentOrder().forEach(function (id) { form.append('order[]', id); });
+
+            fetch(url, {
+                method: 'POST',
+                body: form,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin'
+            }).then(function (r) {
+                return r.json().catch(function () { return { ok: r.ok }; });
+            }).then(function (data) {
+                if (data && data.ok) { setStatus('Ordem salva \u2713', 'ok'); }
+                else { setStatus((data && data.error) || 'Falha ao salvar a ordem.', 'error'); }
+            }).catch(function () {
+                setStatus('Falha de conexão ao salvar a ordem.', 'error');
+            });
+        };
+
+        // Dado o ponteiro Y, encontra a linha após a qual soltar.
+        var rowAfter = function (y) {
+            var rows = Array.prototype.slice.call(
+                body.querySelectorAll(rowSel + ':not(.is-dragging)')
+            );
+            var closest = { offset: Number.NEGATIVE_INFINITY, el: null };
+            rows.forEach(function (row) {
+                var box = row.getBoundingClientRect();
+                var offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    closest = { offset: offset, el: row };
+                }
+            });
+            return closest.el;
+        };
+
+        var handles = table.querySelectorAll('[data-drag-handle]');
+        Array.prototype.forEach.call(handles, function (handle) {
+            var row = handle.closest(rowSel);
+            if (!row) { return; }
+
+            handle.addEventListener('dragstart', function (e) {
+                dragRow = row;
+                row.classList.add('is-dragging');
+                if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    try { e.dataTransfer.setData('text/plain', row.getAttribute('data-id') || ''); } catch (err) {}
+                }
+            });
+
+            handle.addEventListener('dragend', function () {
+                if (dragRow) { dragRow.classList.remove('is-dragging'); }
+                dragRow = null;
+            });
         });
-    };
 
-    // Coleta os IDs na ordem atual do DOM.
-    var currentOrder = function () {
-        var rows = body.querySelectorAll('[data-gift-row]');
-        return Array.prototype.map.call(rows, function (row) {
-            return row.getAttribute('data-id');
-        });
-    };
-
-    // Persiste a ordem no servidor.
-    var save = function () {
-        if (!url) { return; }
-        setStatus('Salvando…', 'saving');
-
-        var form = new FormData();
-        if (csrfName) { form.append(csrfName, csrfTok); }
-        currentOrder().forEach(function (id) { form.append('order[]', id); });
-
-        fetch(url, {
-            method: 'POST',
-            body: form,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin'
-        }).then(function (r) {
-            return r.json().catch(function () { return { ok: r.ok }; });
-        }).then(function (data) {
-            if (data && data.ok) { setStatus('Ordem salva \u2713', 'ok'); }
-            else { setStatus((data && data.error) || 'Falha ao salvar a ordem.', 'error'); }
-        }).catch(function () {
-            setStatus('Falha de conexão ao salvar a ordem.', 'error');
-        });
-    };
-
-    // Dado o ponteiro Y, encontra a linha após a qual soltar.
-    var rowAfter = function (y) {
-        var rows = Array.prototype.slice.call(
-            body.querySelectorAll('[data-gift-row]:not(.is-dragging)')
-        );
-        var closest = { offset: Number.NEGATIVE_INFINITY, el: null };
-        rows.forEach(function (row) {
-            var box = row.getBoundingClientRect();
-            var offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-                closest = { offset: offset, el: row };
+        body.addEventListener('dragover', function (e) {
+            if (!dragRow) { return; }
+            e.preventDefault();                 // permite o drop
+            if (e.dataTransfer) { e.dataTransfer.dropEffect = 'move'; }
+            var after = rowAfter(e.clientY);
+            if (after == null) {
+                body.appendChild(dragRow);
+            } else if (after !== dragRow) {
+                body.insertBefore(dragRow, after);
             }
         });
-        return closest.el;
-    };
 
-    var handles = table.querySelectorAll('[data-drag-handle]');
-    Array.prototype.forEach.call(handles, function (handle) {
-        var row = handle.closest('[data-gift-row]');
-        if (!row) { return; }
-
-        handle.addEventListener('dragstart', function (e) {
-            dragRow = row;
-            row.classList.add('is-dragging');
-            if (e.dataTransfer) {
-                e.dataTransfer.effectAllowed = 'move';
-                // Necessário no Firefox para o arraste iniciar.
-                try { e.dataTransfer.setData('text/plain', row.getAttribute('data-id') || ''); } catch (err) {}
-            }
+        body.addEventListener('drop', function (e) {
+            if (!dragRow) { return; }
+            e.preventDefault();
+            renumber();
+            save();
         });
-
-        handle.addEventListener('dragend', function () {
-            if (dragRow) { dragRow.classList.remove('is-dragging'); }
-            dragRow = null;
-        });
-    });
-
-    body.addEventListener('dragover', function (e) {
-        if (!dragRow) { return; }
-        e.preventDefault();                 // permite o drop
-        if (e.dataTransfer) { e.dataTransfer.dropEffect = 'move'; }
-        var after = rowAfter(e.clientY);
-        if (after == null) {
-            body.appendChild(dragRow);
-        } else if (after !== dragRow) {
-            body.insertBefore(dragRow, after);
-        }
-    });
-
-    body.addEventListener('drop', function (e) {
-        if (!dragRow) { return; }
-        e.preventDefault();
-        renumber();
-        save();
-    });
+    }
 })();

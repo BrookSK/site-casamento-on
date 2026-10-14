@@ -33,19 +33,33 @@ $baseUrl = $app['base_url'] ?? '';
     <?php if ($rows === []): ?>
         <p class="admin-empty">Nenhum álbum criado ainda. Clique em “Novo álbum”.</p>
     <?php else: ?>
-        <table class="admin-table">
+        <div class="admin-toolbar admin-toolbar--tight">
+            <span class="gift-reorder-status" data-reorder-status role="status" aria-live="polite"></span>
+        </div>
+        <div style="overflow-x:auto;">
+        <table class="admin-table gift-reorder"
+               data-reorder
+               data-reorder-url="<?= View::e(View::url('/admin/galeria/ordenar', $baseUrl)) ?>"
+               data-csrf-name="<?= View::e(\App\Core\Csrf::fieldName()) ?>"
+               data-csrf-token="<?= View::e(\App\Core\Csrf::token()) ?>">
             <thead>
                 <tr>
+                    <th aria-label="Reordenar"></th>
                     <th>Ordem</th>
                     <th>Álbum</th>
                     <th>Fotos</th>
                     <th></th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody data-reorder-body>
                 <?php foreach ($rows as $a): ?>
-                    <tr>
-                        <td><?= (int) $a['sort_order'] ?></td>
+                    <tr data-reorder-row data-id="<?= (int) $a['id'] ?>">
+                        <td class="gift-drag-cell">
+                            <span class="gift-drag-handle" data-drag-handle
+                                  title="Arraste para reordenar" aria-label="Arraste para reordenar"
+                                  role="button" tabindex="0" draggable="true">&#9776;</span>
+                        </td>
+                        <td class="gift-order-num" data-reorder-num><?= (int) $a['sort_order'] ?></td>
                         <td>
                             <strong><?= View::e((string) $a['title']) ?></strong>
                             <?php if (!empty($a['subtitle'])): ?>
@@ -68,5 +82,6 @@ $baseUrl = $app['base_url'] ?? '';
                 <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
     <?php endif; ?>
 </div>

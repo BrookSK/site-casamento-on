@@ -62,15 +62,26 @@ $albums = $albums ?? [];
 <!-- Lightbox: ampliação e navegação dentro do mesmo álbum -->
 <div class="lightbox" data-lightbox hidden>
     <div class="lightbox__backdrop" data-lightbox-close></div>
+
     <button class="lightbox__btn lightbox__btn--close" type="button"
             data-lightbox-close aria-label="Fechar">&times;</button>
-    <button class="lightbox__btn lightbox__btn--prev" type="button"
-            data-lightbox-prev aria-label="Foto anterior">&#8249;</button>
-    <figure class="lightbox__figure">
-        <img class="lightbox__img" data-lightbox-img src="" alt="">
-        <figcaption class="lightbox__caption" data-lightbox-caption></figcaption>
-    </figure>
-    <button class="lightbox__btn lightbox__btn--next" type="button"
-            data-lightbox-next aria-label="Próxima foto">&#8250;</button>
+
+    <div class="lightbox__stage">
+        <button class="lightbox__btn lightbox__btn--prev" type="button"
+                data-lightbox-prev aria-label="Foto anterior">&#8249;</button>
+
+        <figure class="lightbox__frame">
+            <div class="lightbox__imgwrap">
+                <img class="lightbox__img" data-lightbox-img src="" alt="">
+            </div>
+            <figcaption class="lightbox__caption">
+                <span class="lightbox__caption-text" data-lightbox-caption></span>
+                <span class="lightbox__counter" data-lightbox-counter></span>
+            </figcaption>
+        </figure>
+
+        <button class="lightbox__btn lightbox__btn--next" type="button"
+                data-lightbox-next aria-label="Próxima foto">&#8250;</button>
+    </div>
 </div>
 <?php endif; ?>

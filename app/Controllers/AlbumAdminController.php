@@ -167,6 +167,43 @@ final class AlbumAdminController extends Controller
         $this->redirect('/admin/galeria');
     }
 
+    /** Salva a nova ordem dos álbuns (arraste na lista). Responde JSON. */
+    public function reorder(): void
+    {
+        $this->guard();
+        header('Content-Type: application/json; charset=utf-8');
+
+        if (!Csrf::validate($_POST[Csrf::fieldName()] ?? null)) {
+            http_response_code(419);
+            echo json_encode(['ok' => false, 'error' => 'Sessão expirada.']);
+            return;
+        }
+
+        $raw = $_POST['order'] ?? [];
+        if (is_string($raw)) {
+            $raw = array_filter(array_map('trim', explode(',', $raw)), static fn ($s) => $s !== '');
+        }
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $ids = array_map('intval', $raw);
+
+        if ($ids === []) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => 'Nenhuma ordem recebida.']);
+            return;
+        }
+
+        try {
+            (new Album($this->config))->reorder($ids);
+            echo json_encode(['ok' => true]);
+        } catch (Throwable $e) {
+            error_log('[AlbumAdmin] reorder: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'error' => 'Não foi possível salvar a ordem.']);
+        }
+    }
+
     /** Upload de uma ou mais fotos para um álbum. */
     public function uploadPhotos(): void
     {
