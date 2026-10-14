@@ -30,7 +30,15 @@ $albums = $albums ?? [];
         <?php else: ?>
             <?php foreach ($albums as $album): ?>
                 <div class="album" data-album>
-                    <h3 class="album__title"><?= View::e($album['title']) ?></h3>
+                    <div class="album__head">
+                        <h3 class="album__title"><?= View::e($album['title']) ?></h3>
+                        <?php if (!empty($album['subtitle'])): ?>
+                            <p class="album__subtitle"><?= View::e((string) $album['subtitle']) ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($album['description'])): ?>
+                            <p class="album__desc"><?= nl2br(View::e((string) $album['description'])) ?></p>
+                        <?php endif; ?>
+                    </div>
                     <div class="album__grid">
                         <?php foreach ($album['photos'] as $idx => $photo): ?>
                             <button type="button" class="album__photo"

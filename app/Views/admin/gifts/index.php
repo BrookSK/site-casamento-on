@@ -79,7 +79,7 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
         <p class="admin-empty">Nenhum presente cadastrado. Clique em “Novo presente”.</p>
     <?php else: ?>
         <!-- Ação "Novo presente" + feedback do salvamento da ordem (via JS). -->
-        <div class="admin-toolbar">
+        <div class="admin-toolbar admin-toolbar--tight">
             <span class="gift-reorder-status" data-reorder-status role="status" aria-live="polite"></span>
             <div class="spacer"></div>
             <a class="btn-admin" href="<?= View::e(View::url('/admin/presentes/novo', $baseUrl)) ?>">+ Novo presente</a>

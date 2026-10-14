@@ -38,6 +38,16 @@ $textField = function (string $key, string $label, string $default = '', bool $a
     Edite os textos das telas públicas. As alterações aparecem no site após salvar.
 </p>
 
+<!-- Card: Galeria de fotos (gestão de álbuns em tela própria) -->
+<div class="admin-card content-link-card">
+    <div class="content-link-card__text">
+        <h2>Galeria de fotos</h2>
+        <p>Crie álbuns com título, subtítulo e descrição, e envie as fotos de
+        cada um. Tudo o que for cadastrado aqui aparece na galeria pública do site.</p>
+    </div>
+    <a class="btn-admin" href="<?= View::e(View::url('/admin/galeria', $baseUrl)) ?>">Gerenciar galeria</a>
+</div>
+
 <form method="post" action="<?= View::e(View::url('/admin/textos-e-imagens/salvar', $baseUrl)) ?>">
     <?= $csrfField ?>
 
@@ -49,7 +59,6 @@ $textField = function (string $key, string $label, string $default = '', bool $a
                 <?php $textField('bride', 'Nome da noiva', 'Noiva'); ?>
                 <?php $textField('groom', 'Nome do noivo', 'Noivo'); ?>
             </div>
-            <?php $textField('hashtag', 'Hashtag', '#NossoCasamento'); ?>
         </div>
     </div>
 
@@ -80,16 +89,17 @@ $textField = function (string $key, string $label, string $default = '', bool $a
         <div class="form-grid">
             <div class="form-row">
                 <div class="field">
-                    <label for="f-date_label">Data</label>
-                    <input type="text" id="f-date_label" name="date_label"
-                           value="<?= View::e($content->text('date_label', '')) ?>"
-                           placeholder="dd/mm/aa" inputmode="numeric" data-mask="date">
+                    <label for="f-event_date">Data do evento</label>
+                    <input type="date" id="f-event_date" name="event_date"
+                           value="<?= View::e($content->text('event_date', '')) ?>">
+                    <small style="color:var(--c-muted);font-size:0.8rem;">
+                        A contagem regressiva da página inicial usa exatamente esta data.
+                    </small>
                 </div>
                 <div class="field">
                     <label for="f-time_label">Horário</label>
-                    <input type="text" id="f-time_label" name="time_label"
-                           value="<?= View::e($content->text('time_label', '')) ?>"
-                           placeholder="hh:mm" inputmode="numeric" data-mask="time">
+                    <input type="time" id="f-time_label" name="time_label"
+                           value="<?= View::e($content->text('time_label', '')) ?>">
                 </div>
             </div>
             <div class="form-row">

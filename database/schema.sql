@@ -212,4 +212,34 @@ CREATE TABLE IF NOT EXISTS `admins` (
     UNIQUE KEY `uq_admins_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- -------------------------------------------------------------
+--  albums / album_photos — galeria de fotos gerenciável pelo painel
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `albums` (
+    `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `title`       VARCHAR(150) NOT NULL,
+    `subtitle`    VARCHAR(190) NULL,
+    `description` TEXT NULL,
+    `sort_order`  INT NOT NULL DEFAULT 0,
+    `created_at`  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_albums_order` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `album_photos` (
+    `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `album_id`   INT UNSIGNED NOT NULL,
+    `image`      VARCHAR(255) NOT NULL,
+    `caption`    VARCHAR(190) NULL,
+    `sort_order` INT NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_album_photos_album` (`album_id`),
+    KEY `idx_album_photos_order` (`sort_order`),
+    CONSTRAINT `fk_album_photos_album`
+        FOREIGN KEY (`album_id`) REFERENCES `albums` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

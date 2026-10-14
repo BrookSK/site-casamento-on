@@ -21,8 +21,8 @@ final class Content
 
     /** Chaves de conteúdo conhecidas (texto). */
     public const TEXT_KEYS = [
-        'bride', 'groom', 'hashtag',
-        'date_label', 'time_label',
+        'bride', 'groom',
+        'event_date', 'date_label', 'time_label',
         'history_title', 'history_text',
         'fact1_label', 'fact1_value',
         'fact2_label', 'fact2_value',

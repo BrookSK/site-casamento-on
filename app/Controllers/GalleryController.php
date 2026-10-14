@@ -5,54 +5,56 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controller;
-use App\Core\View;
+use App\Models\Album;
+use App\Models\AlbumPhoto;
+use Throwable;
 
 /**
- * Página independente da Galeria de Fotos, organizada por álbuns.
+ * Página pública da Galeria de Fotos, organizada por álbuns.
  *
- * Nesta etapa (sem banco), os álbuns e suas fotos são resolvidos por
- * convenção de nome de arquivo em public/assets/img:
- *
- *   album-<slug>-1, album-<slug>-2, ... (jpg/jpeg/png/webp/avif)
- *
- * Para adicionar fotos a um álbum, basta subir os arquivos seguindo a
- * numeração sequencial. Para criar um novo álbum, acrescente uma entrada
- * em self::ALBUMS com um título e um slug novos.
+ * Os álbuns e suas fotos são gerenciados pelo painel administrativo
+ * (Conteúdo > Galeria de fotos) e persistidos no banco (tabelas albums e
+ * album_photos). Esta página apenas lê e exibe.
  */
 final class GalleryController extends Controller
 {
-    /**
-     * Definição dos álbuns (ordem de exibição). Cada álbum tem um título
-     * visível e um slug usado no nome dos arquivos de imagem.
-     *
-     * @var array<int, array{title:string, slug:string}>
-     */
-    private const ALBUMS = [
-        ['title' => 'Nosso Pré-Casamento',  'slug' => 'pre-casamento'],
-        ['title' => 'Cerimônia de Casamento', 'slug' => 'cerimonia'],
-        ['title' => 'Festa de Casamento',    'slug' => 'festa'],
-        ['title' => 'Banda e Atrações',      'slug' => 'banda'],
-        ['title' => 'Momentos Especiais',    'slug' => 'momentos'],
-    ];
-
-    /** Máximo de fotos procuradas por álbum (numeração 1..N). */
-    private const MAX_PHOTOS_PER_ALBUM = 60;
-
     public function index(): void
     {
-        $baseUrl = (string) ($this->config['app']['base_url'] ?? '');
+        $baseUrl = rtrim((string) ($this->config['app']['base_url'] ?? ''), '/');
 
         $albums = [];
-        foreach (self::ALBUMS as $album) {
-            $photos = $this->resolveAlbumPhotos($album['slug'], $album['title'], $baseUrl);
-            // Só inclui álbuns que tenham ao menos uma foto no disco.
-            if ($photos !== []) {
-                $albums[] = [
-                    'title'  => $album['title'],
-                    'slug'   => $album['slug'],
-                    'photos' => $photos,
-                ];
+        try {
+            $albumRows = (new Album($this->config))->listAll();
+            if ($albumRows !== []) {
+                $ids    = array_map(static fn ($a) => (int) $a['id'], $albumRows);
+                $photos = (new AlbumPhoto($this->config))->listForAlbums($ids);
+
+                foreach ($albumRows as $a) {
+                    $aid    = (int) $a['id'];
+                    $title  = (string) $a['title'];
+                    $list   = [];
+                    foreach ($photos[$aid] ?? [] as $i => $p) {
+                        $list[] = [
+                            'url' => $this->resolveImage((string) $p['image'], $baseUrl),
+                            'alt' => $p['caption'] !== null && $p['caption'] !== ''
+                                ? (string) $p['caption']
+                                : ($title . ' — foto ' . ($i + 1)),
+                        ];
+                    }
+                    // Só exibe álbuns que tenham ao menos uma foto.
+                    if ($list !== []) {
+                        $albums[] = [
+                            'title'       => $title,
+                            'subtitle'    => (string) ($a['subtitle'] ?? ''),
+                            'description' => (string) ($a['description'] ?? ''),
+                            'photos'      => $list,
+                        ];
+                    }
+                }
             }
+        } catch (Throwable $e) {
+            error_log('[Gallery] index: ' . $e->getMessage());
+            $albums = [];
         }
 
         $this->view('gallery/index', [
@@ -61,25 +63,16 @@ final class GalleryController extends Controller
         ]);
     }
 
-    /**
-     * Resolve as fotos existentes de um álbum (numeração sequencial).
-     * Para na primeira lacuna para manter a ordem previsível.
-     *
-     * @return array<int, array{url:string, alt:string}>
-     */
-    private function resolveAlbumPhotos(string $slug, string $title, string $baseUrl): array
+    /** Resolve a URL de uma imagem salva (http, absoluta ou relativa a assets/img). */
+    private function resolveImage(string $image, string $baseUrl): string
     {
-        $photos = [];
-        for ($i = 1; $i <= self::MAX_PHOTOS_PER_ALBUM; $i++) {
-            $img = View::image('album-' . $slug . '-' . $i, $baseUrl);
-            if (!$img['exists']) {
-                break; // sem a próxima foto numerada: encerra o álbum
-            }
-            $photos[] = [
-                'url' => $img['url'],
-                'alt' => $title . ' — foto ' . $i,
-            ];
+        $image = trim($image);
+        if ($image === '') {
+            return '';
         }
-        return $photos;
+        if (str_starts_with($image, 'http') || str_starts_with($image, '/')) {
+            return $image;
+        }
+        return $baseUrl . '/assets/img/' . ltrim($image, '/');
     }
 }

@@ -17,7 +17,19 @@ $baseUrl   = $app['base_url'] ?? '';
 $bride     = $content->text('bride', (string) ($wedding['bride'] ?? 'Noiva'));
 $groom     = $content->text('groom', (string) ($wedding['groom'] ?? 'Noivo'));
 $dateLabel = $content->text('date_label', (string) ($wedding['date_label'] ?? 'Data a definir'));
-$dateIso   = $wedding['date_iso'] ?? '';
+
+// Data da contagem regressiva: usa a MESMA data definida no painel
+// (event_date, formato YYYY-MM-DD) combinada com o horário (time_label).
+// Mantém a contagem e o texto da data sempre sincronizados. Sem data no
+// painel, cai no valor da config (date_iso).
+$eventDate = $content->text('event_date', '');
+$eventTime = $content->text('time_label', '');
+if ($eventDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $eventDate)) {
+    $time    = preg_match('/^\d{2}:\d{2}$/', $eventTime) ? $eventTime : '00:00';
+    $dateIso = $eventDate . 'T' . $time . ':00';
+} else {
+    $dateIso = $wedding['date_iso'] ?? '';
+}
 
 // Imagem de destaque (fixa: hero.jpg/.png/.webp em assets/img).
 $hero    = View::image('hero', $baseUrl);

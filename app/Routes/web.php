@@ -68,6 +68,15 @@ $router->post('/admin/presentes/ordenar', 'GiftAdminController@reorder');
 $router->get('/admin/textos-e-imagens', 'ContentController@index');
 $router->post('/admin/textos-e-imagens/salvar', 'ContentController@save');
 
+// Galeria de fotos (álbuns + fotos) — dentro de Conteúdo
+$router->get('/admin/galeria', 'AlbumAdminController@index');
+$router->get('/admin/galeria/novo', 'AlbumAdminController@create');
+$router->get('/admin/galeria/editar', 'AlbumAdminController@edit');
+$router->post('/admin/galeria/salvar', 'AlbumAdminController@save');
+$router->post('/admin/galeria/remover', 'AlbumAdminController@destroy');
+$router->post('/admin/galeria/fotos/upload', 'AlbumAdminController@uploadPhotos');
+$router->post('/admin/galeria/fotos/remover', 'AlbumAdminController@destroyPhoto');
+
 // Configurações (SMTP / ASAAS — base)
 $router->get('/admin/configuracoes', 'SettingsController@index');
 $router->post('/admin/configuracoes/smtp', 'SettingsController@saveSmtp');

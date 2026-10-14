@@ -12,7 +12,6 @@ use App\Core\View;
 $baseUrl = $app['base_url'] ?? '';
 $bride   = $wedding['bride'] ?? 'Noiva';
 $groom   = $wedding['groom'] ?? 'Noivo';
-$hashtag = $wedding['hashtag'] ?? '';
 $year    = date('Y');
 ?>
 </main>
@@ -21,9 +20,6 @@ $year    = date('Y');
     <div class="container site-footer__inner">
         <div class="site-footer__brand">
             <p class="site-footer__names"><?= View::e($bride) ?> <span>&amp;</span> <?= View::e($groom) ?></p>
-            <?php if ($hashtag !== ''): ?>
-                <p class="site-footer__hashtag"><?= View::e($hashtag) ?></p>
-            <?php endif; ?>
         </div>
 
         <nav class="site-footer__nav" aria-label="Navegação do rodapé">
