@@ -61,4 +61,40 @@
             }
         });
     });
+
+    /* ---- Pré-visualização da imagem antes de salvar ---- */
+    var uploads = document.querySelectorAll('[data-image-upload]');
+    Array.prototype.forEach.call(uploads, function (box) {
+        var input = box.querySelector('[data-image-input]');
+        var preview = box.querySelector('[data-image-preview]');
+        var img = box.querySelector('[data-image-preview-img]');
+        var removeChk = box.querySelector('input[name="remove_image"]');
+        if (!input || !preview || !img) { return; }
+
+        input.addEventListener('change', function () {
+            var file = input.files && input.files[0];
+            if (!file) { return; }
+            // Só aceita imagem; evita gerar preview de arquivo inválido.
+            if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+                preview.hidden = true;
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                img.src = e.target.result;
+                preview.hidden = false;
+                // Se o usuário escolheu uma nova imagem, desmarca "remover".
+                if (removeChk) { removeChk.checked = false; }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Marcar "remover imagem" esconde o preview atual.
+        if (removeChk) {
+            removeChk.addEventListener('change', function () {
+                if (removeChk.checked) { preview.hidden = true; }
+                else if (img.getAttribute('src')) { preview.hidden = false; }
+            });
+        }
+    });
 })();

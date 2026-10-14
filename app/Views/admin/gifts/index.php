@@ -23,6 +23,18 @@ $statusLabels = [
 ];
 
 $money = static fn (int $cents): string => 'R$ ' . number_format($cents / 100, 2, ',', '.');
+
+// Resolve a URL de uma imagem salva (http, absoluta, ou relativa a assets/img).
+$imageUrl = static function (string $image) use ($baseUrl): string {
+    $image = trim($image);
+    if ($image === '') {
+        return '';
+    }
+    if (str_starts_with($image, 'http') || str_starts_with($image, '/')) {
+        return $image;
+    }
+    return rtrim($baseUrl, '/') . '/assets/img/' . ltrim($image, '/');
+};
 ?>
 <?php if (!empty($flash)): ?>
     <div class="flash flash--<?= View::e($flash['type']) ?>"><?= View::e($flash['message']) ?></div>
@@ -45,6 +57,7 @@ $money = static fn (int $cents): string => 'R$ ' . number_format($cents / 100, 2
             <thead>
                 <tr>
                     <th>Ordem</th>
+                    <th>Foto</th>
                     <th>Nome</th>
                     <th>Preço</th>
                     <th>Status</th>
@@ -53,9 +66,21 @@ $money = static fn (int $cents): string => 'R$ ' . number_format($cents / 100, 2
             </thead>
             <tbody>
                 <?php foreach ($rows as $g): ?>
-                    <?php [$label, $cls] = $statusLabels[$g['status']] ?? ['—', '']; ?>
+                    <?php
+                    [$label, $cls] = $statusLabels[$g['status']] ?? ['—', ''];
+                    $thumb = $imageUrl((string) ($g['image'] ?? ''));
+                    ?>
                     <tr>
                         <td><?= (int) $g['sort_order'] ?></td>
+                        <td>
+                            <?php if ($thumb !== ''): ?>
+                                <img class="gift-thumb" src="<?= View::e($thumb) ?>"
+                                     alt="<?= View::e((string) $g['name']) ?>" loading="lazy">
+                            <?php else: ?>
+                                <span class="gift-thumb" aria-hidden="true"
+                                      style="display:grid;place-items:center;">&#127873;</span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <strong><?= View::e((string) $g['name']) ?></strong>
                             <?php if (!empty($g['description'])): ?>

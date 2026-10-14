@@ -1163,6 +1163,56 @@ p { margin: 0 0 1rem; }
     letter-spacing: 0.05em;
     margin-bottom: 1.25rem;
 }
+
+/* Área de imagem padronizada (proporção fixa para todos os cards) */
+.gift-card__media {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    margin-bottom: 1rem;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--c-cream);
+    display: grid;
+    place-items: center;
+}
+.gift-card__media .gift-card__icon { margin: 0; }
+.gift-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Presente já escolhido: acinzentado e selo. Não removemos da lista. */
+.gift-card { position: relative; }
+.gift-card--taken { background: #faf8f4; }
+.gift-card--taken:hover {
+    transform: none;
+    box-shadow: none;
+}
+/* Dessatura apenas o conteúdo do card (mídia, nome, preço e botão),
+   preservando o selo "Presente já escolhido" colorido e legível. */
+.gift-card--taken .gift-card__media,
+.gift-card--taken .gift-card__name,
+.gift-card--taken .gift-card__price,
+.gift-card--taken .btn {
+    filter: grayscale(1);
+    opacity: 0.75;
+}
+.gift-card__ribbon {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 2;
+    background: var(--c-ink);
+    color: var(--c-white);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+}
+
 .gift-note { text-align: center; margin-top: 2rem; color: var(--c-muted); }
 
 /* =============================================================

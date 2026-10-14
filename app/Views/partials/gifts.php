@@ -98,14 +98,45 @@ $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
                 <?php
                 $priceCents = (int) ($gift['price_cents'] ?? 0);
                 $giftId     = (int) ($gift['id'] ?? 0);
-                $canBuy     = $paymentsEnabled && $giftId > 0 && $priceCents > 0;
+                // Presente já escolhido (pago) ou reservado durante um pagamento.
+                $taken      = (bool) ($gift['taken'] ?? false);
+                $image      = trim((string) ($gift['image'] ?? ''));
+                // Só pode comprar se há pagamento ativo, id/preço válidos E não
+                // estiver indisponível (reservado/comprado).
+                $canBuy     = $paymentsEnabled && $giftId > 0 && $priceCents > 0 && !$taken;
+                // Resolve a URL da imagem (aceita caminho absoluto, http ou nome
+                // relativo em assets/img).
+                $imageUrl = '';
+                if ($image !== '') {
+                    $imageUrl = (str_starts_with($image, 'http') || str_starts_with($image, '/'))
+                        ? $image
+                        : rtrim($baseUrl, '/') . '/assets/img/' . ltrim($image, '/');
+                }
                 ?>
-                <article class="gift-card" data-gift-card data-price="<?= $priceCents ?>">
-                    <div class="gift-card__icon" aria-hidden="true">&#127873;</div>
+                <article class="gift-card<?= $taken ? ' gift-card--taken' : '' ?>"
+                         data-gift-card data-price="<?= $priceCents ?>"
+                         <?= $taken ? 'data-taken="1"' : '' ?>>
+                    <?php if ($taken): ?>
+                        <span class="gift-card__ribbon">Presente já escolhido</span>
+                    <?php endif; ?>
+
+                    <div class="gift-card__media">
+                        <?php if ($imageUrl !== ''): ?>
+                            <img class="gift-card__img" src="<?= View::e($imageUrl) ?>"
+                                 alt="<?= View::e($gift['name'] ?? 'Presente') ?>" loading="lazy">
+                        <?php else: ?>
+                            <div class="gift-card__icon" aria-hidden="true">&#127873;</div>
+                        <?php endif; ?>
+                    </div>
+
                     <h3 class="gift-card__name"><?= View::e($gift['name'] ?? 'Presente') ?></h3>
                     <p class="gift-card__price"><?= View::e($gift['price'] ?? 'R$ ---') ?></p>
 
-                    <?php if ($canBuy): ?>
+                    <?php if ($taken): ?>
+                        <button class="btn btn--outline" type="button" disabled aria-disabled="true">
+                            Presente já escolhido
+                        </button>
+                    <?php elseif ($canBuy): ?>
                         <button class="btn btn--outline" type="button"
                                 data-gift-toggle="gift-form-<?= $giftId ?>">
                             Presentear

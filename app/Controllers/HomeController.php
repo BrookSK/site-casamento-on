@@ -50,13 +50,21 @@ final class HomeController extends Controller
     private function loadGifts(): array
     {
         try {
-            $rows = (new Gift($this->config))->listAll(true);
+            // Traz TODOS os presentes (inclusive os já comprados), para que os
+            // adquiridos permaneçam visíveis na lista, porém indisponíveis.
+            $rows = (new Gift($this->config))->listAll(false);
             if ($rows !== []) {
                 return array_map(static function (array $g): array {
-                    $cents = (int) $g['price_cents'];
+                    $cents  = (int) $g['price_cents'];
+                    $status = (string) ($g['status'] ?? 'available');
                     return [
                         'id'          => (int) $g['id'],
                         'name'        => (string) $g['name'],
+                        'description' => (string) ($g['description'] ?? ''),
+                        'image'       => (string) ($g['image'] ?? ''),
+                        'status'      => $status,
+                        // Indisponível para compra quando reservado ou comprado.
+                        'taken'       => in_array($status, ['purchased', 'reserved'], true),
                         'price'       => 'R$ ' . number_format($cents / 100, 2, ',', '.'),
                         'price_cents' => $cents,
                     ];

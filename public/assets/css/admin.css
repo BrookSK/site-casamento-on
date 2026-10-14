@@ -362,6 +362,43 @@ a { color: var(--c-sage-dark); }
     line-height: 1.5;
 }
 
+/* ---- Upload de imagem com pré-visualização ---- */
+.image-upload { display: grid; gap: 0.6rem; }
+.image-upload__preview {
+    width: 220px;
+    max-width: 100%;
+    aspect-ratio: 4 / 3;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--c-cream);
+}
+.image-upload__preview[hidden] { display: none; }
+.image-upload__preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.image-upload input[type="file"] {
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    padding: 0.5rem 0;
+    background: transparent;
+    border: 0;
+}
+
+/* ---- Miniatura na tabela de presentes ---- */
+.gift-thumb {
+    width: 54px;
+    height: 54px;
+    border-radius: var(--radius);
+    object-fit: cover;
+    border: 1px solid var(--c-line);
+    background: var(--c-cream);
+    display: block;
+}
+
 .flash {
     padding: 0.85rem 1.1rem;
     border-radius: var(--radius);

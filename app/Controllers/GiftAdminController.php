@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\Csrf;
+use App\Core\ImageUploader;
 use App\Models\Gift;
 use App\Models\GiftPurchase;
 use Throwable;
@@ -139,17 +140,56 @@ final class GiftAdminController extends Controller
         $status = in_array($_POST['status'] ?? '', $allowedStatus, true)
             ? (string) $_POST['status'] : 'available';
 
+        $model = new Gift($this->config);
+
+        // Imagem atual (quando editando), para preservar/substituir/remover.
+        $currentImage = null;
+        if ($id > 0) {
+            $existing = $model->find($id);
+            $currentImage = $existing !== null ? ($existing['image'] ?? null) : null;
+        }
+        $image = $currentImage;
+
+        // 1) Upload de arquivo (prioritário): padroniza e salva a nova imagem.
+        $uploaded = $_FILES['image_file'] ?? null;
+        if (is_array($uploaded) && (int) ($uploaded['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            try {
+                $newPath = ImageUploader::handle($uploaded, 'gifts');
+                // Remove a antiga só depois de a nova ter sido salva com sucesso.
+                if ($currentImage) {
+                    ImageUploader::remove((string) $currentImage);
+                }
+                $image = $newPath;
+            } catch (Throwable $e) {
+                error_log('[GiftAdmin] upload: ' . $e->getMessage());
+                $this->setFlash('error', 'Imagem: ' . $e->getMessage());
+                $this->redirect($id > 0 ? '/admin/presentes/editar?id=' . $id : '/admin/presentes/novo');
+            }
+        } elseif (($_POST['remove_image'] ?? '') === '1') {
+            // 2) Remoção explícita da imagem (checkbox "remover imagem").
+            if ($currentImage) {
+                ImageUploader::remove((string) $currentImage);
+            }
+            $image = null;
+        } else {
+            // 3) Sem upload: permite informar/editar um nome de arquivo manual
+            //    (compatibilidade com o campo de texto antigo).
+            $manual = trim((string) ($_POST['image'] ?? ''));
+            if ($manual !== '') {
+                $image = $manual;
+            }
+        }
+
         $data = [
             'name'        => $name,
             'description' => trim((string) ($_POST['description'] ?? '')) ?: null,
             'price_cents' => max(0, $priceCents),
-            'image'       => trim((string) ($_POST['image'] ?? '')) ?: null,
+            'image'       => $image ?: null,
             'status'      => $status,
             'sort_order'  => (int) ($_POST['sort_order'] ?? 0),
         ];
 
         try {
-            $model = new Gift($this->config);
             if ($id > 0) {
                 $model->updateGift($id, $data);
                 $this->setFlash('success', 'Presente atualizado.');
@@ -177,7 +217,30 @@ final class GiftAdminController extends Controller
 
         $id = (int) ($_POST['id'] ?? 0);
         try {
-            (new Gift($this->config))->delete($id);
+            $model = new Gift($this->config);
+
+            // Preserva o histórico de transações: não permite excluir um
+            // presente que já tenha compras (exceto tentativas falhas).
+            $relevant = (new GiftPurchase($this->config))->countRelevantByGift($id);
+            if ($relevant > 0) {
+                $this->setFlash(
+                    'error',
+                    'Este presente possui compras registradas e não pode ser excluído '
+                    . '(para preservar o histórico financeiro). Marque-o como '
+                    . '“Presenteado” se não quiser mais exibi-lo.'
+                );
+                $this->redirect('/admin/presentes');
+            }
+
+            // Remove a imagem do disco antes de apagar o registro.
+            $gift = $model->find($id);
+            $image = $gift !== null ? (string) ($gift['image'] ?? '') : '';
+
+            $model->delete($id);
+
+            if ($image !== '') {
+                ImageUploader::remove($image);
+            }
             $this->setFlash('success', 'Presente removido.');
         } catch (Throwable $e) {
             error_log('[GiftAdmin] destroy: ' . $e->getMessage());

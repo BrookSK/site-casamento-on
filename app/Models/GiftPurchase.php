@@ -103,4 +103,19 @@ final class GiftPurchase extends Model
             . 'ORDER BY p.id DESC'
         );
     }
+
+    /**
+     * Conta as compras de um presente que precisam ser preservadas
+     * (qualquer uma que não seja uma tentativa falha). Usado para impedir a
+     * exclusão de um presente com histórico financeiro relevante.
+     */
+    public function countRelevantByGift(int $giftId): int
+    {
+        $row = $this->selectOne(
+            'SELECT COUNT(*) AS n FROM ' . $this->table
+            . " WHERE gift_id = :g AND payment_status <> 'failed'",
+            ['g' => $giftId]
+        );
+        return (int) ($row['n'] ?? 0);
+    }
 }
