@@ -190,25 +190,28 @@ p { margin: 0 0 1rem; }
     font-size: 1.4rem;
     letter-spacing: 0.05em;
     color: var(--c-white);
+    white-space: nowrap;           /* o logo nunca quebra em duas linhas */
     transition: color 0.4s var(--ease);
 }
+.brand { flex-shrink: 0; }         /* o logo não é comprimido pelo menu */
 .brand__amp { margin-inline: 0.35em; color: var(--c-rose-soft); }
 .site-header.is-scrolled .brand__names { color: var(--c-ink); }
 
 .site-nav__list {
     list-style: none;
     display: flex;
-    gap: clamp(1rem, 2.5vw, 2.25rem);
+    gap: clamp(0.85rem, 1.8vw, 1.75rem); /* espaçamento um pouco mais enxuto */
     margin: 0; padding: 0;
     align-items: center;
 }
 .site-nav a {
     font-size: 0.82rem;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.12em;        /* reduzido para o menu caber melhor */
     text-transform: uppercase;
     color: var(--c-white);
     padding-block: 0.3rem;
     position: relative;
+    white-space: nowrap;           /* cada item fica em uma única linha */
     transition: color 0.3s var(--ease);
 }
 .site-header.is-scrolled .site-nav a { color: var(--c-ink); }
@@ -1296,6 +1299,36 @@ p { margin: 0 0 1rem; }
 /* =============================================================
    Responsividade
    ============================================================= */
+/* Menu em hambúrguer já a partir de telas médias (≤1080px), onde os 6 itens
+   do menu não cabem confortavelmente em uma linha. */
+@media (max-width: 1080px) {
+    .nav-toggle { display: flex; }
+    .site-nav {
+        position: fixed;
+        inset: 0 0 0 auto;
+        width: min(78vw, 320px);
+        background: var(--c-cream);
+        box-shadow: -20px 0 60px -30px rgba(0,0,0,0.5);
+        transform: translateX(100%);
+        transition: transform 0.4s var(--ease);
+        padding: 6rem 2rem 2rem;
+        z-index: 90;
+    }
+    .site-nav.is-open { transform: translateX(0); }
+    .site-nav__list { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
+    .site-nav a { color: var(--c-ink); font-size: 1rem; }
+    .site-nav__cta { border-color: var(--c-sage); }
+
+    .nav-toggle[aria-expanded="true"] .nav-toggle__bar { background: var(--c-ink); }
+    .nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+    }
+    .nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(2) { opacity: 0; }
+    .nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
+    }
+}
+
 @media (max-width: 860px) {
     .couple { grid-template-columns: 1fr; }
     .couple__media > img { height: auto; width: auto; max-height: 70vh; }
@@ -1316,34 +1349,7 @@ p { margin: 0 0 1rem; }
             rgba(32, 30, 26, 0.18) 35%,
             rgba(32, 30, 26, 0.55) 100%);
     }
-
-    /* Menu mobile */
-    .nav-toggle { display: flex; }
-    .site-nav {
-        position: fixed;
-        inset: 0 0 0 auto;
-        width: min(78vw, 320px);
-        background: var(--c-cream);
-        box-shadow: -20px 0 60px -30px rgba(0,0,0,0.5);
-        transform: translateX(100%);
-        transition: transform 0.4s var(--ease);
-        padding: 6rem 2rem 2rem;
-        z-index: 90;
-    }
-    .site-nav.is-open { transform: translateX(0); }
-    .site-nav__list { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
-    .site-nav a { color: var(--c-ink); font-size: 1rem; }
-    .site-nav__cta { border-color: var(--c-sage); }
-
-    /* Hamburguer sempre escuro quando o menu abre em telas pequenas */
-    .nav-toggle[aria-expanded="true"] .nav-toggle__bar { background: var(--c-ink); }
-    .nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(1) {
-        transform: translateY(7px) rotate(45deg);
-    }
-    .nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(2) { opacity: 0; }
-    .nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(3) {
-        transform: translateY(-7px) rotate(-45deg);
-    }
+    /* (As regras do menu hambúrguer ficam no bloco ≤1080px acima.) */
 }
 
 @media (max-width: 560px) {

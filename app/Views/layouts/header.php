@@ -64,7 +64,7 @@ $title     = isset($pageTitle) ? $pageTitle . ' · ' . $siteName : $siteName;
                 <li><a href="<?= View::e(View::url('/galeria', $baseUrl)) ?>">Galeria de Fotos</a></li>
                 <li><a href="<?= View::e(View::url('/#rsvp', $baseUrl)) ?>" class="site-nav__cta">Confirmar presença</a></li>
                 <?php if ($guestLogged): ?>
-                    <li><a href="<?= View::e(View::url('/minha-conta', $baseUrl)) ?>" class="site-nav__account">Minha conta<?= $guestFirst !== '' ? ' (' . View::e($guestFirst) . ')' : '' ?></a></li>
+                    <li><a href="<?= View::e(View::url('/minha-conta', $baseUrl)) ?>" class="site-nav__account">Minha conta</a></li>
                 <?php else: ?>
                     <li><a href="<?= View::e(View::url('/entrar', $baseUrl)) ?>" class="site-nav__account">Entrar</a></li>
                 <?php endif; ?>
