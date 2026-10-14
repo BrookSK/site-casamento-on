@@ -1290,20 +1290,12 @@ p { margin: 0 0 1rem; }
 
 /* Presente já escolhido: acinzentado e selo. Não removemos da lista. */
 .gift-card { position: relative; }
+/* Presente já escolhido: a foto permanece COLORIDA (sem acinzentar). O status
+   é indicado apenas pelo selo "Presente já escolhido". */
 .gift-card--taken { background: #faf8f4; }
 .gift-card--taken:hover {
     transform: none;
     box-shadow: none;
-}
-/* Dessatura só a mídia do card tomado (nome e preço continuam legíveis;
-   a notificação de "já escolhido" tem destaque próprio). */
-.gift-card--taken .gift-card__media {
-    filter: grayscale(1);
-    opacity: 0.7;
-}
-.gift-card--taken .gift-card__name,
-.gift-card--taken .gift-card__price {
-    opacity: 0.85;
 }
 /* O card já escolhido continua clicável (abre o popup de detalhes, apenas
    para ver a descrição — sem a opção de presentear). */
