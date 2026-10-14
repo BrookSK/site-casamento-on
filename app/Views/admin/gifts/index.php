@@ -59,6 +59,17 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
     <div class="flash flash--error"><?= View::e($error) ?></div>
 <?php endif; ?>
 
+<?php if ($rows !== []): ?>
+    <!-- Indicadores independentes, soltos no topo (igual ao painel de Confirmações). -->
+    <div class="stat-grid">
+        <div class="stat"><span class="stat__value"><?= (int) $countTotal ?></span><span class="stat__label">Presentes</span></div>
+        <div class="stat"><span class="stat__value"><?= (int) $countAvail ?></span><span class="stat__label">Disponíveis</span></div>
+        <div class="stat"><span class="stat__value"><?= (int) $countReserv ?></span><span class="stat__label">Reservados</span></div>
+        <div class="stat"><span class="stat__value"><?= (int) $countBought ?></span><span class="stat__label">Presenteados</span></div>
+        <div class="stat"><span class="stat__value"><?= $money((int) $sumCents) ?></span><span class="stat__label">Valor da lista</span></div>
+    </div>
+<?php endif; ?>
+
 <div class="admin-card">
     <?php if ($rows === []): ?>
         <div class="admin-toolbar">
@@ -67,18 +78,8 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
         </div>
         <p class="admin-empty">Nenhum presente cadastrado. Clique em “Novo presente”.</p>
     <?php else: ?>
-        <!-- Resumo do catálogo (mesmo padrão de cards do painel de Confirmações) -->
-        <div class="stat-grid">
-            <div class="stat"><span class="stat__value"><?= (int) $countTotal ?></span><span class="stat__label">Presentes</span></div>
-            <div class="stat"><span class="stat__value"><?= (int) $countAvail ?></span><span class="stat__label">Disponíveis</span></div>
-            <div class="stat"><span class="stat__value"><?= (int) $countReserv ?></span><span class="stat__label">Reservados</span></div>
-            <div class="stat"><span class="stat__value"><?= (int) $countBought ?></span><span class="stat__label">Presenteados</span></div>
-            <div class="stat"><span class="stat__value"><?= $money((int) $sumCents) ?></span><span class="stat__label">Valor da lista</span></div>
-        </div>
-
-        <!-- Ação "Novo presente" logo abaixo dos cards, à direita. -->
+        <!-- Ação "Novo presente" + feedback do salvamento da ordem (via JS). -->
         <div class="admin-toolbar">
-            <!-- Feedback discreto do salvamento da ordem (preenchido via JS). -->
             <span class="gift-reorder-status" data-reorder-status role="status" aria-live="polite"></span>
             <div class="spacer"></div>
             <a class="btn-admin" href="<?= View::e(View::url('/admin/presentes/novo', $baseUrl)) ?>">+ Novo presente</a>
