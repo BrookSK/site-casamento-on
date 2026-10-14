@@ -66,11 +66,11 @@ $filters = [
         <div class="export-actions">
             <a class="btn-admin btn-admin--ghost btn-admin--sm"
                href="<?= View::e(View::url('/admin/confirmacoes/exportar/excel' . $exportQs, $baseUrl)) ?>">
-                &#128202; Exportar Excel
+                Exportar Excel
             </a>
             <a class="btn-admin btn-admin--ghost btn-admin--sm"
                href="<?= View::e(View::url('/admin/confirmacoes/exportar/pdf' . $exportQs, $baseUrl)) ?>">
-                &#128196; Exportar PDF
+                Exportar PDF
             </a>
         </div>
     </div>

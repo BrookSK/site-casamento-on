@@ -154,9 +154,9 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
         <div class="spacer"></div>
         <div class="export-actions">
             <a class="btn-admin btn-admin--ghost btn-admin--sm"
-               href="<?= View::e(View::url('/admin/financeiro/exportar/excel' . $exportQs, $baseUrl)) ?>">&#128202; Exportar Excel</a>
+               href="<?= View::e(View::url('/admin/financeiro/exportar/excel' . $exportQs, $baseUrl)) ?>">Exportar Excel</a>
             <a class="btn-admin btn-admin--ghost btn-admin--sm"
-               href="<?= View::e(View::url('/admin/financeiro/exportar/pdf' . $exportQs, $baseUrl)) ?>">&#128196; Exportar PDF</a>
+               href="<?= View::e(View::url('/admin/financeiro/exportar/pdf' . $exportQs, $baseUrl)) ?>">Exportar PDF</a>
         </div>
     </div>
 
