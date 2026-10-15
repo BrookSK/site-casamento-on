@@ -41,6 +41,20 @@ abstract class Controller
         $wedding = $this->config['wedding'] ?? [];
         $app     = $this->config['app'] ?? [];
 
+        // Aplica os nomes do casal EDITÁVEIS (Administração > Conteúdo) sobre o
+        // $wedding, para que TODO o layout (cabeçalho, rodapé) use os mesmos
+        // nomes do hero. Sem valor editado, mantém o fallback da config.
+        try {
+            $content = new \App\Core\Content($this->config);
+            $bride   = $content->text('bride', (string) ($wedding['bride'] ?? ''));
+            $groom   = $content->text('groom', (string) ($wedding['groom'] ?? ''));
+            if ($bride !== '') { $wedding['bride'] = $bride; }
+            if ($groom !== '') { $wedding['groom'] = $groom; }
+        } catch (\Throwable $e) {
+            // Sem banco/erro: mantém os nomes da config (fallback).
+            error_log('[Controller] nomes editáveis: ' . $e->getMessage());
+        }
+
         // Extrai os dados específicos da página como variáveis.
         extract($data, EXTR_SKIP);
 
