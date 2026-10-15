@@ -1951,6 +1951,42 @@ p { margin: 0 0 1rem; }
     text-transform: uppercase;
     color: var(--c-muted);
 }
+/* Lista de presentes/pagamentos do convidado (Minha conta). */
+.account__gifts { margin-bottom: 1.75rem; }
+.account__section-title {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    margin: 0 0 0.85rem;
+    color: var(--c-ink);
+}
+.account-gift-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.account-gift {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    background: var(--c-white);
+    border: 1px solid var(--c-line);
+    border-radius: 14px;
+}
+.account-gift__main { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.account-gift__name { color: var(--c-ink); word-break: break-word; }
+.account-gift__meta { font-size: 0.78rem; color: var(--c-muted); }
+.account-gift__side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; flex: none; }
+.account-gift__value { font-weight: 500; color: var(--c-ink); white-space: nowrap; }
+.account-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+.account-badge--ok    { background: #e3ead3; color: #4a5a28; }
+.account-badge--pay   { background: #efe7d5; color: #8a6d2f; }
+.account-badge--muted { background: #e5ddd3; color: #6f6a60; }
+
 .account__note {
     background: var(--c-cream);
     border-left: 3px solid var(--c-sage);

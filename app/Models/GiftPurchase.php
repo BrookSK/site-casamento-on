@@ -193,6 +193,28 @@ final class GiftPurchase extends Model
     }
 
     /**
+     * Lista as compras de um convidado (área "Minha conta"). Mostra apenas as
+     * transações que fazem sentido para quem presenteou — oculta tentativas
+     * falhas/canceladas — com o nome do presente, mais recentes primeiro.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listForGuest(int $guestId): array
+    {
+        if ($guestId <= 0) {
+            return [];
+        }
+        return $this->select(
+            'SELECT p.*, g.name AS gift_name '
+            . 'FROM ' . $this->table . ' p '
+            . 'LEFT JOIN gifts g ON g.id = p.gift_id '
+            . "WHERE p.guest_id = :gid AND p.payment_status <> 'failed' "
+            . 'ORDER BY p.created_at DESC, p.id DESC',
+            ['gid' => $guestId]
+        );
+    }
+
+    /**
      * Conta as compras de um presente que precisam ser preservadas
      * (qualquer uma que não seja uma tentativa falha). Usado para impedir a
      * exclusão de um presente com histórico financeiro relevante.
