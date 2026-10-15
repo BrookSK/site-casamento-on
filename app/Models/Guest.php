@@ -255,4 +255,121 @@ final class Guest extends Model
             ['id' => $id]
         );
     }
+
+    /**
+     * Localiza OU cria automaticamente a conta de quem está presenteando,
+     * reaproveitando a MESMA lógica da confirmação de presença (ponto 6):
+     *
+     *   - Convidado novo: cria em `guests` já com um `invite_token` (7 dias),
+     *     base do link seguro de 1ª definição de senha, e `account_created_at`.
+     *   - Convidado existente SEM senha: completa dados que faltam e garante um
+     *     `invite_token` novo (link válido agora).
+     *   - Convidado existente COM senha (conta ativa): preserva a conta; apenas
+     *     completa contatos faltantes. Não gera token (não reenvia link).
+     *
+     * O retorno usa o mesmo formato do RSVP, para reaproveitar o envio de
+     * boas-vindas/definição de senha (Notifier::sendWelcome).
+     *
+     * @param array{name:string, email:?string, phone:?string} $data
+     *
+     * @return array{
+     *   guest:array{id:int,name:string,email:string},
+     *   invite_token:?string,
+     *   has_password:bool
+     * }
+     * @throws \RuntimeException 'conflict' quando e-mail e telefone apontam
+     *                           para convidados DIFERENTES (identidade ambígua).
+     */
+    public function findOrCreateForPurchase(array $data): array
+    {
+        $name         = mb_substr(trim((string) $data['name']), 0, 150);
+        $email        = trim((string) ($data['email'] ?? ''));
+        $email        = $email !== '' ? $email : null;
+        $phoneDisplay = trim((string) ($data['phone'] ?? ''));
+        $phoneDisplay = $phoneDisplay !== '' ? $phoneDisplay : null;
+        $phoneNorm    = $phoneDisplay !== null ? self::normalizePhone($phoneDisplay) : '';
+        $phoneNorm    = $phoneNorm !== '' ? $phoneNorm : null;
+
+        $byEmail = $email !== null ? $this->findByEmail($email) : null;
+        $byPhone = $phoneNorm !== null ? $this->findByPhone($phoneNorm) : null;
+
+        // E-mail e telefone apontando para registros diferentes: ambíguo.
+        if ($byEmail !== null && $byPhone !== null && (int) $byEmail['id'] !== (int) $byPhone['id']) {
+            throw new \RuntimeException('conflict');
+        }
+
+        $existing    = $byEmail ?? $byPhone;
+        $inviteToken = null;
+        $hasPassword = false;
+
+        if ($existing === null) {
+            // Convidado novo: cria já com token de convite (7 dias).
+            $inviteToken = self::generateToken();
+            $this->execute(
+                'INSERT INTO ' . $this->table
+                . ' (name, email, phone, phone_normalized, invite_token, '
+                . 'invite_token_expires_at, account_created_at) '
+                . 'VALUES (:name, :email, :phone, :pnorm, :token, '
+                . 'DATE_ADD(NOW(), INTERVAL 7 DAY), NOW())',
+                [
+                    'name'  => $name,
+                    'email' => $email,
+                    'phone' => $phoneDisplay,
+                    'pnorm' => $phoneNorm,
+                    'token' => $inviteToken,
+                ]
+            );
+            $id         = (int) $this->lastInsertId();
+            $finalEmail = (string) ($email ?? '');
+        } else {
+            $id          = (int) $existing['id'];
+            $hasPassword = !empty($existing['password_hash']);
+
+            // Completa dados que faltam, sem sobrescrever o que já existe.
+            $newEmail = ($existing['email'] ?? null) ?: $email;
+            $newPhone = ($existing['phone'] ?? null) ?: $phoneDisplay;
+            $newPnorm = ($existing['phone_normalized'] ?? null) ?: $phoneNorm;
+
+            if ($hasPassword) {
+                // Conta ativa: não gera token; só atualiza nome/contatos.
+                $this->execute(
+                    'UPDATE ' . $this->table . ' SET name = :name, email = :email, '
+                    . 'phone = :phone, phone_normalized = :pnorm WHERE id = :id',
+                    [
+                        'id'    => $id,
+                        'name'  => $name,
+                        'email' => $newEmail,
+                        'phone' => $newPhone,
+                        'pnorm' => $newPnorm,
+                    ]
+                );
+            } else {
+                // Sem senha: gera um token novo (7 dias), garantindo link válido.
+                $inviteToken = self::generateToken();
+                $this->execute(
+                    'UPDATE ' . $this->table . ' SET name = :name, email = :email, '
+                    . 'phone = :phone, phone_normalized = :pnorm, '
+                    . 'invite_token = :token, '
+                    . 'invite_token_expires_at = DATE_ADD(NOW(), INTERVAL 7 DAY), '
+                    . 'account_created_at = COALESCE(account_created_at, NOW()) '
+                    . 'WHERE id = :id',
+                    [
+                        'id'    => $id,
+                        'name'  => $name,
+                        'email' => $newEmail,
+                        'phone' => $newPhone,
+                        'pnorm' => $newPnorm,
+                        'token' => $inviteToken,
+                    ]
+                );
+            }
+            $finalEmail = (string) ($newEmail ?? '');
+        }
+
+        return [
+            'guest'        => ['id' => $id, 'name' => $name, 'email' => $finalEmail],
+            'invite_token' => $inviteToken,
+            'has_password' => $hasPassword,
+        ];
+    }
 }

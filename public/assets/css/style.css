@@ -1434,7 +1434,19 @@ p { margin: 0 0 1rem; }
 .gift-modal__form .field { display: flex; flex-direction: column; gap: 0.35rem; }
 /* Campos que ocupam a linha inteira do formulário. */
 .gift-modal__form .field--full,
+.gift-modal__form .gift-modal__extra,
 .gift-modal__form .gift-modal__submit { grid-column: 1 / -1; }
+
+/* Bloco de criação de conta (e-mail/telefone) exibido para visitante sem
+   login. Agrupa os campos empilhados, ocupando a linha inteira. */
+.gift-modal__extra { display: flex; flex-direction: column; gap: 0.9rem; }
+.gift-modal__extra[hidden] { display: none; }
+.gift-modal__hint {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--c-muted);
+}
 .gift-modal__form label {
     font-size: 0.74rem;
     letter-spacing: 0.1em;
@@ -1958,6 +1970,9 @@ p { margin: 0 0 1rem; }
    ============================================================= */
 .container--narrow { max-width: 620px; }
 
+/* Fluxo de pagamento: além do header sólido (page-light), garante um respiro
+   de topo para o conteúdo não encostar no header fixo. */
+.section--pay { padding-top: clamp(1.5rem, 4vw, 2.75rem); }
 .section--pay .section__head { margin-bottom: clamp(1.75rem, 4vw, 2.5rem); }
 
 .pay-card {

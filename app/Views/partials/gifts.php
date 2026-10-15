@@ -41,7 +41,11 @@ $giftMessages = [
     'erro'            => 'Não foi possível iniciar o pagamento. Tente novamente.',
     'erro-sessao'     => 'Sua sessão expirou. Recarregue a página e tente novamente.',
     'erro-nome'       => 'Informe o seu nome para presentear.',
-    'erro-cpf'        => 'Para boleto, informe um CPF/CNPJ válido.',
+    'erro-email'      => 'Informe um e-mail válido para criarmos a sua conta.',
+    'erro-telefone'   => 'Informe o seu telefone para criarmos a sua conta.',
+    'erro-cpf'        => 'Informe um CPF/CNPJ válido para concluir o pagamento.',
+    'erro-conflito'   => 'O e-mail e o telefone informados pertencem a cadastros '
+                       . 'diferentes. Verifique os dados ou faça login.',
     'erro-indisponivel' => 'Este presente não está mais disponível.',
     'erro-valor'      => 'Este presente ainda não tem um valor definido.',
     'login'           => 'Você ainda não possui uma conta ou não está conectado. '
@@ -247,10 +251,31 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                        value="<?= View::e((string) ($currentGuest['name'] ?? '')) ?>" required>
             </div>
 
-            <div class="field field--full">
-                <label for="gm_email">E-mail</label>
-                <input type="email" id="gm_email" name="buyer_email"
-                       value="<?= View::e((string) ($currentGuest['email'] ?? '')) ?>">
+            <?php /* Visitante sem conta: cria automaticamente a conta com estes
+                     dados (mesmo fluxo da confirmação de presença). Convidado
+                     logado já tem conta — estes campos ficam ocultos. */ ?>
+            <div class="gift-modal__extra" data-gift-modal-extra <?= $guestLogged ? 'hidden' : '' ?>>
+                <?php if (!$guestLogged): ?>
+                    <p class="gift-modal__hint">
+                        Você ainda não tem conta. Informe os dados abaixo e nós a
+                        criaremos automaticamente — depois você define a sua senha
+                        pelo link que enviaremos.
+                    </p>
+                <?php endif; ?>
+
+                <div class="field field--full">
+                    <label for="gm_email">E-mail</label>
+                    <input type="email" id="gm_email" name="buyer_email"
+                           value="<?= View::e((string) ($currentGuest['email'] ?? '')) ?>"
+                           <?= $guestLogged ? '' : 'required' ?>>
+                </div>
+
+                <div class="field field--full">
+                    <label for="gm_phone">Telefone/WhatsApp</label>
+                    <input type="tel" id="gm_phone" name="buyer_phone" inputmode="numeric"
+                           placeholder="(DDD) número"
+                           <?= $guestLogged ? '' : 'required' ?>>
+                </div>
             </div>
 
             <div class="field field--full">
@@ -293,6 +318,7 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
     var idEl    = modal.querySelector('[data-gift-modal-id]');
     var billing = modal.querySelector('[data-gift-modal-billing]');
     var cpf     = modal.querySelector('[data-gift-modal-cpf]');
+    var extraFields = modal.querySelector('[data-gift-modal-extra]');
 
     // ---- Elementos do popup de detalhes (popup 1) ----
     var dName   = detail.querySelector('[data-gift-detail-name]');
@@ -365,18 +391,20 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
     var openPayment = function () {
         if (!current || !current.canBuy) { return; }
 
-        // Ponto 6.5: exige login/cadastro antes de prosseguir ao pagamento.
-        // Em vez de abrir o pagamento, mostra o aviso com as opções.
-        if (!isLogged) {
-            if (dBuy) { dBuy.hidden = true; }
-            if (dAuth) { dAuth.hidden = false; }
-            return;
-        }
+        // Visitante sem conta pode prosseguir: o formulário de pagamento pede
+        // CPF, e-mail e telefone e cria a conta automaticamente (mesmo fluxo da
+        // confirmação de presença). Quando NÃO está logado, os campos de
+        // contato ficam visíveis e obrigatórios.
+        if (extraFields) { extraFields.hidden = isLogged; }
 
         idEl.value = current.id;
         nameEl.textContent = current.name;
         priceEl.textContent = current.price;
-        if (cpf && billing) { cpf.hidden = billing.value !== 'BOLETO'; }
+        // CPF/CNPJ: sempre exigido quando a conta será criada agora (visitante
+        // sem login); para convidado logado, só é necessário no boleto.
+        if (cpf && billing) {
+            cpf.hidden = isLogged ? (billing.value !== 'BOLETO') : false;
+        }
         detail.hidden = true;   // fecha o de detalhes
         modal.hidden = false;   // abre o de pagamento
         lockScroll();
@@ -413,10 +441,12 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
         else if (!detail.hidden) { closeDetail(); }
     });
 
-    // Mostra/oculta o campo de CPF conforme a forma de pagamento.
+    // Mostra/oculta o campo de CPF conforme a forma de pagamento. Para visitante
+    // sem conta, o CPF é sempre exigido (criação de conta + ASAAS); para
+    // convidado logado, só aparece no boleto.
     if (billing && cpf) {
         billing.addEventListener('change', function () {
-            cpf.hidden = billing.value !== 'BOLETO';
+            cpf.hidden = isLogged ? (billing.value !== 'BOLETO') : false;
         });
     }
 

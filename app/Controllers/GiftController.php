@@ -8,8 +8,10 @@ use App\Core\Asaas;
 use App\Core\Controller;
 use App\Core\Csrf;
 use App\Core\GuestAuth;
+use App\Core\Notifier;
 use App\Models\Gift;
 use App\Models\GiftPurchase;
+use App\Models\Guest;
 use Throwable;
 
 /**
@@ -35,34 +37,72 @@ final class GiftController extends Controller
             $this->redirectHome('presentes', 'erro-sessao');
         }
 
-        // Ponto 6.5: exige autenticação para prosseguir ao pagamento. Barreira
-        // no servidor (o aviso no front é apenas UX; aqui garante a regra mesmo
-        // num POST direto). Visitante não logado volta com a mensagem de login.
-        if (!GuestAuth::check()) {
-            $this->redirectHome('presentes', 'login');
-        }
-
         $giftId      = (int) ($_POST['gift_id'] ?? 0);
         $billingType = strtoupper(trim((string) ($_POST['billing_type'] ?? 'PIX')));
         if (!in_array($billingType, self::BILLING_TYPES, true)) {
             $billingType = 'PIX';
         }
 
-        // Dados de quem está presenteando. Se houver convidado logado, usa-o.
-        $guest     = GuestAuth::user();
-        $guestId   = $guest['id'] ?? null;
-        $buyerName = trim((string) ($_POST['buyer_name'] ?? ($guest['name'] ?? '')));
-        $buyerMail = trim((string) ($_POST['buyer_email'] ?? ($guest['email'] ?? '')));
-        $buyerCpf  = trim((string) ($_POST['buyer_cpf'] ?? ''));
-        $buyerPhone= trim((string) ($_POST['buyer_phone'] ?? ''));
-        $message   = trim((string) ($_POST['message'] ?? '')) ?: null;
+        // Dados de quem está presenteando. Se houver convidado logado, usa-o
+        // como base; os campos do formulário têm prioridade quando preenchidos.
+        $loggedGuest = GuestAuth::user();
+        $buyerName   = trim((string) ($_POST['buyer_name'] ?? ($loggedGuest['name'] ?? '')));
+        $buyerMail   = trim((string) ($_POST['buyer_email'] ?? ($loggedGuest['email'] ?? '')));
+        $buyerCpf    = trim((string) ($_POST['buyer_cpf'] ?? ''));
+        $buyerPhone  = trim((string) ($_POST['buyer_phone'] ?? ''));
+        $message     = trim((string) ($_POST['message'] ?? '')) ?: null;
 
         if ($buyerName === '') {
             $this->redirectHome('presentes', 'erro-nome');
         }
-        // Boleto exige CPF/CNPJ do pagador no ASAAS.
-        if ($billingType === 'BOLETO' && preg_replace('/\D+/', '', $buyerCpf) === '') {
-            $this->redirectHome('presentes', 'erro-cpf');
+
+        // Fluxo reaproveitado da confirmação de presença (ponto 6): quando o
+        // visitante NÃO está logado, exigimos CPF, e-mail e telefone para criar
+        // automaticamente a conta e vincular a compra. Convidado já autenticado
+        // segue direto com a conta atual.
+        $isLogged  = GuestAuth::check();
+        $welcome   = null; // dados para enviar o link de 1ª senha (conta nova)
+        $guestId   = $isLogged ? ($loggedGuest['id'] ?? null) : null;
+
+        if (!$isLogged) {
+            if ($buyerMail === '' || !filter_var($buyerMail, FILTER_VALIDATE_EMAIL)) {
+                $this->redirectHome('presentes', 'erro-email');
+            }
+            if (preg_replace('/\D+/', '', $buyerPhone) === '') {
+                $this->redirectHome('presentes', 'erro-telefone');
+            }
+            if (preg_replace('/\D+/', '', $buyerCpf) === '') {
+                $this->redirectHome('presentes', 'erro-cpf');
+            }
+
+            try {
+                // Cria/assume a conta (mesma lógica do RSVP: invite_token para
+                // definição de senha quando a conta é nova / sem senha).
+                $welcome = (new Guest($this->config))->findOrCreateForPurchase([
+                    'name'  => $buyerName,
+                    'email' => $buyerMail,
+                    'phone' => $buyerPhone,
+                ]);
+                $guestId = (int) $welcome['guest']['id'];
+
+                // Login automático: mantém a pessoa autenticada no fluxo.
+                GuestAuth::login($welcome['guest']);
+            } catch (\RuntimeException $e) {
+                // E-mail e telefone pertencem a convidados diferentes.
+                if ($e->getMessage() === 'conflict') {
+                    $this->redirectHome('presentes', 'erro-conflito');
+                }
+                error_log('[Gift] findOrCreateForPurchase: ' . $e->getMessage());
+                $this->redirectHome('presentes', 'erro');
+            } catch (Throwable $e) {
+                error_log('[Gift] findOrCreateForPurchase: ' . $e->getMessage());
+                $this->redirectHome('presentes', 'erro');
+            }
+        } else {
+            // Convidado logado: o boleto ainda exige CPF/CNPJ no ASAAS.
+            if ($billingType === 'BOLETO' && preg_replace('/\D+/', '', $buyerCpf) === '') {
+                $this->redirectHome('presentes', 'erro-cpf');
+            }
         }
 
         $giftModel = new Gift($this->config);
@@ -152,9 +192,19 @@ final class GiftController extends Controller
                 'message'           => $message,
             ]);
 
-            // 5) Mostra a tela de pagamento.
+            // 4.1) Conta recém-criada/assumida sem senha: envia as boas-vindas
+            // com o link seguro de definição de senha (e-mail e, se configurado,
+            // WhatsApp). Tolerante a falhas — não interrompe o pagamento.
+            if ($welcome !== null) {
+                $this->sendWelcome($welcome);
+            }
+
+            // 5) Mostra a tela de pagamento. O bodyClass "page-light" deixa o
+            // navbar SÓLIDO (legível) durante todo o fluxo de pagamento e aplica
+            // o respiro de topo para o conteúdo não ficar sob o header fixo.
             $this->view('gift/pay', [
                 'pageTitle'    => 'Pagamento do presente',
+                'bodyClass'    => 'page-light',
                 'gift'         => $gift,
                 'billingType'  => $billingType,
                 'value'        => $value,
@@ -177,6 +227,62 @@ final class GiftController extends Controller
             }
             $this->redirectHome('presentes', 'erro');
         }
+    }
+
+    /**
+     * Dispara as boas-vindas quando a conta foi criada/assumida sem senha
+     * durante a compra — mesmo comportamento do RSVP (ponto 7): há um
+     * invite_token e montamos o link seguro de 1ª definição de senha. Para
+     * contas já ativas (com senha) não há token, então nada é reenviado.
+     *
+     * @param array{
+     *   guest:array{id:int,name:string,email:string},
+     *   invite_token:?string,
+     *   has_password:bool
+     * } $welcome
+     */
+    private function sendWelcome(array $welcome): void
+    {
+        try {
+            $guest = $welcome['guest'];
+            $token = $welcome['invite_token'] ?? null;
+
+            // Só há boas-vindas com link quando a conta ainda não tem senha.
+            if (!empty($welcome['has_password']) || $token === null || $token === '') {
+                return;
+            }
+
+            // Recupera o telefone (para o canal WhatsApp). Falha de leitura não
+            // impede o e-mail.
+            $phone = null;
+            try {
+                $full  = (new Guest($this->config))->find((int) $guest['id']);
+                $phone = $full['phone'] ?? null;
+            } catch (Throwable $e) {
+                error_log('[Gift] sendWelcome phone: ' . $e->getMessage());
+            }
+
+            (new Notifier($this->config))->sendWelcome([
+                'id'    => (int) $guest['id'],
+                'name'  => (string) $guest['name'],
+                'email' => $guest['email'] ?? null,
+                'phone' => $phone,
+            ], $this->passwordLink((string) $token));
+        } catch (Throwable $e) {
+            error_log('[Gift] sendWelcome: ' . $e->getMessage());
+        }
+    }
+
+    /** Monta a URL absoluta do link seguro de definição de senha. */
+    private function passwordLink(string $token): string
+    {
+        $baseUrl = rtrim((string) ($this->config['app']['base_url'] ?? ''), '/');
+        if ($baseUrl === '') {
+            $scheme  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host    = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $baseUrl = $scheme . '://' . $host;
+        }
+        return $baseUrl . '/definir-senha?token=' . urlencode($token);
     }
 
     /**
