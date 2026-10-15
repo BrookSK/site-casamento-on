@@ -10,29 +10,29 @@ use Throwable;
 /**
  * Envio de mensagens automáticas pelo WhatsApp (ponto 7).
  *
- * Como o projeto não embute credenciais de nenhum provedor específico, o envio
- * é feito de forma GENÉRICA: o administrador cadastra, em Configurações, a URL
- * de uma API de WhatsApp (ex.: um gateway próprio, Z-API, Evolution API,
- * Twilio-like) e, opcionalmente, um token. O site faz um POST JSON para essa
- * URL com { phone, message } — no mesmo estilo "sem bibliotecas de terceiros"
- * do Core/Webhook.
+ * O envio é delegado a um WEBHOOK interno já existente (a instalação da
+ * Evolution API da ON Solutions). O site NÃO fala com a Evolution diretamente:
+ * ele apenas faz um POST JSON { phone, message } para a URL do webhook, que se
+ * encarrega de disparar a mensagem. A autenticação é o token embutido na
+ * própria URL (não há header). O endpoint responde HTTP 2xx em caso de sucesso.
  *
- * Quando a API não está configurada, ainda é possível gerar um link wa.me para
- * disparo manual/assistido. O envio é tolerante a falhas (nunca interrompe o
- * fluxo do convidado): registra no log e devolve o resultado.
+ * A URL usada é a MESMA do webhook de confirmações (chave webhook_rsvp_url),
+ * por decisão de arquitetura — um único ponto de integração com a ON. Mantém
+ * compatibilidade com a chave antiga (whatsapp_api_url) como fallback.
+ *
+ * O envio é tolerante a falhas (nunca interrompe o fluxo do convidado):
+ * registra no log e devolve o resultado.
  */
 final class WhatsApp
 {
     private const TIMEOUT = 6;
 
     private string $apiUrl;
-    private string $apiToken;
     private string $defaultCountry; // DDI padrão (ex.: 55 para Brasil)
 
-    private function __construct(string $apiUrl, string $apiToken, string $defaultCountry)
+    private function __construct(string $apiUrl, string $defaultCountry)
     {
         $this->apiUrl         = $apiUrl;
-        $this->apiToken       = $apiToken;
         $this->defaultCountry = $defaultCountry;
     }
 
@@ -41,25 +41,22 @@ final class WhatsApp
     {
         $settings = new Setting($config);
         $values   = $settings->getMany([
-            'whatsapp_api_url', 'whatsapp_default_country',
+            'webhook_rsvp_url', 'whatsapp_api_url', 'whatsapp_default_country',
         ]);
 
-        $apiUrl  = trim((string) ($values['whatsapp_api_url'] ?? ''));
-        $country = preg_replace('/\D+/', '', (string) ($values['whatsapp_default_country'] ?? '55')) ?: '55';
-
-        $token = '';
-        $enc = $settings->get('whatsapp_api_token');
-        if ($enc !== null && $enc !== '') {
-            $plain = Crypto::decrypt($enc);
-            if ($plain !== null) {
-                $token = $plain;
-            }
+        // Fonte única da URL: o webhook da ON (webhook_rsvp_url). Mantém o
+        // fallback para a chave antiga, para não quebrar instalações legadas.
+        $apiUrl = trim((string) ($values['webhook_rsvp_url'] ?? ''));
+        if ($apiUrl === '') {
+            $apiUrl = trim((string) ($values['whatsapp_api_url'] ?? ''));
         }
 
-        return new self($apiUrl, $token, $country);
+        $country = preg_replace('/\D+/', '', (string) ($values['whatsapp_default_country'] ?? '55')) ?: '55';
+
+        return new self($apiUrl, $country);
     }
 
-    /** Indica se há uma API de WhatsApp configurada para envio automático. */
+    /** Indica se há um webhook de WhatsApp configurado para envio automático. */
     public function isConfigured(): bool
     {
         return $this->apiUrl !== '' && filter_var($this->apiUrl, FILTER_VALIDATE_URL) !== false;
@@ -79,16 +76,16 @@ final class WhatsApp
             return ['ok' => false, 'message' => 'Telefone inválido para envio no WhatsApp.'];
         }
         if (!$this->isConfigured()) {
-            return ['ok' => false, 'message' => 'API de WhatsApp não configurada.'];
+            return ['ok' => false, 'message' => 'Webhook de WhatsApp não configurado.'];
         }
 
         $payload = ['phone' => $to, 'message' => $message];
 
         try {
-            $ok = $this->post($this->apiUrl, $payload, $this->apiToken);
+            $ok = $this->post($this->apiUrl, $payload);
             return $ok
                 ? ['ok' => true, 'message' => 'Mensagem enviada ao WhatsApp.']
-                : ['ok' => false, 'message' => 'A API de WhatsApp respondeu com erro.'];
+                : ['ok' => false, 'message' => 'O webhook de WhatsApp respondeu com erro.'];
         } catch (Throwable $e) {
             error_log('[WhatsApp] send: ' . $e->getMessage());
             return ['ok' => false, 'message' => $e->getMessage()];
@@ -130,25 +127,19 @@ final class WhatsApp
     }
 
     /**
-     * POST JSON genérico (cURL com fallback para stream). Envia o token, se
-     * houver, como Bearer e também no corpo (compatível com vários provedores).
+     * POST JSON (cURL com fallback para stream) para o webhook de WhatsApp.
+     * A autenticação é o token embutido na própria URL; não há header de auth.
      *
      * @param array<string,mixed> $payload
      */
-    private function post(string $url, array $payload, string $token): bool
+    private function post(string $url, array $payload): bool
     {
-        if ($token !== '') {
-            $payload['token'] = $token;
-        }
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($json === false) {
             return false;
         }
 
         $headers = ['Content-Type: application/json; charset=utf-8', 'Accept: application/json'];
-        if ($token !== '') {
-            $headers[] = 'Authorization: Bearer ' . $token;
-        }
 
         if (function_exists('curl_init')) {
             $ch = curl_init($url);

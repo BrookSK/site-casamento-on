@@ -227,30 +227,25 @@ $webhookEnabled = (string) ($values['webhook_rsvp_enabled'] ?? '') !== '';
     <strong>link seguro</strong> para definir a senha. O histórico de envios
     fica em <a href="<?= View::e(View::url('/admin/comunicacoes', $baseUrl)) ?>">Comunicações</a>.</p>
 
-    <p><strong>WhatsApp (opcional):</strong> informe a URL de uma API de envio
-    (gateway próprio ou provedor como Z-API, Evolution API etc.). O site envia um
-    <code>POST</code> JSON <code>{ phone, message }</code>, com o token como
-    <code>Bearer</code>. Em branco desativa o canal de WhatsApp (os e-mails
-    continuam).</p>
+    <?php $whatsappReady = trim((string) ($values['webhook_rsvp_url'] ?? '')) !== ''; ?>
+    <p><strong>WhatsApp:</strong> o envio é feito pelo <strong>mesmo webhook</strong>
+    configurado no bloco <em>Webhook (confirmações)</em> acima (a integração da
+    ON Solutions). O site faz um <code>POST</code> JSON <code>{ phone, message }</code>
+    para aquela URL. Não é preciso configurar nada aqui além do DDI.
+    <?php if ($whatsappReady): ?>
+        <span style="color:var(--c-sage-dark)">O webhook está configurado — o canal
+        de WhatsApp está <strong>ativo</strong>.</span>
+    <?php else: ?>
+        <span style="color:#b06a4f">Nenhum webhook configurado ainda — o WhatsApp
+        fica <strong>desativado</strong> (os e-mails continuam). Preencha a URL no
+        bloco <em>Webhook (confirmações)</em>.</span>
+    <?php endif; ?>
+    </p>
 
     <form class="form-grid" method="post" action="<?= View::e(View::url('/admin/configuracoes/comunicacao', $baseUrl)) ?>">
         <?= $csrfField ?>
 
-        <div class="field">
-            <label for="whatsapp_api_url">URL da API de WhatsApp</label>
-            <input type="url" id="whatsapp_api_url" name="whatsapp_api_url" value="<?= $v('whatsapp_api_url') ?>" placeholder="https://api.exemplo.com/send-message" autocomplete="off">
-        </div>
-
-        <?php $waTokenSet = (string) ($values['whatsapp_api_token_set'] ?? '') !== ''; ?>
         <div class="form-row">
-            <div class="field">
-                <label for="whatsapp_api_token">Token da API (opcional)</label>
-                <input type="password" id="whatsapp_api_token" name="whatsapp_api_token" autocomplete="off"
-                       placeholder="<?= $waTokenSet ? '••••••••••••••••' : 'token do provedor' ?>">
-                <?php if ($waTokenSet): ?>
-                    <small>Já existe um token salvo (ocultado). Deixe em branco para manter.</small>
-                <?php endif; ?>
-            </div>
             <div class="field">
                 <label for="whatsapp_default_country">DDI padrão</label>
                 <input type="text" id="whatsapp_default_country" name="whatsapp_default_country"

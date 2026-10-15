@@ -233,6 +233,15 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                 <h3 class="gift-modal__title" id="gift-modal-title" data-gift-modal-name>Presente</h3>
                 <p class="gift-modal__price" data-gift-modal-price>R$ ---</p>
             </div>
+
+            <!-- Imagem e descrição do presente selecionado (mesmos dados da
+                 1ª aba). Carregados dinamicamente conforme o presente. -->
+            <div class="gift-modal__media">
+                <img class="gift-modal__img" src="" alt="" data-gift-modal-image hidden>
+                <div class="gift-modal__icon" aria-hidden="true" data-gift-modal-icon>&#127873;</div>
+            </div>
+            <p class="gift-modal__desc" data-gift-modal-desc hidden></p>
+
             <p class="gift-modal__intro">
                 Preencha os dados ao lado para contribuir. O pagamento é
                 processado com segurança &mdash; você escolhe entre PIX, cartão
@@ -319,6 +328,9 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
     var billing = modal.querySelector('[data-gift-modal-billing]');
     var cpf     = modal.querySelector('[data-gift-modal-cpf]');
     var extraFields = modal.querySelector('[data-gift-modal-extra]');
+    var payImg   = modal.querySelector('[data-gift-modal-image]');
+    var payIcon  = modal.querySelector('[data-gift-modal-icon]');
+    var payDesc  = modal.querySelector('[data-gift-modal-desc]');
 
     // ---- Elementos do popup de detalhes (popup 1) ----
     var dName   = detail.querySelector('[data-gift-detail-name]');
@@ -400,6 +412,26 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
         idEl.value = current.id;
         nameEl.textContent = current.name;
         priceEl.textContent = current.price;
+
+        // Reaproveita a imagem e a descrição do presente (mesmos dados da
+        // 1ª aba), carregadas conforme o presente selecionado.
+        if (payImg) {
+            if (current.image) {
+                payImg.src = current.image;
+                payImg.alt = current.name;
+                payImg.hidden = false;
+                if (payIcon) { payIcon.hidden = true; }
+            } else {
+                payImg.hidden = true;
+                payImg.removeAttribute('src');
+                if (payIcon) { payIcon.hidden = false; }
+            }
+        }
+        if (payDesc) {
+            payDesc.textContent = current.desc;
+            payDesc.hidden = current.desc === '';
+        }
+
         // CPF/CNPJ: sempre exigido quando a conta será criada agora (visitante
         // sem login); para convidado logado, só é necessário no boleto.
         if (cpf && billing) {

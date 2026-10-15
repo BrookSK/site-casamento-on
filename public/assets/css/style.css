@@ -1425,6 +1425,40 @@ p { margin: 0 0 1rem; }
     margin: 1rem 0 0;
 }
 
+/* Imagem do presente na tela de pagamento (mesma proporção/estilo da 1ª aba). */
+.gift-modal__media {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--c-cream);
+    display: grid;
+    place-items: center;
+    box-shadow: var(--shadow-soft);
+    margin-top: 1rem;
+}
+.gift-modal__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.gift-modal__icon { font-size: 3rem; opacity: 0.85; }
+
+/* Descrição do presente: leve destaque de cor para se diferenciar do texto
+   explicativo de pagamento abaixo. Mantém a fonte do corpo; usa a cor de
+   maior contraste (ink) para ter MAIS destaque visual que o .gift-modal__intro
+   (que permanece em --c-muted, sem qualquer alteração). */
+.gift-modal__desc {
+    font-family: var(--font-sans);
+    font-weight: 300;
+    font-size: 0.98rem;
+    line-height: 1.6;
+    color: var(--c-ink);
+    text-align: left;
+    margin: 0.9rem 0 0;
+}
+
 /* Coluna da direita: formulário em grade de 2 colunas. */
 .gift-modal__form {
     display: grid;

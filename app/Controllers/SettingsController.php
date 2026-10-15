@@ -25,7 +25,7 @@ final class SettingsController extends Controller
     private const SMTP_PLAIN     = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_security', 'smtp_from_email', 'smtp_from_name'];
     private const ASAAS_PLAIN    = ['asaas_environment', 'asaas_webhook_token'];
     private const WEBHOOK_PLAIN  = ['webhook_rsvp_url', 'webhook_rsvp_enabled'];
-    private const COMM_PLAIN     = ['whatsapp_api_url', 'whatsapp_default_country', 'comm_signature'];
+    private const COMM_PLAIN     = ['whatsapp_default_country', 'comm_signature'];
 
     private function guard(): void
     {
@@ -50,7 +50,6 @@ final class SettingsController extends Controller
             // Para os segredos, não devolvemos o valor; só indicamos se já existe.
             $values['smtp_password_set']        = $model->get('smtp_password') !== null ? '1' : '';
             $values['asaas_api_key_set']        = $model->get('asaas_api_key') !== null ? '1' : '';
-            $values['whatsapp_api_token_set']   = $model->get('whatsapp_api_token') !== null ? '1' : '';
         } catch (Throwable $e) {
             error_log('[Settings] ' . $e->getMessage());
             $error = 'Não foi possível carregar as configurações.';
@@ -274,25 +273,15 @@ final class SettingsController extends Controller
         try {
             $model = new Setting($this->config);
 
-            $apiUrl = trim((string) ($_POST['whatsapp_api_url'] ?? ''));
-            if ($apiUrl !== '' && filter_var($apiUrl, FILTER_VALIDATE_URL) === false) {
-                $this->setFlash('error', 'Informe uma URL de API de WhatsApp válida (http/https).');
-                $this->redirect('/admin/configuracoes');
-            }
-
+            // O canal WhatsApp usa o mesmo webhook das confirmações
+            // (webhook_rsvp_url), salvo no bloco "Webhook". Aqui só tratamos o
+            // DDI padrão (normalização do telefone) e a assinatura dos e-mails.
             $country = preg_replace('/\D+/', '', (string) ($_POST['whatsapp_default_country'] ?? '55')) ?: '55';
 
             $model->setMany([
-                'whatsapp_api_url'         => $apiUrl,
                 'whatsapp_default_country' => $country,
                 'comm_signature'           => trim((string) ($_POST['comm_signature'] ?? '')),
             ]);
-
-            // Token da API (cifrado): só atualiza se enviado. Em branco mantém.
-            $token = (string) ($_POST['whatsapp_api_token'] ?? '');
-            if ($token !== '') {
-                $this->saveSecret($model, 'whatsapp_api_token', $token);
-            }
 
             $this->setFlash('success', 'Configurações de comunicação salvas.');
         } catch (Throwable $e) {
