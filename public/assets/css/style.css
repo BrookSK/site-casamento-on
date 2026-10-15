@@ -287,10 +287,10 @@ p { margin: 0 0 1rem; }
        e não sobre o rosto da noiva. */
     object-position: 100% 30%;
     /* Zoom maior na foto de fundo para aproximar o casal e fechar o vão entre
-       o texto central e o noivo. transform-origin à ESQUERDA faz o zoom crescer
-       a partir desse lado, direcionando o enquadramento para a esquerda. */
+       o texto central e o noivo. transform-origin à DIREITA faz o zoom crescer
+       a partir desse lado, direcionando o enquadramento para a direita. */
     transform: scale(1.3);
-    transform-origin: 0% 30%;
+    transform-origin: 100% 30%;
     /* Reduz levemente o brilho da imagem principal (ponto 1). */
     filter: brightness(0.88);
     z-index: -2;
