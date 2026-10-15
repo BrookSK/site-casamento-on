@@ -120,6 +120,7 @@
         // Encontra o container de preview associado (irmão marcado no mesmo form).
         var form = input.form || input.closest('form');
         var box = form ? form.querySelector('[data-multi-image-preview]') : null;
+        var nameEl = form ? form.querySelector('[data-multi-image-name]') : null;
         if (!box) { return; }
 
         input.addEventListener('change', function () {
@@ -128,6 +129,21 @@
             var imgs = files.filter(function (f) {
                 return /^image\/(jpeg|png|webp)$/.test(f.type);
             });
+
+            // Atualiza o rótulo ao lado do botão (quantidade / nome).
+            if (nameEl) {
+                if (imgs.length === 0) {
+                    nameEl.textContent = 'Nenhum arquivo escolhido';
+                    nameEl.classList.remove('has-file');
+                } else if (imgs.length === 1) {
+                    nameEl.textContent = imgs[0].name;
+                    nameEl.classList.add('has-file');
+                } else {
+                    nameEl.textContent = imgs.length + ' imagens selecionadas';
+                    nameEl.classList.add('has-file');
+                }
+            }
+
             if (imgs.length === 0) { box.hidden = true; return; }
 
             box.hidden = false;

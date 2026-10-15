@@ -84,8 +84,22 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
         <?= $csrfField ?>
         <input type="hidden" name="album_id" value="<?= $albumId ?>">
         <div class="form-actions" style="align-items:center;">
-            <input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp"
-                   multiple required data-multi-image-input>
+            <input type="file" id="album_photos" name="photos[]"
+                   accept="image/jpeg,image/png,image/webp" multiple required
+                   class="file-input__native" data-multi-image-input>
+            <div class="file-input">
+                <label for="album_photos" class="file-input__button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span>Escolher imagens</span>
+                </label>
+                <span class="file-input__name" data-multi-image-name>Nenhum arquivo escolhido</span>
+            </div>
             <button type="submit" class="btn-admin">Enviar fotos</button>
         </div>
         <!-- Pré-visualização das fotos escolhidas antes do envio. -->
