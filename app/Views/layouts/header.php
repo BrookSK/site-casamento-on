@@ -39,7 +39,7 @@ $title     = isset($pageTitle) ? $pageTitle . ' · ' . $siteName : $siteName;
 
     <link rel="stylesheet" href="<?= View::e(View::assetVersioned('css/style.css', $baseUrl)) ?>">
 </head>
-<body>
+<body class="<?= View::e($bodyClass ?? '') ?>">
 
 <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
 

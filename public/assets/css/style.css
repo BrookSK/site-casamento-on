@@ -185,6 +185,19 @@ p { margin: 0 0 1rem; }
     box-shadow: 0 1px 0 var(--c-line);
 }
 
+/* Páginas de fundo claro (ex.: galeria): o header já começa SÓLIDO e legível
+   desde o topo — evita o header "sumir" (branco sobre branco). */
+.page-light .site-header {
+    background: rgba(247, 243, 236, 0.95);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 1px 0 var(--c-line);
+}
+.page-light .brand__names,
+.page-light .site-nav a { color: var(--c-ink); }
+.page-light .nav-toggle__bar { background: var(--c-ink); }
+/* Dá um respiro no topo para o conteúdo não ficar sob o header fixo. */
+.page-light main { padding-top: 5rem; }
+
 .brand__names {
     font-family: var(--font-serif);
     font-size: 1.4rem;
@@ -1201,7 +1214,7 @@ p { margin: 0 0 1rem; }
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 4px;
+    height: 6px;
     border-radius: 999px;
     background: var(--c-line);
     outline: none;
@@ -1210,22 +1223,24 @@ p { margin: 0 0 1rem; }
 .gift-filterbar input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 16px;
-    height: 16px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: var(--c-sage);
-    border: 2px solid var(--c-white);
-    box-shadow: 0 1px 5px rgba(44,42,38,0.2);
+    border: 3px solid var(--c-white);
+    box-shadow: 0 2px 8px rgba(44,42,38,0.28);
+    /* Centraliza a bolinha (maior) sobre o trilho de 6px: (24-6)/2 = 9px. */
+    margin-top: -9px;
     transition: background 0.2s var(--ease), transform 0.2s var(--ease);
 }
-.gift-filterbar input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+.gift-filterbar input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.08); }
 .gift-filterbar input[type="range"]::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: var(--c-sage);
-    border: 2px solid var(--c-white);
-    box-shadow: 0 1px 5px rgba(44,42,38,0.2);
+    border: 3px solid var(--c-white);
+    box-shadow: 0 2px 8px rgba(44,42,38,0.28);
     cursor: pointer;
 }
 .gift-filterbar input[type="range"]:focus-visible::-webkit-slider-thumb {
@@ -1697,9 +1712,27 @@ p { margin: 0 0 1rem; }
     /* Hamburguer acima do painel, para o X de fechar ser sempre clicável. */
     .nav-toggle { position: relative; z-index: 130; }
 
-    .site-nav__list { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
-    .site-nav a { color: var(--c-ink); font-size: 1rem; }
-    .site-nav__cta { border-color: var(--c-sage); }
+    .site-nav__list {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;      /* itens ocupam a largura do painel */
+        gap: 0.35rem;
+    }
+    .site-nav__list li { width: 100%; }
+    .site-nav a {
+        color: var(--c-ink);
+        font-size: 1rem;
+        display: block;
+        padding: 0.9rem 0.25rem;   /* alvo de toque confortável */
+    }
+    .site-nav a::after { display: none; } /* sem o sublinhado animado no mobile */
+    /* "Confirmar presença" vai para o FINAL do menu no mobile. */
+    .site-nav__list li:has(.site-nav__cta) { order: 10; margin-top: 0.75rem; }
+    .site-nav__cta {
+        border-color: var(--c-sage);
+        text-align: center;
+        padding: 0.85rem 1.1rem !important;
+    }
 
     .nav-toggle[aria-expanded="true"] .nav-toggle__bar { background: var(--c-ink); }
     .nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(1) {
@@ -1720,7 +1753,9 @@ p { margin: 0 0 1rem; }
 
     /* Hero no mobile: ajusta enquadramento da imagem e suaviza o overlay */
     .hero__content { max-width: 560px; padding-top: 5rem; }
-    .hero__bg { object-position: center 28%; }
+    /* Mostra o casal inteiro no celular: foca o centro horizontal (onde está
+       o casal) e um pouco acima, sem zoom exagerado. */
+    .hero__bg { object-position: 58% 32%; }
     .hero__overlay {
         background: linear-gradient(180deg,
             rgba(32, 30, 26, 0.40) 0%,

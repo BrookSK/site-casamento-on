@@ -60,6 +60,8 @@ final class GalleryController extends Controller
         $this->view('gallery/index', [
             'pageTitle' => 'Galeria de Fotos',
             'albums'    => $albums,
+            // Página de fundo claro: header sólido desde o topo (legível).
+            'bodyClass' => 'page-light',
         ]);
     }
 
