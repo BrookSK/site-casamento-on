@@ -1772,7 +1772,7 @@ p { margin: 0 0 1rem; }
     .hero__content { max-width: 560px; padding-top: 5rem; }
     /* Desloca o enquadramento para a direita da foto (object-position maior),
        revelando melhor o noivo e aproveitando o espaço livre ao lado da noiva. */
-    .hero__bg { object-position: 72% 32%; }
+    .hero__bg { object-position: 65% 32%; }
     .hero__overlay {
         background: linear-gradient(180deg,
             rgba(32, 30, 26, 0.40) 0%,
