@@ -56,10 +56,18 @@ final class WhatsApp
         return new self($apiUrl, $country);
     }
 
-    /** Indica se há um webhook de WhatsApp configurado para envio automático. */
+    /**
+     * Indica se há um webhook de WhatsApp configurado para envio automático.
+     *
+     * Aceita qualquer URL http(s) não-vazia. Evitamos FILTER_VALIDATE_URL aqui
+     * porque ele é rígido demais e pode reprovar URLs de webhook perfeitamente
+     * válidas (ex.: com token, query ou caracteres que o filtro recusa),
+     * fazendo o canal parecer "não configurado" sem motivo.
+     */
     public function isConfigured(): bool
     {
-        return $this->apiUrl !== '' && filter_var($this->apiUrl, FILTER_VALIDATE_URL) !== false;
+        $url = trim($this->apiUrl);
+        return $url !== '' && preg_match('#^https?://#i', $url) === 1;
     }
 
     /**

@@ -373,9 +373,27 @@ final class GiftController extends Controller
             if ($approved && $paymentId !== '') {
                 $purchase = $purchases->findByPaymentRef($paymentId);
                 if ($purchase !== null) {
-                    $purchases->updateStatus((int) $purchase['id'], 'paid');
+                    $purchaseId = (int) $purchase['id'];
+                    $purchases->updateStatus($purchaseId, 'paid');
+                    // Trilha de auditoria + data de pagamento (coerente com o
+                    // que o webhook grava).
+                    try {
+                        $purchases->logStatus($purchaseId, 'pending', 'paid', 'card:checkout');
+                        $purchases->updateFinance($purchaseId, [
+                            'finance_status' => 'confirmed',
+                            'paid_at'        => date('Y-m-d H:i:s'),
+                        ]);
+                    } catch (Throwable $e) {
+                        error_log('[Gift] payCard finance: ' . $e->getMessage());
+                    }
                 }
                 $giftModel->markPurchased($giftId);
+
+                // Confirmação por e-mail + WhatsApp AGORA (cartão aprovado na
+                // hora). Como já marcamos "paid", quando o webhook do ASAAS
+                // chegar depois ele verá wasPaid=true e NÃO reenviará — sem
+                // duplicar a mensagem. Tolerante a falhas.
+                $this->notifyCardPaid($giftId, $guestId, $buyerName, $buyerMail, $buyerPhone, $amountCents, $paymentId);
             }
 
             $this->view('gift/pay', [
@@ -400,6 +418,58 @@ final class GiftController extends Controller
             }
             $this->renderCardForm($giftId, $buyerName, $buyerMail, $buyerPhone, $buyerCpf, $message, 'declined');
             return;
+        }
+    }
+
+    /**
+     * Dispara a confirmação de pagamento (e-mail + WhatsApp) imediatamente após
+     * um cartão aprovado no checkout transparente — reutilizando o Notifier.
+     * O telefone é buscado no cadastro do convidado quando não veio no form.
+     * Tolerante a falhas: nunca interrompe a tela de sucesso.
+     */
+    private function notifyCardPaid(
+        int $giftId,
+        ?int $guestId,
+        string $buyerName,
+        string $buyerMail,
+        string $buyerPhone,
+        int $amountCents,
+        string $paymentId
+    ): void {
+        try {
+            $giftName = '';
+            if ($giftId > 0) {
+                $g = (new Gift($this->config))->find($giftId);
+                $giftName = trim((string) ($g['name'] ?? ''));
+            }
+
+            // Telefone/e-mail do convidado logado como reserva (p/ WhatsApp).
+            $phone = $buyerPhone;
+            if ($guestId !== null) {
+                $guest = (new Guest($this->config))->find($guestId);
+                if ($guest !== null) {
+                    if (trim($phone) === '') { $phone = (string) ($guest['phone'] ?? ''); }
+                    if ($buyerMail === '')   { $buyerMail = (string) ($guest['email'] ?? ''); }
+                    if ($buyerName === '')   { $buyerName = (string) ($guest['name'] ?? ''); }
+                }
+            }
+
+            (new Notifier($this->config))->sendPaymentConfirmation(
+                [
+                    'id'    => $guestId,
+                    'name'  => $buyerName !== '' ? $buyerName : 'convidado(a)',
+                    'email' => $buyerMail ?: null,
+                    'phone' => $phone ?: null,
+                ],
+                [
+                    'giftName'      => $giftName,
+                    'amount'        => $amountCents > 0 ? ('R$ ' . number_format($amountCents / 100, 2, ',', '.')) : '',
+                    'date'          => date('d/m/Y'),
+                    'transactionId' => $paymentId,
+                ]
+            );
+        } catch (Throwable $e) {
+            error_log('[Gift] notifyCardPaid: ' . $e->getMessage());
         }
     }
 
