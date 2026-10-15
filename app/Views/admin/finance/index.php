@@ -149,34 +149,35 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
     </form>
 </div>
 
+<!-- Exportação acima do card, alinhada à direita (mesmo padrão de Confirmações). -->
+<div class="export-bar">
+    <a class="btn-admin btn-admin--ghost btn-admin--sm"
+       href="<?= View::e(View::url('/admin/financeiro/exportar/excel' . $exportQs, $baseUrl)) ?>">Exportar Excel</a>
+    <a class="btn-admin btn-admin--ghost btn-admin--sm"
+       href="<?= View::e(View::url('/admin/financeiro/exportar/pdf' . $exportQs, $baseUrl)) ?>">Exportar PDF</a>
+</div>
+
 <!-- Tabela de transações -->
 <div class="admin-card">
     <div class="admin-toolbar">
         <h3 class="finance-card-title" style="margin:0;">Transações</h3>
-        <div class="spacer"></div>
-        <div class="export-actions">
-            <a class="btn-admin btn-admin--ghost btn-admin--sm"
-               href="<?= View::e(View::url('/admin/financeiro/exportar/excel' . $exportQs, $baseUrl)) ?>">Exportar Excel</a>
-            <a class="btn-admin btn-admin--ghost btn-admin--sm"
-               href="<?= View::e(View::url('/admin/financeiro/exportar/pdf' . $exportQs, $baseUrl)) ?>">Exportar PDF</a>
-        </div>
     </div>
 
     <?php if ($rows === []): ?>
         <p class="admin-empty">Nenhuma transação encontrada com esses filtros.</p>
     <?php else: ?>
-        <div style="overflow-x:auto;">
-        <table class="admin-table admin-table--finance">
+        <div style="overflow-x:auto;" class="admin-table--cards-wrap">
+        <table class="admin-table admin-table--finance admin-table--cards">
             <thead>
                 <tr>
                     <th>Presente</th>
                     <th>Convidado/Comprador</th>
                     <th>Forma</th>
                     <th>Status</th>
-                    <th>Criada em</th>
-                    <th class="col-money">Bruto</th>
-                    <th class="col-money">Taxas</th>
-                    <th class="col-money">Líquido</th>
+                    <th class="cell-hide-mobile">Criada em</th>
+                    <th class="col-money cell-hide-mobile">Bruto</th>
+                    <th class="col-money cell-hide-mobile">Taxas</th>
+                    <th class="col-money cell-hide-mobile">Líquido</th>
                     <th></th>
                 </tr>
             </thead>
@@ -188,16 +189,18 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
                     $bt = (string) ($p['billing_type'] ?? 'UNDEFINED');
                     $buyer = (string) ($p['guest_name'] ?? ($p['buyer_name'] ?? '—'));
                     ?>
-                    <tr>
-                        <td><strong><?= View::e((string) ($p['gift_name'] ?? '—')) ?></strong></td>
-                        <td><?= View::e($buyer !== '' ? $buyer : '—') ?></td>
-                        <td><?= View::e($billingLabels[$bt] ?? $bt) ?></td>
-                        <td><span class="badge <?= $cls ?>"><?= View::e($label) ?></span></td>
-                        <td class="col-nowrap"><small><?= View::e($fmtDate($p['created_at'] ?? null)) ?></small></td>
-                        <td class="col-money"><?= $money((int) ($p['amount_cents'] ?? 0)) ?></td>
-                        <td class="col-money"><?= $money((int) ($p['fee_cents'] ?? 0)) ?></td>
-                        <td class="col-money col-money--net"><?= $money((int) ($p['net_cents'] ?? 0)) ?></td>
-                        <td class="col-nowrap">
+                    <tr data-row-open>
+                        <td data-label="Presente"><strong><?= View::e((string) ($p['gift_name'] ?? '—')) ?></strong>
+                            <span class="status-dot status-dot--<?= View::e($st) ?>" title="<?= View::e($label) ?>" aria-hidden="true"></span>
+                        </td>
+                        <td data-label="Comprador"><?= View::e($buyer !== '' ? $buyer : '—') ?></td>
+                        <td data-label="Forma"><?= View::e($billingLabels[$bt] ?? $bt) ?></td>
+                        <td data-label="Status"><span class="badge cell-badge-dot <?= $cls ?>"><?= View::e($label) ?></span></td>
+                        <td class="col-nowrap cell-hide-mobile" data-label="Criada em"><small><?= View::e($fmtDate($p['created_at'] ?? null)) ?></small></td>
+                        <td class="col-money cell-hide-mobile" data-label="Bruto"><?= $money((int) ($p['amount_cents'] ?? 0)) ?></td>
+                        <td class="col-money cell-hide-mobile" data-label="Taxas"><?= $money((int) ($p['fee_cents'] ?? 0)) ?></td>
+                        <td class="col-money col-money--net cell-hide-mobile" data-label="Líquido"><?= $money((int) ($p['net_cents'] ?? 0)) ?></td>
+                        <td class="col-nowrap cell-action-mobile-hide">
                             <?php
                             // Monta os dados da transação para o modal (sem nova
                             // navegação). O histórico vem agrupado por id.
@@ -232,7 +235,7 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
                             ];
                             ?>
                             <button type="button" class="btn-admin btn-admin--ghost btn-admin--sm"
-                                    data-fin-open
+                                    data-fin-open data-row-trigger
                                     data-fin='<?= View::e(json_encode($modalData, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
                                 Detalhes
                             </button>

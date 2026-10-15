@@ -853,3 +853,140 @@ a { color: var(--c-sage-dark); }
     .gift-reorder .gift-drag-cell,
     .gift-reorder thead th:first-child { display: none; }
 }
+
+/* =============================================================
+   Responsividade mobile das LISTAGENS do admin
+   -------------------------------------------------------------
+   Padrão: no celular, as tabelas marcadas com .admin-table--cards
+   viram cartões empilhados (sem rolagem horizontal). Cada linha é
+   clicável e abre o popup de detalhes. Colunas marcadas com
+   .cell-hide-mobile somem do cartão (ficam só no popup). Uma
+   "bolinha" de status pode ser posicionada no canto do cartão.
+   Afeta SOMENTE telas estreitas — o desktop fica intacto.
+   ============================================================= */
+@media (max-width: 640px) {
+    /* O wrapper de rolagem horizontal deixa de rolar (vira cartões). */
+    .admin-table--cards-wrap { overflow-x: visible !important; }
+
+    .admin-table--cards,
+    .admin-table--cards thead,
+    .admin-table--cards tbody,
+    .admin-table--cards tr,
+    .admin-table--cards td { display: block; width: 100%; }
+
+    /* Cabeçalho da tabela some no mobile (os rótulos vêm por linha). */
+    .admin-table--cards thead { display: none; }
+
+    .admin-table--cards tr {
+        position: relative;
+        background: var(--c-white);
+        border: 1px solid var(--c-line);
+        border-radius: var(--radius);
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 1px 0 rgba(44,42,38,0.03);
+    }
+    .admin-table--cards tr:hover td { background: transparent; }
+
+    .admin-table--cards td {
+        border: 0;
+        padding: 0.2rem 0;
+        text-align: left;
+        font-size: 0.95rem;
+    }
+    /* Rótulo da coluna, exibido antes do valor no cartão. */
+    .admin-table--cards td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--c-muted);
+        margin-bottom: 0.1rem;
+    }
+    /* Colunas que só aparecem no popup (ocultas no cartão). */
+    .admin-table--cards .cell-hide-mobile { display: none !important; }
+
+    /* Linha/cartão clicável (abre o popup). */
+    .admin-table--cards tr[data-row-open] { cursor: pointer; }
+    .admin-table--cards tr[data-row-open]:active { background: var(--c-cream); }
+
+    /* Bolinha de status no canto superior direito do cartão. */
+    .status-dot {
+        position: absolute;
+        top: 0.8rem;
+        right: 0.9rem;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--c-line);
+    }
+    /* Cores reaproveitando a paleta de status já existente. */
+    .status-dot--confirmed, .status-dot--available, .status-dot--paid, .status-dot--sent { background: #6b8e3d; }
+    .status-dot--pending,   .status-dot--reserved                                        { background: #c9a23a; }
+    .status-dot--declined,  .status-dot--failed                                          { background: #c0392b; }
+    .status-dot--purchased, .status-dot--skipped, .status-dot--refunded                  { background: #9a9a9a; }
+
+    /* Esconde o badge textual no cartão quando usamos a bolinha. */
+    .admin-table--cards .cell-badge-dot { display: none !important; }
+
+    /* Esconde a coluna de ação "Detalhes" no mobile (a linha toda abre). */
+    .admin-table--cards .cell-action-mobile-hide { display: none !important; }
+
+    /* Barra de exportação acima do card no mobile: alinhada à direita. */
+    .export-bar { justify-content: flex-end; }
+
+    /* Modal ocupa melhor a tela estreita. */
+    .modal { padding: 0.75rem; align-items: flex-end; }
+    .modal__box { max-width: 100%; max-height: 92vh; }
+    .modal__head, .modal__body, .modal__foot { padding-left: 1.1rem; padding-right: 1.1rem; }
+    .finance-detail { grid-template-columns: 1fr; gap: 0.25rem; }
+    .modal__foot { flex-wrap: wrap; }
+}
+
+/* Barra de exportação FORA do card (acima dele), à direita — vale também no
+   desktop, mantendo o visual limpo e consistente nas duas telas. */
+.export-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin: 0 0 0.75rem;
+}
+
+/* Gatilho invisível de popup (usado só pela linha clicável no mobile).
+   Fica fora do fluxo e não aparece em nenhuma tela. */
+.is-hidden-trigger {
+    display: none !important;
+}
+
+/* Foto do presente/álbum dentro do popup de detalhes. */
+.gift-detail__photo {
+    margin-bottom: 0.9rem;
+}
+.gift-detail__photo img {
+    display: block;
+    width: 100%;
+    max-height: 240px;
+    object-fit: cover;
+    border-radius: var(--radius);
+    border: 1px solid var(--c-line);
+    background: var(--c-cream);
+}
+/* Galeria de fotos (vários itens) dentro do popup de álbum. */
+.album-detail__gallery {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
+}
+.album-detail__gallery img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: var(--radius);
+    border: 1px solid var(--c-line);
+    background: var(--c-cream);
+}

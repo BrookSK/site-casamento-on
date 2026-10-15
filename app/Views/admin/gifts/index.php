@@ -85,8 +85,8 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
             <a class="btn-admin" href="<?= View::e(View::url('/admin/presentes/novo', $baseUrl)) ?>">+ Novo presente</a>
         </div>
 
-        <div style="overflow-x:auto;">
-        <table class="admin-table gift-reorder"
+        <div style="overflow-x:auto;" class="admin-table--cards-wrap">
+        <table class="admin-table gift-reorder admin-table--cards"
                data-reorder
                data-reorder-url="<?= View::e(View::url('/admin/presentes/ordenar', $baseUrl)) ?>"
                data-csrf-name="<?= View::e(\App\Core\Csrf::fieldName()) ?>"
@@ -107,15 +107,28 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
                     <?php
                     [$label, $cls] = $statusLabels[$g['status']] ?? ['—', ''];
                     $thumb = $imageUrl((string) ($g['image'] ?? ''));
+                    $st    = (string) ($g['status'] ?? '');
+                    // Dados para o popup de detalhes do presente (somente leitura;
+                    // Editar/Remover continuam usando as rotas existentes).
+                    $giftData = [
+                        'id'          => (int) $g['id'],
+                        'name'        => (string) $g['name'],
+                        'price'       => $money((int) $g['price_cents']),
+                        'status'      => $label,
+                        'status_cls'  => $cls,
+                        'image'       => $thumb,
+                        'description' => (string) ($g['description'] ?? ''),
+                        'edit_url'    => View::url('/admin/presentes/editar?id=' . (int) $g['id'], $baseUrl),
+                    ];
                     ?>
-                    <tr data-reorder-row data-id="<?= (int) $g['id'] ?>">
-                        <td class="gift-drag-cell">
+                    <tr data-reorder-row data-id="<?= (int) $g['id'] ?>" data-row-open>
+                        <td class="gift-drag-cell cell-hide-mobile">
                             <span class="gift-drag-handle" data-drag-handle
                                   title="Arraste para reordenar" aria-label="Arraste para reordenar"
                                   role="button" tabindex="0" draggable="true">&#9776;</span>
                         </td>
-                        <td class="gift-order-num" data-reorder-num><?= (int) $g['sort_order'] ?></td>
-                        <td>
+                        <td class="gift-order-num cell-hide-mobile" data-reorder-num><?= (int) $g['sort_order'] ?></td>
+                        <td class="cell-hide-mobile" data-label="Foto">
                             <?php if ($thumb !== ''): ?>
                                 <img class="gift-thumb" src="<?= View::e($thumb) ?>"
                                      alt="<?= View::e((string) $g['name']) ?>" loading="lazy">
@@ -124,15 +137,20 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
                                       style="display:grid;place-items:center;">&#127873;</span>
                             <?php endif; ?>
                         </td>
-                        <td>
+                        <td data-label="Nome">
                             <strong><?= View::e((string) $g['name']) ?></strong>
+                            <span class="status-dot status-dot--<?= View::e($st) ?>" title="<?= View::e($label) ?>" aria-hidden="true"></span>
                             <?php if (!empty($g['description'])): ?>
-                                <br><small><?= View::e(mb_strimwidth((string) $g['description'], 0, 70, '…')) ?></small>
+                                <br><small class="cell-hide-mobile"><?= View::e(mb_strimwidth((string) $g['description'], 0, 70, '…')) ?></small>
                             <?php endif; ?>
                         </td>
-                        <td><?= $money((int) $g['price_cents']) ?></td>
-                        <td><span class="badge <?= $cls ?>"><?= View::e($label) ?></span></td>
-                        <td style="white-space:nowrap;">
+                        <td data-label="Preço"><?= $money((int) $g['price_cents']) ?></td>
+                        <td data-label="Status"><span class="badge cell-badge-dot <?= $cls ?>"><?= View::e($label) ?></span></td>
+                        <td style="white-space:nowrap;" class="cell-action-mobile-hide">
+                            <?php /* Gatilho do popup usado só no mobile (linha clicável). Fica oculto. */ ?>
+                            <button type="button" class="is-hidden-trigger"
+                                    data-gift-open data-row-trigger aria-hidden="true" tabindex="-1"
+                                    data-gift='<?= View::e(json_encode($giftData, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'></button>
                             <a class="btn-admin btn-admin--ghost btn-admin--sm"
                                href="<?= View::e(View::url('/admin/presentes/editar?id=' . (int) $g['id'], $baseUrl)) ?>">Editar</a>
                             <form method="post" style="display:inline;"
@@ -150,3 +168,103 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
         </div>
     <?php endif; ?>
 </div>
+
+<!-- Modal: detalhe do presente (aberto ao tocar na linha no mobile) -->
+<div class="modal" data-gift-modal hidden>
+    <div class="modal__backdrop" data-gift-close></div>
+    <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="gift-modal-title">
+        <div class="modal__head">
+            <h3 class="modal__title" id="gift-modal-title">Presente</h3>
+            <button type="button" class="modal__close" data-gift-close aria-label="Fechar">&times;</button>
+        </div>
+        <div class="modal__body">
+            <div class="gift-detail__photo" data-gift-photo hidden>
+                <img src="" alt="" data-gift-photo-img>
+            </div>
+            <div class="finance-detail" data-gift-detail></div>
+            <p class="finance-detail__msg" data-gift-desc hidden></p>
+        </div>
+        <div class="modal__foot">
+            <form method="post" data-gift-remove-form
+                  action="<?= View::e(View::url('/admin/presentes/remover', $baseUrl)) ?>"
+                  onsubmit="return confirm('Remover este presente?');" style="margin-right:auto;">
+                <?= $csrfField ?>
+                <input type="hidden" name="id" value="" data-gift-remove-id>
+                <button type="submit" class="btn-admin btn-admin--danger btn-admin--sm">Remover</button>
+            </form>
+            <a class="btn-admin btn-admin--sm" href="#" data-gift-edit>Editar</a>
+            <button type="button" class="btn-admin btn-admin--ghost btn-admin--sm" data-gift-close>Fechar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var modal = document.querySelector('[data-gift-modal]');
+    if (!modal) { return; }
+
+    var detailBox = modal.querySelector('[data-gift-detail]');
+    var photoBox  = modal.querySelector('[data-gift-photo]');
+    var photoImg  = modal.querySelector('[data-gift-photo-img]');
+    var descBox   = modal.querySelector('[data-gift-desc]');
+    var removeId  = modal.querySelector('[data-gift-remove-id]');
+    var editLink  = modal.querySelector('[data-gift-edit]');
+
+    var esc = function (s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    };
+    var row = function (label, value) {
+        return '<div class="finance-detail__item"><span>' + esc(label) + '</span>'
+             + '<strong>' + esc(value || '—') + '</strong></div>';
+    };
+
+    var open = function (d) {
+        detailBox.innerHTML =
+            row('Nome', d.name)
+          + row('Preço', d.price)
+          + row('Status', d.status);
+
+        if (d.image && d.image !== '') {
+            photoImg.src = d.image;
+            photoImg.alt = d.name || '';
+            photoBox.hidden = false;
+        } else {
+            photoImg.removeAttribute('src');
+            photoBox.hidden = true;
+        }
+
+        if (d.description && d.description.trim() !== '') {
+            descBox.innerHTML = '<span style="color:var(--c-muted)">Descrição:</span> ' + esc(d.description);
+            descBox.hidden = false;
+        } else {
+            descBox.hidden = true;
+        }
+
+        if (removeId) { removeId.value = d.id; }
+        if (editLink) { editLink.setAttribute('href', d.edit_url || '#'); }
+
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    };
+    var close = function () {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+    };
+
+    document.querySelectorAll('[data-gift-open]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            try { open(JSON.parse(btn.getAttribute('data-gift'))); }
+            catch (e) { /* ignora dado inválido */ }
+        });
+    });
+    modal.querySelectorAll('[data-gift-close]').forEach(function (el) {
+        el.addEventListener('click', close);
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.hidden) { close(); }
+    });
+})();
+</script>

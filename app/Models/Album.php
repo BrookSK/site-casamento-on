@@ -30,8 +30,14 @@ final class Album extends Model
      */
     public function listWithCounts(): array
     {
+        // Além da contagem de fotos, traz a imagem da primeira foto do álbum
+        // (menor sort_order) como "cover_image" — usada apenas para exibição
+        // (miniatura na lista mobile e no popup). É uma subconsulta somente de
+        // leitura; não altera dados nem o comportamento existente.
         return $this->select(
-            'SELECT a.*, COUNT(p.id) AS photo_count '
+            'SELECT a.*, COUNT(p.id) AS photo_count, '
+            . '(SELECT fp.image FROM album_photos fp WHERE fp.album_id = a.id '
+            . ' ORDER BY fp.sort_order ASC, fp.id ASC LIMIT 1) AS cover_image '
             . 'FROM ' . $this->table . ' a '
             . 'LEFT JOIN album_photos p ON p.album_id = a.id '
             . 'GROUP BY a.id '

@@ -290,3 +290,30 @@
         });
     }
 })();
+
+
+/* =============================================================
+   Mobile: clicar na linha/cartão abre o popup de detalhes.
+   Reaproveita o botão de detalhes já existente dentro da linha
+   (data-rsvp-open / data-fin-open / data-row-trigger). Não altera
+   nada no desktop — a linha só vira "clicável" via CSS no mobile,
+   e aqui apenas encaminhamos o clique para o botão existente.
+   ============================================================= */
+(function () {
+    'use strict';
+    // Só vale no mobile: mesma faixa do CSS (.admin-table--cards vira cartões
+    // em telas <= 640px). No desktop o comportamento continua intacto.
+    var mql = window.matchMedia('(max-width: 640px)');
+
+    document.querySelectorAll('tr[data-row-open]').forEach(function (row) {
+        row.addEventListener('click', function (ev) {
+            if (!mql.matches) { return; } // desktop: não faz nada
+            // Ignora cliques em controles reais (links, botões, inputs, forms).
+            if (ev.target.closest('a, button, input, select, textarea, form, label')) {
+                return;
+            }
+            var trigger = row.querySelector('[data-row-trigger]');
+            if (trigger) { trigger.click(); }
+        });
+    });
+})();

@@ -47,6 +47,22 @@ $filters = [
     <div class="stat"><span class="stat__value"><?= (int) $summary['people'] ?></span><span class="stat__label">Total estimado de pessoas</span></div>
 </div>
 
+<?php
+// As exportações respeitam o filtro aplicado no painel.
+$exportQs = $status !== '' ? ('?status=' . $status) : '';
+?>
+<!-- Exportação acima do card, alinhada à direita. -->
+<div class="export-bar">
+    <a class="btn-admin btn-admin--ghost btn-admin--sm"
+       href="<?= View::e(View::url('/admin/confirmacoes/exportar/excel' . $exportQs, $baseUrl)) ?>">
+        Exportar Excel
+    </a>
+    <a class="btn-admin btn-admin--ghost btn-admin--sm"
+       href="<?= View::e(View::url('/admin/confirmacoes/exportar/pdf' . $exportQs, $baseUrl)) ?>">
+        Exportar PDF
+    </a>
+</div>
+
 <div class="admin-card">
     <div class="admin-toolbar">
         <div class="filters">
@@ -56,30 +72,13 @@ $filters = [
                    href="<?= View::e(View::url($url, $baseUrl)) ?>"><?= View::e($label) ?></a>
             <?php endforeach; ?>
         </div>
-
-        <div class="spacer"></div>
-
-        <?php
-        // As exportações respeitam o filtro aplicado no painel.
-        $exportQs = $status !== '' ? ('?status=' . $status) : '';
-        ?>
-        <div class="export-actions">
-            <a class="btn-admin btn-admin--ghost btn-admin--sm"
-               href="<?= View::e(View::url('/admin/confirmacoes/exportar/excel' . $exportQs, $baseUrl)) ?>">
-                Exportar Excel
-            </a>
-            <a class="btn-admin btn-admin--ghost btn-admin--sm"
-               href="<?= View::e(View::url('/admin/confirmacoes/exportar/pdf' . $exportQs, $baseUrl)) ?>">
-                Exportar PDF
-            </a>
-        </div>
     </div>
 
     <?php if ($rows === []): ?>
         <p class="admin-empty">Nenhuma confirmação <?= $status !== '' ? 'com esse filtro' : 'ainda' ?>.</p>
     <?php else: ?>
-        <div style="overflow-x:auto;">
-        <table class="admin-table">
+        <div style="overflow-x:auto;" class="admin-table--cards-wrap">
+        <table class="admin-table admin-table--cards">
             <thead>
                 <tr>
                     <th>Nome</th>
@@ -111,14 +110,17 @@ $filters = [
                         'when'       => (string) ($r['responded_at'] ?? ''),
                     ];
                     ?>
-                    <tr>
-                        <td><strong><?= View::e((string) $r['name']) ?></strong></td>
-                        <td><span class="badge <?= $cls ?>"><?= View::e($label) ?></span></td>
-                        <td><?= (int) $r['companions'] ?></td>
-                        <td class="col-nowrap"><small><?= View::e((string) ($r['responded_at'] ?? '')) ?></small></td>
-                        <td class="col-nowrap">
+                    <tr data-row-open>
+                        <td data-label="Nome"><strong><?= View::e((string) $r['name']) ?></strong></td>
+                        <td data-label="Status">
+                            <span class="status-dot status-dot--<?= View::e((string) $r['status']) ?>" aria-hidden="true"></span>
+                            <span class="badge cell-badge-dot <?= $cls ?>"><?= View::e($label) ?></span>
+                        </td>
+                        <td data-label="Acompanhantes"><?= (int) $r['companions'] ?></td>
+                        <td class="col-nowrap" data-label="Quando"><small><?= View::e((string) ($r['responded_at'] ?? '')) ?></small></td>
+                        <td class="col-nowrap cell-action-mobile-hide">
                             <button type="button" class="btn-admin btn-admin--ghost btn-admin--sm"
-                                    data-rsvp-open
+                                    data-rsvp-open data-row-trigger
                                     data-rsvp='<?= View::e(json_encode($rsvpData, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
                                 Detalhes
                             </button>
