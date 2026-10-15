@@ -285,11 +285,11 @@ p { margin: 0 0 1rem; }
     /* Enquadramento deslocado à direita (object-position > 50%) para que o
        bloco de texto, centralizado, caia no espaço ENTRE a noiva e o noivo,
        e não sobre o rosto da noiva. */
-    object-position: 60% 30%;
+    object-position: 67% 30%;
     /* Pequeno zoom na foto de fundo (afasta o casal das bordas e abre o
        vão central). transform-origin à direita acompanha o enquadramento. */
     transform: scale(1.08);
-    transform-origin: 60% 30%;
+    transform-origin: 67% 30%;
     /* Reduz levemente o brilho da imagem principal (ponto 1). */
     filter: brightness(0.88);
     z-index: -2;
@@ -1824,8 +1824,10 @@ p { margin: 0 0 1rem; }
     /* Hero no mobile: ajusta enquadramento da imagem e suaviza o overlay */
     .hero__content { max-width: 560px; padding-top: 5rem; }
     /* Desloca o enquadramento para a direita da foto (object-position maior),
-       revelando melhor o noivo e aproveitando o espaço livre ao lado da noiva. */
-    .hero__bg { object-position: 65% 32%; }
+       revelando melhor o noivo e aproveitando o espaço livre ao lado da noiva.
+       Zoom/transform do desktop é neutralizado aqui para preservar o
+       enquadramento original no mobile. */
+    .hero__bg { object-position: 65% 32%; transform: none; }
     .hero__overlay {
         background: linear-gradient(180deg,
             rgba(32, 30, 26, 0.40) 0%,
