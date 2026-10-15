@@ -290,7 +290,7 @@ p { margin: 0 0 1rem; }
        o texto central e o noivo. object-position já está no máximo (100%);
        o translateX POSITIVO arrasta a imagem para a DIREITA, revelando o
        espaço à esquerda da noiva. */
-    transform: translateX(10%) scale(1.3);
+    transform: translateX(4%) scale(1.3);
     transform-origin: 100% 30%;
     /* Reduz levemente o brilho da imagem principal (ponto 1). */
     filter: brightness(0.88);
