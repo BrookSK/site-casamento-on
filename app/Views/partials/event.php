@@ -29,8 +29,7 @@ $receptionDetails = $content->text('reception_details', (string) ($wedding['rece
             <p class="section__eyebrow">O grande dia</p>
             <h2 class="section__title">Informações do evento</h2>
             <p class="section__intro">
-                Datas e locais provisórios. Os detalhes finais serão divulgados
-                em breve nesta página.
+                Datas e locais do nosso grande dia.
             </p>
         </div>
 
