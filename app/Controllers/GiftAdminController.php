@@ -139,6 +139,14 @@ final class GiftAdminController extends Controller
         if ($id > 0) {
             $existing = $model->find($id);
             $currentImage = $existing !== null ? ($existing['image'] ?? null) : null;
+
+            // Trava de segurança: um presente efetivamente PAGO (purchased) não
+            // pode ter o status alterado (nem voltar a disponível). Protege o
+            // histórico financeiro e evita vender o mesmo presente duas vezes.
+            // A view já esconde a opção; aqui garantimos no servidor.
+            if ($existing !== null && (string) ($existing['status'] ?? '') === 'purchased') {
+                $status = 'purchased';
+            }
         }
         $image = $currentImage;
 

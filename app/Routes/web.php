@@ -18,6 +18,8 @@ $router->post('/confirmar-presenca/acompanhantes', 'RsvpController@updateCompani
 
 // Presentes (pagamento real via ASAAS)
 $router->post('/presentear', 'GiftController@store');
+// Checkout transparente de cartão: recebe os dados do cartão da tela de pagamento.
+$router->post('/presentear/cartao', 'GiftController@payCard');
 
 // Webhook do ASAAS (recebe confirmações de pagamento — rota pública)
 $router->post('/asaas/webhook', 'AsaasWebhookController@handle');

@@ -305,59 +305,6 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                        placeholder="Somente números">
             </div>
 
-            <!-- Campos do cartão (checkout transparente). Só aparecem quando a
-                 forma escolhida é "Cartão de crédito". Nada é armazenado: os
-                 dados vão por HTTPS ao servidor e são repassados ao ASAAS. -->
-            <div class="gift-modal__card" data-gift-modal-card hidden>
-                <p class="gift-modal__card-note">
-                    Pagamento processado com segurança. Seus dados do cartão não
-                    são armazenados pelo site.
-                </p>
-
-                <div class="field field--full">
-                    <label for="gm_card_holder">Nome impresso no cartão</label>
-                    <input type="text" id="gm_card_holder" name="card_holder"
-                           autocomplete="cc-name" placeholder="Como está no cartão">
-                </div>
-
-                <div class="field field--full">
-                    <label for="gm_card_number">Número do cartão</label>
-                    <input type="text" id="gm_card_number" name="card_number"
-                           inputmode="numeric" autocomplete="cc-number"
-                           maxlength="23" placeholder="0000 0000 0000 0000"
-                           data-card-number>
-                </div>
-
-                <div class="gift-modal__card-row">
-                    <div class="field">
-                        <label for="gm_card_expiry">Validade</label>
-                        <input type="text" id="gm_card_expiry" name="card_expiry"
-                               inputmode="numeric" autocomplete="cc-exp"
-                               maxlength="7" placeholder="MM/AA" data-card-expiry>
-                    </div>
-                    <div class="field">
-                        <label for="gm_card_ccv">CVV</label>
-                        <input type="text" id="gm_card_ccv" name="card_ccv"
-                               inputmode="numeric" autocomplete="cc-csc"
-                               maxlength="4" placeholder="000" data-card-ccv>
-                    </div>
-                </div>
-
-                <div class="gift-modal__card-row">
-                    <div class="field">
-                        <label for="gm_card_cep">CEP</label>
-                        <input type="text" id="gm_card_cep" name="card_cep"
-                               inputmode="numeric" autocomplete="postal-code"
-                               maxlength="9" placeholder="00000-000">
-                    </div>
-                    <div class="field">
-                        <label for="gm_card_addr">Nº do endereço</label>
-                        <input type="text" id="gm_card_addr" name="card_address_number"
-                               inputmode="numeric" placeholder="123">
-                    </div>
-                </div>
-            </div>
-
             <div class="field field--full">
                 <label for="gm_msg">Mensagem (opcional)</label>
                 <input type="text" id="gm_msg" name="message" maxlength="255"
@@ -527,74 +474,19 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
         else if (!detail.hidden) { closeDetail(); }
     });
 
-    // Bloco dos campos de cartão (checkout transparente).
-    var cardBox = modal.querySelector('[data-gift-modal-card]');
-    var cardInputs = cardBox
-        ? cardBox.querySelectorAll('input[name^="card_"]')
-        : [];
-
-    // Ativa/desativa os campos de cartão: quando ocultos, remove 'required' e
-    // 'name' para o navegador não bloquear o envio nem mandar campos vazios.
-    var setCardActive = function (active) {
-        if (!cardBox) { return; }
-        cardBox.hidden = !active;
-        Array.prototype.forEach.call(cardInputs, function (inp) {
-            if (active) {
-                inp.required = true;
-                if (inp.dataset.name) { inp.name = inp.dataset.name; }
-            } else {
-                inp.required = false;
-                // Guarda o name e remove, para não enviar dado de cartão quando
-                // a forma escolhida não for cartão.
-                if (!inp.dataset.name) { inp.dataset.name = inp.name; }
-                inp.removeAttribute('name');
-            }
-        });
-    };
-
-    // Mostra/oculta CPF e cartão conforme a forma de pagamento. Para visitante
-    // sem conta, o CPF é sempre exigido; para logado, aparece em boleto e cartão.
+    // Mostra/oculta o CPF conforme a forma de pagamento. Para visitante sem
+    // conta, o CPF é sempre exigido; para logado, aparece em boleto e cartão
+    // (ambos exigem CPF do titular/pagador no ASAAS).
     var applyBilling = function () {
         var v = billing ? billing.value : 'PIX';
-        var isCard = v === 'CREDIT_CARD';
+        var needCpf = v === 'BOLETO' || v === 'CREDIT_CARD';
         if (cpf) {
-            cpf.hidden = isLogged ? (v !== 'BOLETO' && !isCard) : false;
+            cpf.hidden = isLogged ? !needCpf : false;
         }
-        setCardActive(isCard);
     };
     if (billing) {
         billing.addEventListener('change', applyBilling);
         applyBilling(); // estado inicial
-    }
-
-    // Máscaras dos campos de cartão.
-    var onlyDigits = function (s) { return (s || '').replace(/\D/g, ''); };
-    var cardNumber = modal.querySelector('[data-card-number]');
-    if (cardNumber) {
-        cardNumber.addEventListener('input', function () {
-            var d = onlyDigits(cardNumber.value).slice(0, 19);
-            cardNumber.value = d.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
-        });
-    }
-    var cardExpiry = modal.querySelector('[data-card-expiry]');
-    if (cardExpiry) {
-        cardExpiry.addEventListener('input', function () {
-            var d = onlyDigits(cardExpiry.value).slice(0, 4);
-            cardExpiry.value = d.length >= 3 ? (d.slice(0, 2) + '/' + d.slice(2)) : d;
-        });
-    }
-    var cardCcv = modal.querySelector('[data-card-ccv]');
-    if (cardCcv) {
-        cardCcv.addEventListener('input', function () {
-            cardCcv.value = onlyDigits(cardCcv.value).slice(0, 4);
-        });
-    }
-    var cardCep = modal.querySelector('#gm_card_cep');
-    if (cardCep) {
-        cardCep.addEventListener('input', function () {
-            var d = onlyDigits(cardCep.value).slice(0, 8);
-            cardCep.value = d.length >= 6 ? (d.slice(0, 5) + '-' + d.slice(5)) : d;
-        });
     }
 
     // Máscara de CPF/CNPJ: formata automaticamente enquanto digita.

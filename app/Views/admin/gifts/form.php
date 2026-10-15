@@ -23,6 +23,10 @@ $image       = $isEdit ? (string) ($gift['image'] ?? '') : '';
 $statusCur   = $isEdit ? (string) $gift['status'] : 'available';
 
 $statuses = ['available' => 'Disponível', 'reserved' => 'Reservado', 'purchased' => 'Presenteado'];
+
+// Presente efetivamente PAGO (purchased) não pode voltar a ficar disponível:
+// o status fica travado, protegendo o histórico e evitando vender duas vezes.
+$statusLocked = $isEdit && $statusCur === 'purchased';
 ?>
 <?php
 // Resolve a URL da imagem atual (aceita http, caminho absoluto ou nome
@@ -63,13 +67,26 @@ if ($image !== '') {
 
         <div class="field">
             <label for="status">Status</label>
-            <select id="status" name="status">
-                <?php foreach ($statuses as $value => $label): ?>
-                    <option value="<?= View::e($value) ?>" <?= $statusCur === $value ? 'selected' : '' ?>>
-                        <?= View::e($label) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <?php if ($statusLocked): ?>
+                <!-- Pago: status travado. Mostra "Presenteado" (desabilitado) e
+                     envia o valor por um hidden para preservar no save. -->
+                <select id="status" disabled>
+                    <option selected>Presenteado</option>
+                </select>
+                <input type="hidden" name="status" value="purchased">
+                <small style="color:var(--c-muted);font-size:0.8rem;">
+                    Este presente já foi <strong>pago</strong>. O status não pode
+                    ser alterado para preservar o histórico financeiro.
+                </small>
+            <?php else: ?>
+                <select id="status" name="status">
+                    <?php foreach ($statuses as $value => $label): ?>
+                        <option value="<?= View::e($value) ?>" <?= $statusCur === $value ? 'selected' : '' ?>>
+                            <?= View::e($label) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            <?php endif; ?>
         </div>
 
         <div class="field">

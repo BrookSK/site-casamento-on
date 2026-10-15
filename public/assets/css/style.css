@@ -1469,29 +1469,7 @@ p { margin: 0 0 1rem; }
 /* Campos que ocupam a linha inteira do formulário. */
 .gift-modal__form .field--full,
 .gift-modal__form .gift-modal__extra,
-.gift-modal__form .gift-modal__card,
 .gift-modal__form .gift-modal__submit { grid-column: 1 / -1; }
-
-/* Campos do cartão (checkout transparente) */
-.gift-modal__card {
-    display: grid;
-    gap: 0.9rem 1rem;
-    padding: 1rem;
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius);
-    background: var(--c-cream);
-}
-.gift-modal__card-note {
-    margin: 0;
-    font-size: 0.8rem;
-    color: var(--c-muted);
-}
-.gift-modal__card .field { display: flex; flex-direction: column; gap: 0.35rem; }
-.gift-modal__card-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.9rem 1rem;
-}
 
 /* Bloco de criação de conta (e-mail/telefone) exibido para visitante sem
    login. Agrupa os campos empilhados, ocupando a linha inteira. */
@@ -2081,6 +2059,52 @@ p { margin: 0 0 1rem; }
     font-size: 1.6rem;
     color: var(--c-ink);
     margin: 0 0 1.5rem;
+}
+
+/* Formulário de cartão na tela de pagamento (checkout transparente). */
+.pay-cardform {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    text-align: left;
+    margin-top: 0.5rem;
+}
+.pay-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.pay-field--full { grid-column: 1 / -1; }
+.pay-field label {
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-sage-dark);
+}
+.pay-field input {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    background: var(--c-cream);
+    width: 100%;
+}
+.pay-field input:focus { border-color: var(--c-sage); background: var(--c-white); outline: none; }
+.pay-cardform__submit { grid-column: 1 / -1; margin-top: 0.25rem; }
+.pay-cardform__note {
+    grid-column: 1 / -1;
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: var(--c-muted);
+    text-align: center;
+}
+.pay-card__alert {
+    background: #f0dcd6;
+    color: #9c3b26;
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    font-size: 0.92rem;
+    margin-bottom: 1.25rem;
+}
+@media (max-width: 480px) {
+    .pay-cardform { grid-template-columns: 1fr; }
 }
 
 /* Selo de sucesso do pagamento aprovado (cartão transparente). */

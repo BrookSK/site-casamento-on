@@ -43,11 +43,6 @@ final class GiftController extends Controller
             $billingType = 'PIX';
         }
 
-        // Checkout transparente de cartão: os dados do cartão vêm no POST e são
-        // repassados ao ASAAS (nunca armazenados nem logados). HTTPS obrigatório.
-        $isCardCheckout = $billingType === 'CREDIT_CARD'
-            && trim((string) ($_POST['card_number'] ?? '')) !== '';
-
         // Dados de quem está presenteando. Se houver convidado logado, usa-o
         // como base; os campos do formulário têm prioridade quando preenchidos.
         $loggedGuest = GuestAuth::user();
@@ -111,19 +106,6 @@ final class GiftController extends Controller
             }
         }
 
-        // Validação específica do checkout transparente de cartão.
-        $card = null;
-        if ($isCardCheckout) {
-            $card = $this->readCardInput();
-            if ($card === null) {
-                $this->redirectHome('presentes', 'erro-cartao');
-            }
-            // CPF do titular é obrigatório para a análise do cartão.
-            if (preg_replace('/\D+/', '', $buyerCpf) === '') {
-                $this->redirectHome('presentes', 'erro-cpf');
-            }
-        }
-
         $giftModel = new Gift($this->config);
         $reserved  = false;
 
@@ -152,6 +134,34 @@ final class GiftController extends Controller
             }
             $reserved = true;
 
+            // CARTÃO: não cria a cobrança agora. O presente fica reservado e
+            // abrimos a tela de pagamento com o FORMULÁRIO do cartão. A cobrança
+            // só é criada quando esse formulário for enviado (payCard()).
+            if ($billingType === 'CREDIT_CARD') {
+                // Conta nova sem senha: já envia as boas-vindas (link de senha).
+                if ($welcome !== null) {
+                    $this->sendWelcome($welcome);
+                }
+                $this->view('gift/pay', [
+                    'pageTitle'   => 'Pagamento do presente',
+                    'bodyClass'   => 'page-light',
+                    'gift'        => $gift,
+                    'billingType' => 'CREDIT_CARD',
+                    'value'       => $value,
+                    'cardApproved'=> null,
+                    // Dados repassados ao formulário do cartão (passo seguinte).
+                    'cardForm'    => [
+                        'gift_id'     => $giftId,
+                        'buyer_name'  => $buyerName,
+                        'buyer_email' => $buyerMail,
+                        'buyer_phone' => $buyerPhone,
+                        'buyer_cpf'   => $buyerCpf,
+                        'message'     => $message,
+                    ],
+                ]);
+                return;
+            }
+
             $asaas = Asaas::fromSettings($this->config);
 
             // 1) Cliente no ASAAS.
@@ -175,28 +185,11 @@ final class GiftController extends Controller
                 'externalReference' => 'gift_' . $giftId,
             ];
 
-            // Checkout transparente: anexa os dados do cartão + titular + IP do
-            // pagador. O ASAAS processa a transação na hora.
-            if ($isCardCheckout && $card !== null) {
-                $paymentData['creditCard'] = $card;
-                $paymentData['creditCardHolderInfo'] = [
-                    'name'          => $buyerName,
-                    'email'         => $buyerMail,
-                    'cpfCnpj'       => preg_replace('/\D+/', '', $buyerCpf),
-                    'postalCode'    => preg_replace('/\D+/', '', (string) ($_POST['card_cep'] ?? '')),
-                    'addressNumber' => trim((string) ($_POST['card_address_number'] ?? '')),
-                    'phone'         => preg_replace('/\D+/', '', $buyerPhone) ?: null,
-                ];
-                $paymentData['remoteIp'] = $this->clientIp();
-            }
-
             $payment = $asaas->createPayment($paymentData);
 
             $paymentId   = (string) ($payment['id'] ?? '');
             $invoiceUrl  = isset($payment['invoiceUrl']) ? (string) $payment['invoiceUrl'] : null;
             $bankSlipUrl = isset($payment['bankSlipUrl']) ? (string) $payment['bankSlipUrl'] : null;
-            // Status já retornado pelo ASAAS (relevante no cartão transparente).
-            $payStatus   = strtoupper((string) ($payment['status'] ?? ''));
 
             // 3) Para PIX, recupera o QR Code (imagem + copia e cola).
             $pixPayload = null;
@@ -230,26 +223,7 @@ final class GiftController extends Controller
                 'message'           => $message,
             ]);
 
-            // 4.1) Cartão transparente: o ASAAS já devolve o status na resposta.
-            // Se aprovado (CONFIRMED/RECEIVED), marca a compra como paga e o
-            // presente como adquirido na hora (o webhook também confirmará, de
-            // forma idempotente). Cartão recusado faz o ASAAS retornar erro HTTP,
-            // tratado no catch (que libera a reserva).
-            $cardApproved = $isCardCheckout
-                && in_array($payStatus, ['CONFIRMED', 'RECEIVED', 'RECEIVED_IN_CASH'], true);
-            if ($cardApproved && $paymentId !== '') {
-                try {
-                    $purchase = $purchases->findByPaymentRef($paymentId);
-                    if ($purchase !== null) {
-                        $purchases->updateStatus((int) $purchase['id'], 'paid');
-                    }
-                    $giftModel->markPurchased($giftId);
-                } catch (Throwable $e) {
-                    error_log('[Gift] card confirm: ' . $e->getMessage());
-                }
-            }
-
-            // 4.2) Conta recém-criada/assumida sem senha: envia as boas-vindas
+            // 4.1) Conta recém-criada/assumida sem senha: envia as boas-vindas
             // com o link seguro de definição de senha (e-mail e, se configurado,
             // WhatsApp). Tolerante a falhas — não interrompe o pagamento.
             if ($welcome !== null) {
@@ -269,8 +243,6 @@ final class GiftController extends Controller
                 'bankSlipUrl'  => $bankSlipUrl,
                 'pixPayload'   => $pixPayload,
                 'pixQr'        => $pixQr,
-                // Resultado imediato do cartão transparente (null p/ PIX/boleto).
-                'cardApproved' => $isCardCheckout ? $cardApproved : null,
             ]);
             return;
         } catch (Throwable $e) {
@@ -284,10 +256,189 @@ final class GiftController extends Controller
                     error_log('[Gift] release on error: ' . $re->getMessage());
                 }
             }
-            // Cartão recusado/erro de cartão: mensagem específica (o ASAAS
-            // retorna erro HTTP quando o cartão não é aprovado).
-            $this->redirectHome('presentes', $isCardCheckout ? 'erro-cartao-recusado' : 'erro');
+            $this->redirectHome('presentes', 'erro');
         }
+    }
+
+    /**
+     * Processa o pagamento com CARTÃO (checkout transparente), recebendo os
+     * dados do cartão do formulário exibido na tela de pagamento. Cria a
+     * cobrança no ASAAS com creditCard/creditCardHolderInfo/remoteIp e mostra
+     * o resultado (aprovado/recusado). Os dados do cartão não são armazenados
+     * nem registrados em log.
+     */
+    public function payCard(): void
+    {
+        if (!Csrf::validate($_POST[Csrf::fieldName()] ?? null)) {
+            $this->redirectHome('presentes', 'erro-sessao');
+        }
+
+        $giftId     = (int) ($_POST['gift_id'] ?? 0);
+        $buyerName  = trim((string) ($_POST['buyer_name'] ?? ''));
+        $buyerMail  = trim((string) ($_POST['buyer_email'] ?? ''));
+        $buyerPhone = trim((string) ($_POST['buyer_phone'] ?? ''));
+        $buyerCpf   = trim((string) ($_POST['buyer_cpf'] ?? ''));
+        $message    = trim((string) ($_POST['message'] ?? '')) ?: null;
+        $guestId    = GuestAuth::user()['id'] ?? null;
+
+        if ($buyerName === '' || preg_replace('/\D+/', '', $buyerCpf) === '') {
+            $this->redirectHome('presentes', 'erro-cpf');
+        }
+
+        // Valida os dados do cartão (sem logar).
+        $card = $this->readCardInput();
+        if ($card === null) {
+            // Reabre a tela do cartão com aviso, preservando os dados do comprador.
+            $this->renderCardForm($giftId, $buyerName, $buyerMail, $buyerPhone, $buyerCpf, $message, 'invalid');
+            return;
+        }
+
+        $giftModel = new Gift($this->config);
+        try {
+            $gift = $giftModel->find($giftId);
+            if ($gift === null) {
+                $this->redirectHome('presentes', 'erro-indisponivel');
+            }
+
+            // Garante a reserva antes de cobrar:
+            //  - 1ª tentativa (veio do store): já está 'reserved' — segue.
+            //  - Nova tentativa após recusa: está 'available' — reserva agora.
+            //  - 'purchased' / reservado por outra pessoa: indisponível.
+            $giftStatus = (string) ($gift['status'] ?? '');
+            if ($giftStatus === 'available') {
+                if (!$giftModel->reserveIfAvailable($giftId)) {
+                    $this->redirectHome('presentes', 'erro-indisponivel');
+                }
+            } elseif ($giftStatus !== 'reserved') {
+                $this->redirectHome('presentes', 'erro-indisponivel');
+            }
+
+            $amountCents = (int) $gift['price_cents'];
+            if ($amountCents <= 0) {
+                $this->redirectHome('presentes', 'erro-valor');
+            }
+            $value = round($amountCents / 100, 2);
+
+            $asaas = Asaas::fromSettings($this->config);
+
+            $customerId = $asaas->createCustomer([
+                'name'    => $buyerName,
+                'email'   => $buyerMail ?: null,
+                'phone'   => $buyerPhone ?: null,
+                'cpfCnpj' => $buyerCpf ?: null,
+            ]);
+
+            $payment = $asaas->createPayment([
+                'customer'          => $customerId,
+                'billingType'       => 'CREDIT_CARD',
+                'value'             => $value,
+                'dueDate'           => date('Y-m-d'),
+                'description'       => 'Presente: ' . (string) $gift['name'],
+                'externalReference' => 'gift_' . $giftId,
+                'creditCard'        => $card,
+                'creditCardHolderInfo' => [
+                    'name'          => $buyerName,
+                    'email'         => $buyerMail,
+                    'cpfCnpj'       => preg_replace('/\D+/', '', $buyerCpf),
+                    'postalCode'    => preg_replace('/\D+/', '', (string) ($_POST['card_cep'] ?? '')),
+                    'addressNumber' => trim((string) ($_POST['card_address_number'] ?? '')),
+                    'phone'         => preg_replace('/\D+/', '', $buyerPhone) ?: null,
+                ],
+                'remoteIp'          => $this->clientIp(),
+            ]);
+
+            $paymentId = (string) ($payment['id'] ?? '');
+            $status    = strtoupper((string) ($payment['status'] ?? ''));
+
+            // Grava a compra.
+            $purchases = new GiftPurchase($this->config);
+            $purchases->createPending([
+                'gift_id'           => $giftId,
+                'guest_id'          => $guestId,
+                'buyer_name'        => $buyerName,
+                'buyer_email'       => $buyerMail ?: null,
+                'amount_cents'      => $amountCents,
+                'gift_price_cents'  => $amountCents,
+                'payment_ref'       => $paymentId ?: null,
+                'asaas_customer_id' => $customerId,
+                'billing_type'      => 'CREDIT_CARD',
+                'invoice_url'       => isset($payment['invoiceUrl']) ? (string) $payment['invoiceUrl'] : null,
+                'bank_slip_url'     => null,
+                'pix_payload'       => null,
+                'pix_qr_base64'     => null,
+                'message'           => $message,
+            ]);
+
+            $approved = in_array($status, ['CONFIRMED', 'RECEIVED', 'RECEIVED_IN_CASH'], true);
+            if ($approved && $paymentId !== '') {
+                $purchase = $purchases->findByPaymentRef($paymentId);
+                if ($purchase !== null) {
+                    $purchases->updateStatus((int) $purchase['id'], 'paid');
+                }
+                $giftModel->markPurchased($giftId);
+            }
+
+            $this->view('gift/pay', [
+                'pageTitle'    => 'Pagamento do presente',
+                'bodyClass'    => 'page-light',
+                'gift'         => $gift,
+                'billingType'  => 'CREDIT_CARD',
+                'value'        => $value,
+                'cardApproved' => $approved,
+            ]);
+            return;
+        } catch (Throwable $e) {
+            error_log('[Gift] payCard: ' . $e->getMessage());
+            // Cartão recusado: NÃO há pagamento em andamento, então o presente
+            // volta a ficar DISPONÍVEL imediatamente (sem exigir ação do admin).
+            // A própria pessoa pode tentar outro cartão: o reenvio reserva de
+            // novo antes de cobrar. Se ela desistir, o presente já está livre.
+            try {
+                $giftModel->releaseIfReserved($giftId);
+            } catch (Throwable $re) {
+                error_log('[Gift] payCard release: ' . $re->getMessage());
+            }
+            $this->renderCardForm($giftId, $buyerName, $buyerMail, $buyerPhone, $buyerCpf, $message, 'declined');
+            return;
+        }
+    }
+
+    /**
+     * Renderiza a tela de pagamento com o FORMULÁRIO do cartão (reutilizada no
+     * fluxo e nas tentativas após erro). $error: null | 'invalid' | 'declined'.
+     */
+    private function renderCardForm(
+        int $giftId,
+        string $buyerName,
+        string $buyerMail,
+        string $buyerPhone,
+        string $buyerCpf,
+        ?string $message,
+        ?string $error = null
+    ): void {
+        $gift = (new Gift($this->config))->find($giftId);
+        if ($gift === null) {
+            $this->redirectHome('presentes', 'erro-indisponivel');
+        }
+        $value = round(((int) $gift['price_cents']) / 100, 2);
+
+        $this->view('gift/pay', [
+            'pageTitle'   => 'Pagamento do presente',
+            'bodyClass'   => 'page-light',
+            'gift'        => $gift,
+            'billingType' => 'CREDIT_CARD',
+            'value'       => $value,
+            'cardApproved'=> null,
+            'cardError'   => $error,
+            'cardForm'    => [
+                'gift_id'     => $giftId,
+                'buyer_name'  => $buyerName,
+                'buyer_email' => $buyerMail,
+                'buyer_phone' => $buyerPhone,
+                'buyer_cpf'   => $buyerCpf,
+                'message'     => $message,
+            ],
+        ]);
     }
 
     /**
