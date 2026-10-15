@@ -43,6 +43,11 @@ final class GiftController extends Controller
             $billingType = 'PIX';
         }
 
+        // Checkout transparente de cartão: os dados do cartão vêm no POST e são
+        // repassados ao ASAAS (nunca armazenados nem logados). HTTPS obrigatório.
+        $isCardCheckout = $billingType === 'CREDIT_CARD'
+            && trim((string) ($_POST['card_number'] ?? '')) !== '';
+
         // Dados de quem está presenteando. Se houver convidado logado, usa-o
         // como base; os campos do formulário têm prioridade quando preenchidos.
         $loggedGuest = GuestAuth::user();
@@ -99,8 +104,22 @@ final class GiftController extends Controller
                 $this->redirectHome('presentes', 'erro');
             }
         } else {
-            // Convidado logado: o boleto ainda exige CPF/CNPJ no ASAAS.
-            if ($billingType === 'BOLETO' && preg_replace('/\D+/', '', $buyerCpf) === '') {
+            // Convidado logado: boleto e cartão exigem CPF/CNPJ no ASAAS.
+            if (($billingType === 'BOLETO' || $billingType === 'CREDIT_CARD')
+                && preg_replace('/\D+/', '', $buyerCpf) === '') {
+                $this->redirectHome('presentes', 'erro-cpf');
+            }
+        }
+
+        // Validação específica do checkout transparente de cartão.
+        $card = null;
+        if ($isCardCheckout) {
+            $card = $this->readCardInput();
+            if ($card === null) {
+                $this->redirectHome('presentes', 'erro-cartao');
+            }
+            // CPF do titular é obrigatório para a análise do cartão.
+            if (preg_replace('/\D+/', '', $buyerCpf) === '') {
                 $this->redirectHome('presentes', 'erro-cpf');
             }
         }
@@ -147,18 +166,37 @@ final class GiftController extends Controller
             $dueDays = $billingType === 'PIX' ? 0 : 3;
             $dueDate = date('Y-m-d', strtotime('+' . $dueDays . ' days'));
 
-            $payment = $asaas->createPayment([
+            $paymentData = [
                 'customer'          => $customerId,
                 'billingType'       => $billingType,
                 'value'             => $value,
                 'dueDate'           => $dueDate,
                 'description'       => 'Presente: ' . (string) $gift['name'],
                 'externalReference' => 'gift_' . $giftId,
-            ]);
+            ];
+
+            // Checkout transparente: anexa os dados do cartão + titular + IP do
+            // pagador. O ASAAS processa a transação na hora.
+            if ($isCardCheckout && $card !== null) {
+                $paymentData['creditCard'] = $card;
+                $paymentData['creditCardHolderInfo'] = [
+                    'name'          => $buyerName,
+                    'email'         => $buyerMail,
+                    'cpfCnpj'       => preg_replace('/\D+/', '', $buyerCpf),
+                    'postalCode'    => preg_replace('/\D+/', '', (string) ($_POST['card_cep'] ?? '')),
+                    'addressNumber' => trim((string) ($_POST['card_address_number'] ?? '')),
+                    'phone'         => preg_replace('/\D+/', '', $buyerPhone) ?: null,
+                ];
+                $paymentData['remoteIp'] = $this->clientIp();
+            }
+
+            $payment = $asaas->createPayment($paymentData);
 
             $paymentId   = (string) ($payment['id'] ?? '');
             $invoiceUrl  = isset($payment['invoiceUrl']) ? (string) $payment['invoiceUrl'] : null;
             $bankSlipUrl = isset($payment['bankSlipUrl']) ? (string) $payment['bankSlipUrl'] : null;
+            // Status já retornado pelo ASAAS (relevante no cartão transparente).
+            $payStatus   = strtoupper((string) ($payment['status'] ?? ''));
 
             // 3) Para PIX, recupera o QR Code (imagem + copia e cola).
             $pixPayload = null;
@@ -192,7 +230,26 @@ final class GiftController extends Controller
                 'message'           => $message,
             ]);
 
-            // 4.1) Conta recém-criada/assumida sem senha: envia as boas-vindas
+            // 4.1) Cartão transparente: o ASAAS já devolve o status na resposta.
+            // Se aprovado (CONFIRMED/RECEIVED), marca a compra como paga e o
+            // presente como adquirido na hora (o webhook também confirmará, de
+            // forma idempotente). Cartão recusado faz o ASAAS retornar erro HTTP,
+            // tratado no catch (que libera a reserva).
+            $cardApproved = $isCardCheckout
+                && in_array($payStatus, ['CONFIRMED', 'RECEIVED', 'RECEIVED_IN_CASH'], true);
+            if ($cardApproved && $paymentId !== '') {
+                try {
+                    $purchase = $purchases->findByPaymentRef($paymentId);
+                    if ($purchase !== null) {
+                        $purchases->updateStatus((int) $purchase['id'], 'paid');
+                    }
+                    $giftModel->markPurchased($giftId);
+                } catch (Throwable $e) {
+                    error_log('[Gift] card confirm: ' . $e->getMessage());
+                }
+            }
+
+            // 4.2) Conta recém-criada/assumida sem senha: envia as boas-vindas
             // com o link seguro de definição de senha (e-mail e, se configurado,
             // WhatsApp). Tolerante a falhas — não interrompe o pagamento.
             if ($welcome !== null) {
@@ -212,6 +269,8 @@ final class GiftController extends Controller
                 'bankSlipUrl'  => $bankSlipUrl,
                 'pixPayload'   => $pixPayload,
                 'pixQr'        => $pixQr,
+                // Resultado imediato do cartão transparente (null p/ PIX/boleto).
+                'cardApproved' => $isCardCheckout ? $cardApproved : null,
             ]);
             return;
         } catch (Throwable $e) {
@@ -225,7 +284,9 @@ final class GiftController extends Controller
                     error_log('[Gift] release on error: ' . $re->getMessage());
                 }
             }
-            $this->redirectHome('presentes', 'erro');
+            // Cartão recusado/erro de cartão: mensagem específica (o ASAAS
+            // retorna erro HTTP quando o cartão não é aprovado).
+            $this->redirectHome('presentes', $isCardCheckout ? 'erro-cartao-recusado' : 'erro');
         }
     }
 
@@ -309,6 +370,72 @@ final class GiftController extends Controller
         } catch (Throwable $e) {
             error_log('[Gift] releaseExpiredReservations: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Lê e valida os dados do cartão do POST, montando o objeto creditCard do
+     * ASAAS. Retorna null se algum campo essencial estiver ausente/ inválido.
+     * NUNCA registra os dados do cartão em log.
+     *
+     * @return array{holderName:string, number:string, expiryMonth:string, expiryYear:string, ccv:string}|null
+     */
+    private function readCardInput(): ?array
+    {
+        $holder = trim((string) ($_POST['card_holder'] ?? ''));
+        $number = preg_replace('/\D+/', '', (string) ($_POST['card_number'] ?? ''));
+        $expiry = trim((string) ($_POST['card_expiry'] ?? '')); // MM/AA ou MM/AAAA
+        $ccv    = preg_replace('/\D+/', '', (string) ($_POST['card_ccv'] ?? ''));
+
+        if ($holder === '' || $number === '' || $ccv === '' || $expiry === '') {
+            return null;
+        }
+        // Número: 13 a 19 dígitos. CCV: 3 ou 4.
+        if (strlen($number) < 13 || strlen($number) > 19) {
+            return null;
+        }
+        if (strlen($ccv) < 3 || strlen($ccv) > 4) {
+            return null;
+        }
+
+        // Validade: aceita MM/AA ou MM/AAAA.
+        if (!preg_match('#^(\d{2})\s*/\s*(\d{2}|\d{4})$#', $expiry, $m)) {
+            return null;
+        }
+        $month = $m[1];
+        $year  = strlen($m[2]) === 2 ? ('20' . $m[2]) : $m[2];
+        if ((int) $month < 1 || (int) $month > 12) {
+            return null;
+        }
+
+        return [
+            'holderName'  => $holder,
+            'number'      => $number,
+            'expiryMonth' => $month,
+            'expiryYear'  => $year,
+            'ccv'         => $ccv,
+        ];
+    }
+
+    /**
+     * IP do PAGADOR (exigido pelo ASAAS no checkout transparente). Considera
+     * proxies comuns (Plesk/Apache). Nunca usa o IP do servidor.
+     */
+    private function clientIp(): string
+    {
+        $candidates = [
+            $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
+            // Primeiro IP da cadeia X-Forwarded-For.
+            trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))[0]),
+            $_SERVER['HTTP_X_REAL_IP'] ?? '',
+            $_SERVER['REMOTE_ADDR'] ?? '',
+        ];
+        foreach ($candidates as $ip) {
+            $ip = trim((string) $ip);
+            if ($ip !== '' && filter_var($ip, FILTER_VALIDATE_IP) !== false) {
+                return $ip;
+            }
+        }
+        return '';
     }
 
     /** Redireciona para a home, numa âncora, com um status de retorno. */

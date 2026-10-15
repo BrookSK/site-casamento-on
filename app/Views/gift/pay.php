@@ -77,15 +77,27 @@ $valueText = 'R$ ' . number_format((float) $value, 2, ',', '.');
                 <?php endif; ?>
 
             <?php else: /* CREDIT_CARD */ ?>
-                <h3 class="pay-card__title">Pague com Cartão de Crédito</h3>
-                <?php if ($invoiceUrl): ?>
-                    <p>Você será direcionado para a página segura de pagamento do ASAAS para informar os dados do cartão.</p>
+                <?php $cardApproved = $cardApproved ?? null; ?>
+                <?php if ($cardApproved === true): ?>
+                    <div class="pay-card__success" aria-hidden="true">&#10003;</div>
+                    <h3 class="pay-card__title">Pagamento aprovado!</h3>
+                    <p>Recebemos a sua contribuição com o cartão de crédito.
+                       Muito obrigado pelo carinho!</p>
+                <?php elseif ($invoiceUrl): ?>
+                    <!-- Fallback: cartão não processado de forma transparente
+                         (ex.: conta sem checkout transparente). Mantém a fatura
+                         segura do ASAAS como alternativa. -->
+                    <h3 class="pay-card__title">Pague com Cartão de Crédito</h3>
+                    <p>Para concluir com segurança, finalize o pagamento do cartão
+                       pela página protegida do ASAAS.</p>
                     <p>
                         <a class="btn btn--primary" href="<?= View::e($invoiceUrl) ?>"
-                           target="_blank" rel="noopener">Pagar com cartão</a>
+                           target="_blank" rel="noopener">Finalizar pagamento</a>
                     </p>
                 <?php else: ?>
-                    <p>Não foi possível abrir o pagamento por cartão agora. Tente novamente em instantes.</p>
+                    <h3 class="pay-card__title">Cartão de Crédito</h3>
+                    <p>Não foi possível concluir o pagamento por cartão agora.
+                       Tente novamente ou escolha outra forma de pagamento.</p>
                 <?php endif; ?>
             <?php endif; ?>
 

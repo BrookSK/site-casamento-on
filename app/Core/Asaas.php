@@ -133,6 +133,17 @@ final class Asaas
         if (!empty($data['description']))       { $payload['description']       = $data['description']; }
         if (!empty($data['externalReference'])) { $payload['externalReference'] = $data['externalReference']; }
 
+        // Checkout transparente de cartão: quando os dados do cartão são
+        // enviados junto, o ASAAS processa a transação na hora (sem fatura
+        // hospedada). Exige o remoteIp do PAGADOR (não o do servidor).
+        if (!empty($data['creditCard']) && !empty($data['creditCardHolderInfo'])) {
+            $payload['creditCard']           = $data['creditCard'];
+            $payload['creditCardHolderInfo'] = $data['creditCardHolderInfo'];
+            if (!empty($data['remoteIp'])) {
+                $payload['remoteIp'] = $data['remoteIp'];
+            }
+        }
+
         return $this->request('POST', '/payments', $payload);
     }
 

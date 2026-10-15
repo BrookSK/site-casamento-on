@@ -1469,7 +1469,29 @@ p { margin: 0 0 1rem; }
 /* Campos que ocupam a linha inteira do formulário. */
 .gift-modal__form .field--full,
 .gift-modal__form .gift-modal__extra,
+.gift-modal__form .gift-modal__card,
 .gift-modal__form .gift-modal__submit { grid-column: 1 / -1; }
+
+/* Campos do cartão (checkout transparente) */
+.gift-modal__card {
+    display: grid;
+    gap: 0.9rem 1rem;
+    padding: 1rem;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    background: var(--c-cream);
+}
+.gift-modal__card-note {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--c-muted);
+}
+.gift-modal__card .field { display: flex; flex-direction: column; gap: 0.35rem; }
+.gift-modal__card-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem 1rem;
+}
 
 /* Bloco de criação de conta (e-mail/telefone) exibido para visitante sem
    login. Agrupa os campos empilhados, ocupando a linha inteira. */
@@ -2059,6 +2081,19 @@ p { margin: 0 0 1rem; }
     font-size: 1.6rem;
     color: var(--c-ink);
     margin: 0 0 1.5rem;
+}
+
+/* Selo de sucesso do pagamento aprovado (cartão transparente). */
+.pay-card__success {
+    width: 68px;
+    height: 68px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    background: #e3ead3;
+    color: #4a5a28;
+    font-size: 2.2rem;
+    line-height: 68px;
+    text-align: center;
 }
 
 /* QR Code: moldura clara centralizada, destacando-o do fundo. */
