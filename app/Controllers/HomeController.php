@@ -64,6 +64,11 @@ final class HomeController extends Controller
     private function loadGifts(): array
     {
         try {
+            // Antes de listar, libera reservas presas em pagamentos pendentes
+            // vencidos (ponto 9) — assim os presentes voltam a ficar disponíveis
+            // sem depender de um agendador externo.
+            GiftController::releaseExpiredReservations($this->config);
+
             // Traz TODOS os presentes (inclusive os já comprados), para que os
             // adquiridos permaneçam visíveis na lista, porém indisponíveis.
             $rows = (new Gift($this->config))->listAll(false);

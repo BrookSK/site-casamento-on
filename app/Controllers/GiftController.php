@@ -65,9 +65,15 @@ final class GiftController extends Controller
             $this->redirectHome('presentes', 'erro-cpf');
         }
 
+        $giftModel = new Gift($this->config);
+        $reserved  = false;
+
+        // Libera reservas vencidas antes de avaliar a disponibilidade, para que
+        // um presente abandonado por outro visitante volte a ser comprável.
+        self::releaseExpiredReservations($this->config);
+
         try {
-            $giftModel = new Gift($this->config);
-            $gift      = $giftModel->findAvailable($giftId);
+            $gift = $giftModel->findAvailable($giftId);
             if ($gift === null) {
                 $this->redirectHome('presentes', 'erro-indisponivel');
             }
@@ -77,6 +83,15 @@ final class GiftController extends Controller
                 $this->redirectHome('presentes', 'erro-valor');
             }
             $value = round($amountCents / 100, 2);
+
+            // Reserva temporária ATÔMICA do presente antes de abrir a cobrança
+            // (ponto 9). Se outro presenteador reservou/comprou no intervalo, o
+            // UPDATE condicional não afeta a linha e abortamos como indisponível,
+            // impedindo compras duplicadas simultâneas.
+            if (!$giftModel->reserveIfAvailable($giftId)) {
+                $this->redirectHome('presentes', 'erro-indisponivel');
+            }
+            $reserved = true;
 
             $asaas = Asaas::fromSettings($this->config);
 
@@ -126,6 +141,7 @@ final class GiftController extends Controller
                 'buyer_name'        => $buyerName,
                 'buyer_email'       => $buyerMail ?: null,
                 'amount_cents'      => $amountCents,
+                'gift_price_cents'  => $amountCents,
                 'payment_ref'       => $paymentId ?: null,
                 'asaas_customer_id' => $customerId,
                 'billing_type'      => $billingType,
@@ -150,7 +166,42 @@ final class GiftController extends Controller
             return;
         } catch (Throwable $e) {
             error_log('[Gift] store: ' . $e->getMessage());
+            // Libera a reserva feita acima quando a cobrança não chegou a ser
+            // concluída, para o presente não ficar preso em 'reserved'.
+            if ($reserved) {
+                try {
+                    $giftModel->releaseIfReserved($giftId);
+                } catch (Throwable $re) {
+                    error_log('[Gift] release on error: ' . $re->getMessage());
+                }
+            }
             $this->redirectHome('presentes', 'erro');
+        }
+    }
+
+    /**
+     * Expira as reservas presas em pagamentos pendentes antigos e devolve os
+     * presentes à disponibilidade (ponto 9). Oportunista e tolerante a falhas:
+     * é chamado ao renderizar a lista (home) e antes de uma nova compra, de
+     * modo que a limpeza acontece sem depender de um cron.
+     *
+     * @param array<string, mixed> $config
+     * @param int $maxAgeMinutes Idade máxima de uma compra pendente (minutos).
+     */
+    public static function releaseExpiredReservations(array $config, int $maxAgeMinutes = 60): void
+    {
+        try {
+            $purchases = new GiftPurchase($config);
+            $giftIds   = $purchases->expireStalePending($maxAgeMinutes);
+            if ($giftIds === []) {
+                return;
+            }
+            $gifts = new Gift($config);
+            foreach ($giftIds as $giftId) {
+                $gifts->releaseIfNoActivePurchase((int) $giftId);
+            }
+        } catch (Throwable $e) {
+            error_log('[Gift] releaseExpiredReservations: ' . $e->getMessage());
         }
     }
 

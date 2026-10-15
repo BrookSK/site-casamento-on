@@ -138,6 +138,56 @@ final class EmailTemplate
         return self::wrap($data['siteName'], $body, $data['signature'] ?? null);
     }
 
+    /**
+     * Monta o e-mail de CONFIRMAÇÃO DE PAGAMENTO (ponto 8).
+     *
+     * Informa nome do presenteador, presente, valor, data e identificação da
+     * transação, com um resumo em formato de recibo.
+     *
+     * @param array{
+     *   name: string,
+     *   siteName: string,
+     *   siteUrl: ?string,
+     *   giftName: string,
+     *   amount: string,
+     *   date: ?string,
+     *   transactionId: ?string,
+     *   signature: ?string
+     * } $data
+     */
+    public static function payment(array $data): string
+    {
+        $name     = self::firstName($data['name']);
+        $siteUrl  = trim((string) ($data['siteUrl'] ?? ''));
+        $giftName = trim((string) ($data['giftName'] ?? ''));
+        $amount   = trim((string) ($data['amount'] ?? ''));
+        $date     = trim((string) ($data['date'] ?? ''));
+        $txId     = trim((string) ($data['transactionId'] ?? ''));
+
+        $body = '<p style="margin:0 0 16px;">Olá, <strong>' . self::escape($name) . '</strong>!</p>'
+            . '<p style="margin:0 0 20px;line-height:1.6;">Recebemos a sua contribuição '
+            . 'com muito carinho. Seu presente está confirmado — muito obrigado por '
+            . 'fazer parte deste momento com a gente!</p>';
+
+        // Resumo da compra (recibo).
+        $rows = '';
+        if ($giftName !== '') { $rows .= self::infoRow('Presente', self::escape($giftName)); }
+        if ($amount !== '')   { $rows .= self::infoRow('Valor pago', self::escape($amount)); }
+        if ($date !== '')     { $rows .= self::infoRow('Data do pagamento', self::escape($date)); }
+        if ($txId !== '')     { $rows .= self::infoRow('Identificação da transação', self::escape($txId)); }
+
+        if ($rows !== '') {
+            $body .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+                . 'style="border-collapse:collapse;margin:0 0 24px;">' . $rows . '</table>';
+        }
+
+        if ($siteUrl !== '') {
+            $body .= self::button('Acessar o site', $siteUrl);
+        }
+
+        return self::wrap($data['siteName'], $body, $data['signature'] ?? null);
+    }
+
     // ----------------------------------------------------------------
     //  Blocos reutilizáveis
     // ----------------------------------------------------------------

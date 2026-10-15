@@ -42,6 +42,7 @@ $filters = [
     <div class="stat"><span class="stat__value"><?= (int) ($summary['guests_total'] ?? 0) ?></span><span class="stat__label">Convidados cadastrados</span></div>
     <div class="stat"><span class="stat__value"><?= (int) $summary['confirmed'] ?></span><span class="stat__label">Presenças confirmadas</span></div>
     <div class="stat"><span class="stat__value"><?= (int) $summary['declined'] ?></span><span class="stat__label">Ausências</span></div>
+    <div class="stat"><span class="stat__value"><?= (int) ($summary['pending'] ?? 0) ?></span><span class="stat__label">Sem resposta</span></div>
     <div class="stat"><span class="stat__value"><?= (int) ($summary['companions'] ?? 0) ?></span><span class="stat__label">Acompanhantes confirmados</span></div>
     <div class="stat"><span class="stat__value"><?= (int) $summary['people'] ?></span><span class="stat__label">Total estimado de pessoas</span></div>
 </div>

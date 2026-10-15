@@ -94,6 +94,43 @@ final class Notifier
         $this->whatsappOrSkip($guestId, 'password_reset', $phone, $waText);
     }
 
+    /**
+     * Envia a CONFIRMAÇÃO DE PAGAMENTO por e-mail e WhatsApp (ponto 8).
+     *
+     * Deve ser chamado uma única vez por transação, na transição para "pago"
+     * (a idempotência fica a cargo do webhook). Informa presente, valor, data
+     * e identificação da transação. Tolerante a falhas: cada canal é registrado
+     * em communication_logs independentemente.
+     *
+     * @param array{id:?int,name:string,email:?string,phone:?string} $guest
+     * @param array{giftName:string,amount:string,date:?string,transactionId:?string} $payment
+     */
+    public function sendPaymentConfirmation(array $guest, array $payment): void
+    {
+        $site    = $this->siteName();
+        $siteUrl = $this->siteUrl();
+        $email   = trim((string) ($guest['email'] ?? ''));
+        $phone   = trim((string) ($guest['phone'] ?? ''));
+        $guestId = (int) ($guest['id'] ?? 0);
+
+        // ----- E-mail -----
+        $html = EmailTemplate::payment([
+            'name'          => (string) $guest['name'],
+            'siteName'      => $site,
+            'siteUrl'       => $siteUrl !== '' ? $siteUrl : null,
+            'giftName'      => (string) ($payment['giftName'] ?? ''),
+            'amount'        => (string) ($payment['amount'] ?? ''),
+            'date'          => $payment['date'] ?? null,
+            'transactionId' => $payment['transactionId'] ?? null,
+            'signature'     => $this->signature(),
+        ]);
+        $this->emailOrSkip($guestId, 'payment', $email, (string) $guest['name'], 'Pagamento confirmado — ' . $site, $html);
+
+        // ----- WhatsApp -----
+        $waText = $this->paymentWhatsAppText((string) $guest['name'], $site, $payment);
+        $this->whatsappOrSkip($guestId, 'payment', $phone, $waText);
+    }
+
     // ----------------------------------------------------------------
     //  Envio por canal + registro no log
     // ----------------------------------------------------------------
@@ -203,6 +240,28 @@ final class Notifier
         if ($passwordLink !== null && $passwordLink !== '') {
             $lines[] = 'Defina sua senha de forma segura: ' . $passwordLink;
         }
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Texto da confirmação de pagamento para o WhatsApp (texto puro).
+     *
+     * @param array{giftName:string,amount:string,date:?string,transactionId:?string} $payment
+     */
+    private function paymentWhatsAppText(string $name, string $site, array $payment): string
+    {
+        $first    = trim(explode(' ', trim($name))[0] ?: 'convidado(a)');
+        $giftName = trim((string) ($payment['giftName'] ?? ''));
+        $amount   = trim((string) ($payment['amount'] ?? ''));
+        $date     = trim((string) ($payment['date'] ?? ''));
+        $txId     = trim((string) ($payment['transactionId'] ?? ''));
+
+        $lines = ['Olá, ' . $first . '! Confirmamos o seu presente no ' . $site . '. Muito obrigado pelo carinho! 💛'];
+        if ($giftName !== '') { $lines[] = 'Presente: ' . $giftName; }
+        if ($amount !== '')   { $lines[] = 'Valor: ' . $amount; }
+        if ($date !== '')     { $lines[] = 'Data: ' . $date; }
+        if ($txId !== '')     { $lines[] = 'Transação: ' . $txId; }
+
         return implode("\n", $lines);
     }
 

@@ -113,6 +113,37 @@
             });
         }
     });
+
+    /* ---- Pré-visualização de MÚLTIPLAS imagens (upload de álbuns) ---- */
+    var multiInputs = document.querySelectorAll('[data-multi-image-input]');
+    Array.prototype.forEach.call(multiInputs, function (input) {
+        // Encontra o container de preview associado (irmão marcado no mesmo form).
+        var form = input.form || input.closest('form');
+        var box = form ? form.querySelector('[data-multi-image-preview]') : null;
+        if (!box) { return; }
+
+        input.addEventListener('change', function () {
+            box.innerHTML = '';
+            var files = input.files ? Array.prototype.slice.call(input.files) : [];
+            var imgs = files.filter(function (f) {
+                return /^image\/(jpeg|png|webp)$/.test(f.type);
+            });
+            if (imgs.length === 0) { box.hidden = true; return; }
+
+            box.hidden = false;
+            imgs.forEach(function (file) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    var thumb = document.createElement('img');
+                    thumb.src = e.target.result;
+                    thumb.className = 'album-upload-preview__thumb';
+                    thumb.alt = file.name;
+                    box.appendChild(thumb);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+    });
 })();
 
 /* =============================================================

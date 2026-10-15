@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controller;
-use App\Core\Mailer;
+use App\Core\Notifier;
 use App\Models\AsaasWebhookEvent;
+use App\Models\Gift;
 use App\Models\GiftPurchase;
+use App\Models\Guest;
 use App\Models\Setting;
 use Throwable;
 
@@ -76,13 +78,37 @@ final class AsaasWebhookController extends Controller
                 $purchases = new GiftPurchase($this->config);
                 $purchase  = $purchases->findByPaymentRef($paymentId);
                 if ($purchase !== null) {
-                    $wasPaid = ($purchase['payment_status'] ?? '') === 'paid';
-                    $purchases->updateStatus((int) $purchase['id'], $status);
+                    $purchaseId = (int) $purchase['id'];
+                    $prevStatus = (string) ($purchase['payment_status'] ?? '');
+                    $wasPaid    = $prevStatus === 'paid';
+                    $giftId     = (int) ($purchase['gift_id'] ?? 0);
 
-                    // Agradece ao presenteador quando o pagamento é confirmado
-                    // (apenas na transição para "paid", para não repetir e-mails).
+                    $purchases->updateStatus($purchaseId, $status);
+
+                    // Trilha de auditoria da mudança de status (ponto 11).
+                    if ($prevStatus !== $status) {
+                        $purchases->logStatus($purchaseId, $prevStatus ?: null, $status, 'webhook:' . $eventType);
+                    }
+
+                    // Captura financeira (ponto 11): taxas, valor líquido e datas
+                    // extraídas do payload do gateway, gravadas na transação.
+                    $purchases->updateFinance($purchaseId, $this->extractFinance($payment, $status));
+
+                    // Disponibilidade do presente (ponto 9): confirma a aquisição
+                    // ao pagar; libera a reserva quando falha/estorna.
+                    if ($giftId > 0) {
+                        $gifts = new Gift($this->config);
+                        if ($status === 'paid') {
+                            $gifts->markPurchased($giftId);
+                        } elseif ($status === 'failed' || $status === 'refunded') {
+                            $gifts->releaseIfReserved($giftId);
+                        }
+                    }
+
+                    // Confirmação de pagamento por e-mail + WhatsApp (ponto 8),
+                    // apenas na transição para "paid" (evita mensagens duplicadas).
                     if ($status === 'paid' && !$wasPaid) {
-                        $this->sendThankYouEmail($purchase);
+                        $this->sendPaymentConfirmation($purchase, $payment);
                     }
                 }
             }
@@ -96,34 +122,139 @@ final class AsaasWebhookController extends Controller
     }
 
     /**
-     * Envia um e-mail de agradecimento ao presenteador quando a cobrança é
-     * confirmada. Tolerante a falhas: nunca interrompe o processamento do
-     * webhook (um erro de SMTP não deve fazer o ASAAS reenviar o evento).
+     * Extrai os dados financeiros do objeto `payment` do webhook (ponto 11).
+     *
+     * O ASAAS envia `value` (bruto) e `netValue` (líquido já descontadas as
+     * taxas) em reais; a taxa é a diferença. As datas vêm como "Y-m-d" (ou
+     * "Y-m-d H:i:s"): paymentDate/clientPaymentDate (pagamento), confirmedDate
+     * (confirmação) e creditDate (liquidação/crédito na conta).
+     *
+     * Retorna só as chaves com valor conhecido — updateFinance usa COALESCE,
+     * então nada é sobrescrito com null.
+     *
+     * @param array<string, mixed> $payment
+     * @return array{
+     *   fee_cents?:int, net_cents?:int, finance_status?:string,
+     *   paid_at?:string, confirmed_at?:string, settled_at?:string, refunded_at?:string
+     * }
+     */
+    private function extractFinance(array $payment, string $status): array
+    {
+        $out = [];
+
+        $value = isset($payment['value']) ? (float) $payment['value'] : null;
+        $net   = isset($payment['netValue']) ? (float) $payment['netValue'] : null;
+
+        if ($net !== null) {
+            $netCents = (int) round($net * 100);
+            $out['net_cents'] = max(0, $netCents);
+            if ($value !== null) {
+                $out['fee_cents'] = max(0, (int) round($value * 100) - $netCents);
+            }
+        }
+
+        // Datas (normalizadas para 'Y-m-d H:i:s' ou null).
+        $paymentDate   = $this->normalizeDate($payment['paymentDate'] ?? ($payment['clientPaymentDate'] ?? null));
+        $confirmedDate = $this->normalizeDate($payment['confirmedDate'] ?? null);
+        $creditDate    = $this->normalizeDate($payment['creditDate'] ?? null);
+
+        if ($paymentDate !== null)   { $out['paid_at'] = $paymentDate; }
+        if ($confirmedDate !== null) { $out['confirmed_at'] = $confirmedDate; }
+        if ($creditDate !== null)    { $out['settled_at'] = $creditDate; }
+
+        // Status financeiro granular e marca de estorno.
+        if ($status === 'paid') {
+            // "received" quando já há crédito/liquidação; senão "confirmed".
+            $out['finance_status'] = $creditDate !== null ? 'received' : 'confirmed';
+        } elseif ($status === 'refunded') {
+            $out['finance_status'] = 'refunded';
+            $out['refunded_at']    = $this->normalizeDate($payment['dateCreated'] ?? null) ?? date('Y-m-d H:i:s');
+        } elseif ($status === 'failed') {
+            $out['finance_status'] = 'canceled';
+        }
+
+        return $out;
+    }
+
+    /**
+     * Normaliza uma data vinda do ASAAS ("Y-m-d" ou "Y-m-d H:i:s") para o
+     * formato de TIMESTAMP do MySQL. Retorna null se vazia/inválida.
+     */
+    private function normalizeDate(mixed $raw): ?string
+    {
+        $s = trim((string) ($raw ?? ''));
+        if ($s === '') {
+            return null;
+        }
+        $ts = strtotime($s);
+        if ($ts === false) {
+            return null;
+        }
+        return date('Y-m-d H:i:s', $ts);
+    }
+
+    /**
+     * Dispara a confirmação de pagamento ao presenteador por e-mail e WhatsApp
+     * (ponto 8), com o resumo da compra (presente, valor, data e id da
+     * transação). Delega ao Notifier, que monta o template HTML e registra cada
+     * canal em communication_logs. Tolerante a falhas: nunca interrompe o
+     * processamento do webhook.
      *
      * @param array<string, mixed> $purchase Linha de gift_purchases.
+     * @param array<string, mixed> $payment  Objeto `payment` do webhook.
      */
-    private function sendThankYouEmail(array $purchase): void
+    private function sendPaymentConfirmation(array $purchase, array $payment): void
     {
         try {
-            $email = trim((string) ($purchase['buyer_email'] ?? ''));
-            if ($email === '' || !Mailer::isConfigured($this->config)) {
-                return;
+            $guestId = (int) ($purchase['guest_id'] ?? 0) ?: null;
+            $name    = trim((string) ($purchase['buyer_name'] ?? ''));
+            $email   = trim((string) ($purchase['buyer_email'] ?? ''));
+            $phone   = null;
+
+            // Nome do presente (a linha de gift_purchases não traz o join).
+            $giftName = '';
+            $giftId   = (int) ($purchase['gift_id'] ?? 0);
+            if ($giftId > 0) {
+                $gift     = (new Gift($this->config))->find($giftId);
+                $giftName = trim((string) ($gift['name'] ?? ''));
             }
 
-            $name   = trim((string) ($purchase['buyer_name'] ?? ''));
-            $site   = (string) ($this->config['app']['name'] ?? '');
-            $greet  = $name !== '' ? ('Olá ' . $name . ', ') : '';
-            $amount = $this->formatAmount((int) ($purchase['amount_cents'] ?? 0));
+            // Dados de contato do convidado logado (telefone p/ WhatsApp, e um
+            // e-mail de reserva caso a compra não tenha registrado o do comprador).
+            if ($guestId !== null) {
+                $guest = (new Guest($this->config))->find($guestId);
+                if ($guest !== null) {
+                    $phone = $guest['phone'] ?? null;
+                    if ($email === '') {
+                        $email = trim((string) ($guest['email'] ?? ''));
+                    }
+                    if ($name === '') {
+                        $name = trim((string) ($guest['name'] ?? ''));
+                    }
+                }
+            }
 
-            $html = '<p>' . htmlspecialchars($greet, ENT_QUOTES, 'UTF-8')
-                . 'recebemos a sua contribuição' . ($amount !== '' ? (' de <strong>' . $amount . '</strong>') : '')
-                . '. Muito obrigado pelo carinho!</p>'
-                . ($site !== '' ? ('<p>Com carinho, ' . htmlspecialchars($site, ENT_QUOTES, 'UTF-8') . '.</p>') : '');
+            // Data de pagamento: usa a do payload, com fallback para "agora".
+            $paidRaw = $payment['paymentDate'] ?? ($payment['clientPaymentDate'] ?? ($payment['confirmedDate'] ?? null));
+            $paidTs  = $paidRaw !== null ? strtotime((string) $paidRaw) : false;
+            $dateStr = $paidTs !== false ? date('d/m/Y', $paidTs) : date('d/m/Y');
 
-            $mailer = Mailer::fromSettings($this->config);
-            $mailer->send($email, 'Recebemos o seu presente — obrigado!', $html, $name);
+            (new Notifier($this->config))->sendPaymentConfirmation(
+                [
+                    'id'    => $guestId,
+                    'name'  => $name !== '' ? $name : 'convidado(a)',
+                    'email' => $email ?: null,
+                    'phone' => $phone,
+                ],
+                [
+                    'giftName'      => $giftName,
+                    'amount'        => $this->formatAmount((int) ($purchase['amount_cents'] ?? 0)),
+                    'date'          => $dateStr,
+                    'transactionId' => trim((string) ($purchase['payment_ref'] ?? '')),
+                ]
+            );
         } catch (Throwable $e) {
-            error_log('[AsaasWebhook] sendThankYouEmail: ' . $e->getMessage());
+            error_log('[AsaasWebhook] sendPaymentConfirmation: ' . $e->getMessage());
         }
     }
 

@@ -1290,9 +1290,18 @@ p { margin: 0 0 1rem; }
 
 /* Presente já escolhido: acinzentado e selo. Não removemos da lista. */
 .gift-card { position: relative; }
-/* Presente já escolhido: a foto permanece COLORIDA (sem acinzentar). O status
-   é indicado apenas pelo selo "Presente já escolhido". */
+/* Presente já escolhido (ponto 9): a foto fica acinzentada (grayscale + menor
+   opacidade) para transmitir "indisponível", e o selo "Presente já escolhido"
+   reforça o estado. O nome/preço continuam legíveis. */
 .gift-card--taken { background: #faf8f4; }
+.gift-card--taken .gift-card__img,
+.gift-card--taken .gift-card__icon {
+    filter: grayscale(100%);
+    opacity: 0.55;
+    transition: filter 0.3s var(--ease), opacity 0.3s var(--ease);
+}
+.gift-card--taken .gift-card__name,
+.gift-card--taken .gift-card__price { color: var(--c-muted); }
 .gift-card--taken:hover {
     transform: none;
     box-shadow: none;
@@ -1990,4 +1999,52 @@ p { margin: 0 0 1rem; }
 @media (max-width: 560px) {
     .pay-copy { flex-direction: column; }
     .pay-copy .btn { width: 100%; }
+}
+
+/* =============================================================
+   Pré-visualização de múltiplas fotos no upload de álbuns (admin)
+   ============================================================= */
+.album-upload-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1rem;
+}
+.album-upload-preview__thumb {
+    width: 96px;
+    height: 72px;              /* 4:3, igual ao recorte do upload */
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--c-line);
+    box-shadow: var(--shadow-soft);
+}
+
+/* =============================================================
+   Acessibilidade — áreas de toque (item 17/18)
+   Garante alvos confortáveis em telas sensíveis ao toque, sem alterar o
+   visual no desktop (aplicado só em dispositivos de ponteiro grosseiro).
+   ============================================================= */
+@media (pointer: coarse) {
+    .btn,
+    .btn-admin,
+    .site-nav__list a,
+    .chip,
+    .nav-toggle,
+    button,
+    input[type="submit"],
+    input[type="button"],
+    [role="button"] {
+        min-height: 44px;
+    }
+    /* Botões com texto curto também confortáveis na horizontal. */
+    .btn,
+    .btn-admin {
+        min-width: 44px;
+    }
+    /* Campos de formulário: altura mínima para toque preciso. */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    select,
+    textarea {
+        min-height: 44px;
+    }
 }

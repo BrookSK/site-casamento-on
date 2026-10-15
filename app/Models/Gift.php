@@ -201,4 +201,66 @@ final class Gift extends Model
             ['id' => $id]
         );
     }
+
+    /**
+     * Reserva um presente de forma atômica: só muda para 'reserved' quando ele
+     * ainda está 'available'. Retorna true se a reserva foi feita por ESTA
+     * chamada — e false se outra transação já o havia reservado/comprado.
+     *
+     * O UPDATE condicional (status = 'available' no WHERE) garante exclusão
+     * mútua mesmo com dois pagamentos simultâneos: apenas um afeta a linha,
+     * impedindo compras duplicadas do mesmo item (ponto 9).
+     */
+    public function reserveIfAvailable(int $id): bool
+    {
+        $affected = $this->execute(
+            'UPDATE ' . $this->table
+            . " SET status = 'reserved' WHERE id = :id AND status = 'available'",
+            ['id' => $id]
+        );
+        return $affected > 0;
+    }
+
+    /** Marca o presente como adquirido (pagamento confirmado). */
+    public function markPurchased(int $id): int
+    {
+        return $this->execute(
+            'UPDATE ' . $this->table . " SET status = 'purchased' WHERE id = :id",
+            ['id' => $id]
+        );
+    }
+
+    /**
+     * Libera a reserva, voltando o presente a 'available'. Só atua quando ele
+     * está 'reserved' — nunca "desfaz" um presente já 'purchased'. Usado quando
+     * um pagamento pendente falha, expira ou é cancelado/estornado (ponto 9).
+     */
+    public function releaseIfReserved(int $id): int
+    {
+        return $this->execute(
+            'UPDATE ' . $this->table
+            . " SET status = 'available' WHERE id = :id AND status = 'reserved'",
+            ['id' => $id]
+        );
+    }
+
+    /**
+     * Libera a reserva com segurança: só volta a 'available' quando o presente
+     * está 'reserved' E não há nenhuma compra ainda ativa para ele (pendente
+     * ou paga). Protege contra liberar um item que tenha outra tentativa de
+     * pagamento legítima em andamento. Usado após expirar compras pendentes.
+     */
+    public function releaseIfNoActivePurchase(int $id): int
+    {
+        return $this->execute(
+            'UPDATE ' . $this->table . ' g'
+            . " SET g.status = 'available' "
+            . " WHERE g.id = :id AND g.status = 'reserved' "
+            . '   AND NOT EXISTS ('
+            . '       SELECT 1 FROM gift_purchases p '
+            . "       WHERE p.gift_id = g.id AND p.payment_status IN ('pending','paid')"
+            . '   )',
+            ['id' => $id]
+        );
+    }
 }

@@ -84,9 +84,12 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
         <?= $csrfField ?>
         <input type="hidden" name="album_id" value="<?= $albumId ?>">
         <div class="form-actions" style="align-items:center;">
-            <input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple required>
+            <input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp"
+                   multiple required data-multi-image-input>
             <button type="submit" class="btn-admin">Enviar fotos</button>
         </div>
+        <!-- Pré-visualização das fotos escolhidas antes do envio. -->
+        <div class="album-upload-preview" data-multi-image-preview hidden></div>
     </form>
 
     <?php if ($photos === []): ?>

@@ -24,6 +24,7 @@ final class GiftPurchase extends Model
      *   buyer_name:?string,
      *   buyer_email:?string,
      *   amount_cents:int,
+     *   gift_price_cents?:int,
      *   payment_ref:?string,
      *   asaas_customer_id:?string,
      *   billing_type:string,
@@ -38,11 +39,11 @@ final class GiftPurchase extends Model
     {
         $this->execute(
             'INSERT INTO ' . $this->table . ' ('
-            . 'gift_id, guest_id, buyer_name, buyer_email, amount_cents, '
+            . 'gift_id, guest_id, buyer_name, buyer_email, amount_cents, gift_price_cents, '
             . 'payment_status, payment_ref, asaas_customer_id, billing_type, '
             . 'invoice_url, bank_slip_url, pix_payload, pix_qr_base64, message'
             . ') VALUES ('
-            . ':gift_id, :guest_id, :buyer_name, :buyer_email, :amount_cents, '
+            . ':gift_id, :guest_id, :buyer_name, :buyer_email, :amount_cents, :gift_price_cents, '
             . '\'pending\', :payment_ref, :asaas_customer_id, :billing_type, '
             . ':invoice_url, :bank_slip_url, :pix_payload, :pix_qr_base64, :message)',
             [
@@ -51,6 +52,7 @@ final class GiftPurchase extends Model
                 'buyer_name'        => $data['buyer_name'] ?? null,
                 'buyer_email'       => $data['buyer_email'] ?? null,
                 'amount_cents'      => $data['amount_cents'],
+                'gift_price_cents'  => $data['gift_price_cents'] ?? $data['amount_cents'],
                 'payment_ref'       => $data['payment_ref'] ?? null,
                 'asaas_customer_id' => $data['asaas_customer_id'] ?? null,
                 'billing_type'      => $data['billing_type'],
@@ -62,6 +64,50 @@ final class GiftPurchase extends Model
             ]
         );
         return (int) $this->lastInsertId();
+    }
+
+    /**
+     * Expira compras pendentes antigas (ponto 9: "liberar o presente caso o
+     * pagamento ... expire"). Marca como 'failed'/'canceled' toda compra que
+     * continua 'pending' após `maxAgeMinutes` minutos — cobre o caso em que o
+     * presenteador abandona o PIX/boleto e o gateway nunca envia um evento.
+     *
+     * Retorna os IDs dos presentes afetados (para liberar a reserva em seguida).
+     *
+     * @return array<int, int> gift_ids distintos das compras expiradas
+     */
+    public function expireStalePending(int $maxAgeMinutes = 60): array
+    {
+        $minutes = max(1, $maxAgeMinutes);
+
+        // 1) Coleta as compras pendentes vencidas (antes de alterar o status).
+        $stale = $this->select(
+            'SELECT id, gift_id FROM ' . $this->table
+            . " WHERE payment_status = 'pending' "
+            . '  AND created_at < (NOW() - INTERVAL :mins MINUTE)',
+            ['mins' => $minutes]
+        );
+        if ($stale === []) {
+            return [];
+        }
+
+        $giftIds = [];
+        foreach ($stale as $row) {
+            $purchaseId = (int) $row['id'];
+            $giftId     = (int) $row['gift_id'];
+            if ($giftId > 0) {
+                $giftIds[$giftId] = true;
+            }
+            // 2) Marca como falha + registra a transição na trilha de auditoria.
+            $this->execute(
+                'UPDATE ' . $this->table
+                . " SET payment_status = 'failed', finance_status = 'canceled' WHERE id = :id",
+                ['id' => $purchaseId]
+            );
+            $this->logStatus($purchaseId, 'pending', 'failed', 'expired:timeout');
+        }
+
+        return array_keys($giftIds);
     }
 
     /** Busca uma compra pela referência da cobrança no ASAAS (pay_...). */
@@ -86,6 +132,48 @@ final class GiftPurchase extends Model
         return $this->execute(
             'UPDATE ' . $this->table . ' SET payment_status = :s WHERE id = :id',
             ['s' => $status, 'id' => $id]
+        );
+    }
+
+    /**
+     * Grava os dados financeiros capturados do payload do gateway (ponto 11):
+     * taxa, valor líquido e as datas do ciclo de vida da cobrança. Só sobrescreve
+     * uma coluna quando um valor foi efetivamente informado (COALESCE preserva o
+     * que já existe), de modo que eventos sucessivos (confirmed → received)
+     * acumulem informação sem apagar o que já foi gravado.
+     *
+     * @param array{
+     *   fee_cents?:?int,
+     *   net_cents?:?int,
+     *   finance_status?:?string,
+     *   paid_at?:?string,
+     *   confirmed_at?:?string,
+     *   settled_at?:?string,
+     *   refunded_at?:?string
+     * } $data
+     */
+    public function updateFinance(int $id, array $data): int
+    {
+        return $this->execute(
+            'UPDATE ' . $this->table . ' SET '
+            . 'fee_cents      = COALESCE(:fee_cents, fee_cents), '
+            . 'net_cents      = COALESCE(:net_cents, net_cents), '
+            . 'finance_status = COALESCE(:finance_status, finance_status), '
+            . 'paid_at        = COALESCE(:paid_at, paid_at), '
+            . 'confirmed_at   = COALESCE(:confirmed_at, confirmed_at), '
+            . 'settled_at     = COALESCE(:settled_at, settled_at), '
+            . 'refunded_at    = COALESCE(:refunded_at, refunded_at) '
+            . 'WHERE id = :id',
+            [
+                'id'             => $id,
+                'fee_cents'      => $data['fee_cents']      ?? null,
+                'net_cents'      => $data['net_cents']      ?? null,
+                'finance_status' => $data['finance_status'] ?? null,
+                'paid_at'        => $data['paid_at']        ?? null,
+                'confirmed_at'   => $data['confirmed_at']   ?? null,
+                'settled_at'     => $data['settled_at']     ?? null,
+                'refunded_at'    => $data['refunded_at']    ?? null,
+            ]
         );
     }
 
