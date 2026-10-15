@@ -907,6 +907,42 @@ a { color: var(--c-sage-dark); }
     /* Colunas que só aparecem no popup (ocultas no cartão). */
     .admin-table--cards .cell-hide-mobile { display: none !important; }
 
+    /* ---- Layout "lado a lado" dentro do cartão (Galeria, Presentes,
+       Confirmações e Financeiro). Os campos visíveis ficam na mesma linha
+       quando há espaço e quebram para a linha seguinte quando não cabem.
+       Não altera fontes, textos nem tamanhos — só o posicionamento. ---- */
+    .admin-table--cards-inline tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        column-gap: 1.25rem;
+        row-gap: 0.5rem;
+        /* Reserva espaço à direita para a bolinha de status no canto. */
+        padding-right: 1.9rem;
+    }
+    .admin-table--cards-inline td {
+        display: block;
+        width: auto;         /* deixa cada campo com a largura do conteúdo */
+        flex: 0 1 auto;
+    }
+    /* O título do cartão (Nome/Presente) ocupa a linha inteira, para destacar,
+       deixando os demais campos lado a lado na(s) linha(s) abaixo. */
+    .admin-table--cards-inline td[data-label="Nome"],
+    .admin-table--cards-inline td[data-label="Presente"] {
+        flex-basis: 100%;
+    }
+    /* Na Galeria, a miniatura (Foto) fica à esquerda e os textos (Álbum/Fotos)
+       ao lado dela. */
+    .admin-table--cards-inline td[data-label="Foto"] {
+        flex-basis: auto;
+        order: -1;           /* a foto vem antes do bloco de texto */
+    }
+
+    /* Remove da listagem a coluna "Status" quando a bolinha já representa a
+       informação (Confirmações, Presentes, Financeiro e Comunicações). As
+       informações completas de status seguem no pop-up. */
+    .admin-table--cards .cell-status-mobile-hide { display: none !important; }
+
     /* Linha/cartão clicável (abre o popup). */
     .admin-table--cards tr[data-row-open] { cursor: pointer; }
     .admin-table--cards tr[data-row-open]:active { background: var(--c-cream); }

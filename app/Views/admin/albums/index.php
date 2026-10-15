@@ -49,7 +49,7 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
             <span class="gift-reorder-status" data-reorder-status role="status" aria-live="polite"></span>
         </div>
         <div style="overflow-x:auto;" class="admin-table--cards-wrap">
-        <table class="admin-table gift-reorder admin-table--cards"
+        <table class="admin-table gift-reorder admin-table--cards admin-table--cards-inline"
                data-reorder
                data-reorder-url="<?= View::e(View::url('/admin/galeria/ordenar', $baseUrl)) ?>"
                data-csrf-name="<?= View::e(\App\Core\Csrf::fieldName()) ?>"

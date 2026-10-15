@@ -167,7 +167,7 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
         <p class="admin-empty">Nenhuma transação encontrada com esses filtros.</p>
     <?php else: ?>
         <div style="overflow-x:auto;" class="admin-table--cards-wrap">
-        <table class="admin-table admin-table--finance admin-table--cards">
+        <table class="admin-table admin-table--finance admin-table--cards admin-table--cards-inline">
             <thead>
                 <tr>
                     <th>Presente</th>
@@ -195,7 +195,7 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
                         </td>
                         <td data-label="Comprador"><?= View::e($buyer !== '' ? $buyer : '—') ?></td>
                         <td data-label="Forma"><?= View::e($billingLabels[$bt] ?? $bt) ?></td>
-                        <td data-label="Status"><span class="badge cell-badge-dot <?= $cls ?>"><?= View::e($label) ?></span></td>
+                        <td data-label="Status" class="cell-status-mobile-hide"><span class="badge cell-badge-dot <?= $cls ?>"><?= View::e($label) ?></span></td>
                         <td class="col-nowrap cell-hide-mobile" data-label="Criada em"><small><?= View::e($fmtDate($p['created_at'] ?? null)) ?></small></td>
                         <td class="col-money cell-hide-mobile" data-label="Bruto"><?= $money((int) ($p['amount_cents'] ?? 0)) ?></td>
                         <td class="col-money cell-hide-mobile" data-label="Taxas"><?= $money((int) ($p['fee_cents'] ?? 0)) ?></td>

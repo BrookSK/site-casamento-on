@@ -86,7 +86,7 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
         </div>
 
         <div style="overflow-x:auto;" class="admin-table--cards-wrap">
-        <table class="admin-table gift-reorder admin-table--cards"
+        <table class="admin-table gift-reorder admin-table--cards admin-table--cards-inline"
                data-reorder
                data-reorder-url="<?= View::e(View::url('/admin/presentes/ordenar', $baseUrl)) ?>"
                data-csrf-name="<?= View::e(\App\Core\Csrf::fieldName()) ?>"
@@ -145,7 +145,7 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
                             <?php endif; ?>
                         </td>
                         <td data-label="Preço"><?= $money((int) $g['price_cents']) ?></td>
-                        <td data-label="Status"><span class="badge cell-badge-dot <?= $cls ?>"><?= View::e($label) ?></span></td>
+                        <td data-label="Status" class="cell-status-mobile-hide"><span class="badge cell-badge-dot <?= $cls ?>"><?= View::e($label) ?></span></td>
                         <td style="white-space:nowrap;" class="cell-action-mobile-hide">
                             <?php /* Gatilho do popup usado só no mobile (linha clicável). Fica oculto. */ ?>
                             <button type="button" class="is-hidden-trigger"

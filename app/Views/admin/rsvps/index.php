@@ -78,7 +78,7 @@ $exportQs = $status !== '' ? ('?status=' . $status) : '';
         <p class="admin-empty">Nenhuma confirmação <?= $status !== '' ? 'com esse filtro' : 'ainda' ?>.</p>
     <?php else: ?>
         <div style="overflow-x:auto;" class="admin-table--cards-wrap">
-        <table class="admin-table admin-table--cards">
+        <table class="admin-table admin-table--cards admin-table--cards-inline">
             <thead>
                 <tr>
                     <th>Nome</th>
@@ -111,9 +111,10 @@ $exportQs = $status !== '' ? ('?status=' . $status) : '';
                     ];
                     ?>
                     <tr data-row-open>
-                        <td data-label="Nome"><strong><?= View::e((string) $r['name']) ?></strong></td>
-                        <td data-label="Status">
-                            <span class="status-dot status-dot--<?= View::e((string) $r['status']) ?>" aria-hidden="true"></span>
+                        <td data-label="Nome"><strong><?= View::e((string) $r['name']) ?></strong>
+                            <span class="status-dot status-dot--<?= View::e((string) $r['status']) ?>" title="<?= View::e($label) ?>" aria-hidden="true"></span>
+                        </td>
+                        <td data-label="Status" class="cell-status-mobile-hide">
                             <span class="badge cell-badge-dot <?= $cls ?>"><?= View::e($label) ?></span>
                         </td>
                         <td data-label="Acompanhantes"><?= (int) $r['companions'] ?></td>

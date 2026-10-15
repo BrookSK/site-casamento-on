@@ -76,7 +76,7 @@ $statusClass  = ['sent' => 'ok', 'failed' => 'err', 'skipped' => 'muted'];
                         <span class="status-dot status-dot--<?= View::e($status) ?>" title="<?= View::e($statusText) ?>" aria-hidden="true"></span>
                     </td>
                     <td data-label="Destino"><?= View::e((string) ($row['recipient'] ?? '—')) ?></td>
-                    <td data-label="Status">
+                    <td data-label="Status" class="cell-status-mobile-hide">
                         <span class="badge cell-badge-dot badge--<?= View::e($cls) ?>">
                             <?= View::e($statusText) ?>
                         </span>
