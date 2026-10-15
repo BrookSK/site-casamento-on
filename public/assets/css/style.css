@@ -285,11 +285,11 @@ p { margin: 0 0 1rem; }
     /* Enquadramento deslocado à direita (object-position > 50%) para que o
        bloco de texto, centralizado, caia no espaço ENTRE a noiva e o noivo,
        e não sobre o rosto da noiva. */
-    object-position: 75% 30%;
+    object-position: 82% 30%;
     /* Pequeno zoom na foto de fundo (afasta o casal das bordas e abre o
        vão central). transform-origin à direita acompanha o enquadramento. */
     transform: scale(1.08);
-    transform-origin: 75% 30%;
+    transform-origin: 82% 30%;
     /* Reduz levemente o brilho da imagem principal (ponto 1). */
     filter: brightness(0.88);
     z-index: -2;
