@@ -100,10 +100,11 @@ final class EmailTemplate
         $name = self::firstName($data['name']);
         $link = trim($data['resetLink']);
 
-        $body = '<p style="margin:0 0 16px;">Olá, <strong>' . self::escape($name) . '</strong>!</p>'
+        $body = '<p style="margin:0 0 16px;">Olá, <strong>' . self::escape($name) . '</strong>! &#9825;</p>'
             . '<p style="margin:0 0 20px;line-height:1.6;">Recebemos um pedido para '
-            . 'redefinir a senha da sua conta. Clique no botão abaixo para criar uma '
-            . 'nova senha. Se não foi você, pode ignorar este e-mail — nada muda.</p>'
+            . 'redefinir sua senha no ' . self::escape($data['siteName']) . '. Para '
+            . 'continuar, é só clicar no botão abaixo e criar uma nova senha com '
+            . 'segurança. Se não foi você, pode ignorar este e-mail — nada muda.</p>'
             . self::button('Redefinir minha senha', $link)
             . '<p style="margin:16px 0 0;font-size:13px;color:#777;line-height:1.5;">'
             . 'Se o botão não funcionar, copie e cole este endereço no navegador:<br>'
@@ -164,20 +165,22 @@ final class EmailTemplate
         $date     = trim((string) ($data['date'] ?? ''));
         $txId     = trim((string) ($data['transactionId'] ?? ''));
 
-        $body = '<p style="margin:0 0 16px;">Olá, <strong>' . self::escape($name) . '</strong>!</p>'
-            . '<p style="margin:0 0 20px;line-height:1.6;">Recebemos a sua contribuição '
-            . 'com muito carinho. Seu presente está confirmado — muito obrigado por '
-            . 'fazer parte deste momento com a gente!</p>';
+        $body = '<p style="margin:0 0 16px;">Olá, <strong>' . self::escape($name) . '</strong>! &#9825;</p>'
+            . '<p style="margin:0 0 20px;line-height:1.6;">Seu presente foi confirmado '
+            . 'com sucesso! Ficamos muito felizes com esse gesto tão especial. Obrigado '
+            . 'por fazer parte da nossa história e por todo esse carinho!</p>';
 
-        // Resumo da compra (recibo).
+        // Resumo da compra (recibo) com título "Detalhes do presente".
         $rows = '';
         if ($giftName !== '') { $rows .= self::infoRow('Presente', self::escape($giftName)); }
-        if ($amount !== '')   { $rows .= self::infoRow('Valor pago', self::escape($amount)); }
-        if ($date !== '')     { $rows .= self::infoRow('Data do pagamento', self::escape($date)); }
-        if ($txId !== '')     { $rows .= self::infoRow('Identificação da transação', self::escape($txId)); }
+        if ($amount !== '')   { $rows .= self::infoRow('Valor', self::escape($amount)); }
+        if ($date !== '')     { $rows .= self::infoRow('Data', self::escape($date)); }
+        if ($txId !== '')     { $rows .= self::infoRow('Transação', self::escape($txId)); }
 
         if ($rows !== '') {
-            $body .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+            $body .= '<p style="margin:0 0 10px;font-size:15px;color:#333;">'
+                . '<strong>&#127873; Detalhes do presente</strong></p>'
+                . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
                 . 'style="border-collapse:collapse;margin:0 0 24px;">' . $rows . '</table>';
         }
 

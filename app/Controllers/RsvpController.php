@@ -264,13 +264,18 @@ final class RsvpController extends Controller
     /** Monta a mensagem pré-pronta conforme o status da confirmação. */
     private function buildMessage(string $name, string $status): string
     {
+        $first = trim(explode(' ', trim($name))[0] ?: 'convidado(a)');
+
         if ($status === 'confirmed') {
-            return 'Olá ' . $name . ', recebemos a sua confirmação de presença. '
-                . 'Ficamos muito felizes em ter você conosco!';
+            return 'Olá, ' . $first . '! ♡ Recebemos sua confirmação de presença e '
+                . 'ficamos muito felizes em saber que você estará com a gente nesse '
+                . 'dia tão especial! Mal podemos esperar para celebrar esse momento '
+                . 'ao seu lado.';
         }
 
-        return 'Olá ' . $name . ', recebemos a sua resposta. '
-            . 'Sentiremos a sua falta, mas agradecemos por avisar!';
+        return 'Olá, ' . $first . '! ♡ Recebemos sua resposta e agradecemos muito '
+            . 'por nos avisar. Sentiremos sua falta nesse dia tão especial, mas '
+            . 'esperamos que possamos compartilhar outros momentos felizes juntos!';
     }
 
     /**

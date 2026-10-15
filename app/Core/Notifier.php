@@ -89,8 +89,10 @@ final class Notifier
 
         // WhatsApp (se configurado): envia o link de redefinição.
         $phone  = trim((string) ($guest['phone'] ?? ''));
-        $waText = 'Olá! Recebemos um pedido para redefinir a sua senha em ' . $site . '. '
-            . 'Use este link seguro: ' . $resetLink;
+        $first  = trim(explode(' ', trim((string) $guest['name']))[0] ?: 'convidado(a)');
+        $waText = 'Olá, ' . $first . '! ♡ Recebemos um pedido para redefinir sua senha '
+            . 'no ' . $site . '. Para continuar, é só clicar no link abaixo e criar uma '
+            . 'nova senha com segurança.' . "\n\n" . '🔗 ' . $resetLink;
         $this->whatsappOrSkip($guestId, 'password_reset', $phone, $waText);
     }
 
@@ -256,7 +258,13 @@ final class Notifier
         $date     = trim((string) ($payment['date'] ?? ''));
         $txId     = trim((string) ($payment['transactionId'] ?? ''));
 
-        $lines = ['Olá, ' . $first . '! Confirmamos o seu presente no ' . $site . '. Muito obrigado pelo carinho! 💛'];
+        $lines = [
+            'Olá, ' . $first . '! ♡ Seu presente foi confirmado com sucesso! Ficamos '
+                . 'muito felizes com esse gesto tão especial. Obrigado por fazer parte '
+                . 'da nossa história e por todo esse carinho!',
+            '',
+            '🎁 Detalhes do presente',
+        ];
         if ($giftName !== '') { $lines[] = 'Presente: ' . $giftName; }
         if ($amount !== '')   { $lines[] = 'Valor: ' . $amount; }
         if ($date !== '')     { $lines[] = 'Data: ' . $date; }
