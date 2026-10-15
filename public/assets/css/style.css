@@ -196,7 +196,7 @@ p { margin: 0 0 1rem; }
 .page-light .site-nav a { color: var(--c-ink); }
 .page-light .nav-toggle__bar { background: var(--c-ink); }
 /* Dá um respiro no topo para o conteúdo não ficar sob o header fixo. */
-.page-light main { padding-top: 5rem; }
+.page-light main { padding-top: 4rem; }
 
 .brand__names {
     font-family: var(--font-serif);
@@ -962,7 +962,9 @@ p { margin: 0 0 1rem; }
    ============================================================= */
 .section--gallery-page {
     background: var(--c-white);
-    padding-top: clamp(6rem, 12vw, 9rem); /* compensa o header fixo */
+    /* O respiro do header fixo é dado por .page-light main; aqui mantemos
+       apenas um espaçamento moderado até o título. */
+    padding-top: clamp(1.5rem, 4vw, 2.5rem);
 }
 .gallery-empty {
     text-align: center;
@@ -1209,34 +1211,49 @@ p { margin: 0 0 1rem; }
     opacity: 0.8;
 }
 
-/* Trilho + bolinha do range, estilizados nas cores da paleta */
+/* Trilho + bolinha do range, estilizados nas cores da paleta.
+   O próprio input fica transparente e com altura mínima; a espessura visual
+   da barra vem do TRILHO (track), o que evita o controle nativo "gordo" no
+   mobile. */
 .gift-filterbar input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 6px;
-    border-radius: 999px;
-    background: var(--c-line);
+    height: 24px;              /* área de toque; não é a espessura da barra */
+    background: transparent;   /* a cor da barra vem do track */
     outline: none;
     cursor: pointer;
+    margin: 0;
+}
+/* Trilho fino — WebKit/Blink */
+.gift-filterbar input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--c-line);
+}
+/* Trilho fino — Firefox */
+.gift-filterbar input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--c-line);
 }
 .gift-filterbar input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     background: var(--c-sage);
     border: 3px solid var(--c-white);
     box-shadow: 0 2px 8px rgba(44,42,38,0.28);
-    /* Centraliza a bolinha (maior) sobre o trilho de 6px: (24-6)/2 = 9px. */
+    /* Centraliza a bolinha sobre o trilho de 4px: (22-4)/2 = 9px. */
     margin-top: -9px;
     transition: background 0.2s var(--ease), transform 0.2s var(--ease);
 }
 .gift-filterbar input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.08); }
 .gift-filterbar input[type="range"]::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     background: var(--c-sage);
     border: 3px solid var(--c-white);
@@ -1753,9 +1770,9 @@ p { margin: 0 0 1rem; }
 
     /* Hero no mobile: ajusta enquadramento da imagem e suaviza o overlay */
     .hero__content { max-width: 560px; padding-top: 5rem; }
-    /* Mostra o casal inteiro no celular: foca o centro horizontal (onde está
-       o casal) e um pouco acima, sem zoom exagerado. */
-    .hero__bg { object-position: 58% 32%; }
+    /* Desloca o enquadramento para a direita da foto (object-position maior),
+       revelando melhor o noivo e aproveitando o espaço livre ao lado da noiva. */
+    .hero__bg { object-position: 72% 32%; }
     .hero__overlay {
         background: linear-gradient(180deg,
             rgba(32, 30, 26, 0.40) 0%,
