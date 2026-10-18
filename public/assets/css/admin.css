@@ -1026,3 +1026,108 @@ a { color: var(--c-sage-dark); }
     border: 1px solid var(--c-line);
     background: var(--c-cream);
 }
+
+/* ---- Guia de importação de presentes (passo a passo) ---- */
+.import-guide h4 { font-family: var(--font-serif); font-weight: 500; }
+
+.import-step {
+    display: flex;
+    gap: 1rem;
+    padding: 0 0 1.5rem;
+    position: relative;
+}
+/* Linha vertical ligando os números dos passos. */
+.import-step::before {
+    content: "";
+    position: absolute;
+    left: 0.95rem;
+    top: 2.1rem;
+    bottom: 0;
+    width: 2px;
+    background: var(--c-line);
+}
+.import-step--last::before { display: none; }
+
+.import-step__num {
+    flex: none;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 999px;
+    background: var(--c-sage);
+    color: var(--c-white);
+    display: grid;
+    place-items: center;
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+}
+.import-step__body { flex: 1; min-width: 0; }
+.import-step__title { margin: 0.15rem 0 0.4rem; font-size: 1.1rem; }
+.import-step__text {
+    margin: 0;
+    color: var(--c-muted);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    max-width: 68ch;
+}
+.import-step__list {
+    margin: 0.6rem 0 0;
+    padding-left: 1.1rem;
+    color: var(--c-muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    max-width: 68ch;
+}
+.import-step__hint {
+    margin: 0.75rem 0 0;
+    padding: 0.6rem 0.85rem;
+    background: var(--c-cream);
+    border-left: 3px solid var(--c-sage);
+    border-radius: var(--radius);
+    color: var(--c-muted);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    max-width: 68ch;
+}
+
+/* Tabela de campos dentro do passo 2. */
+.import-fields { max-width: 100%; }
+.import-fields td { font-size: 0.9rem; }
+.import-fields code { white-space: nowrap; }
+
+/* Pílulas de obrigatoriedade. */
+.pill {
+    display: inline-block;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: var(--c-sand);
+    color: var(--c-muted);
+    white-space: nowrap;
+}
+.pill--req { background: var(--c-sage); color: var(--c-white); }
+.pill--rec { background: var(--c-rose-soft); color: var(--c-rose); }
+
+/* Árvore do ZIP. */
+.import-tree {
+    background: var(--c-cream);
+    border: 1px dashed var(--c-line);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    overflow: auto;
+    max-width: 420px;
+    margin: 0;
+    color: var(--c-ink);
+}
+
+@media (max-width: 560px) {
+    .import-step { gap: 0.75rem; }
+    .import-step::before { left: 0.85rem; }
+    .import-step__num { width: 1.7rem; height: 1.7rem; }
+}
