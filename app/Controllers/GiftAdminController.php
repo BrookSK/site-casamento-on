@@ -243,9 +243,9 @@ final class GiftAdminController extends Controller
         $out = fopen('php://output', 'wb');
         // BOM para o Excel reconhecer UTF-8.
         fwrite($out, "\xEF\xBB\xBF");
-        fputcsv($out, ['nome', 'descricao', 'preco', 'status']);
-        fputcsv($out, ['Jogo de panelas', 'Conjunto 5 peças antiaderente', '450,00', 'disponivel']);
-        fputcsv($out, ['Lua de mel', 'Contribuição para a viagem', '1.500,00', 'disponivel']);
+        fputcsv($out, ['nome', 'descricao', 'preco', 'status', 'imagem']);
+        fputcsv($out, ['Jogo de panelas', 'Conjunto 5 peças antiaderente', '450,00', 'disponivel', 'jogo-de-panelas.jpg']);
+        fputcsv($out, ['Lua de mel', 'Contribuição para a viagem', '1.500,00', 'disponivel', 'lua-de-mel.png']);
         fclose($out);
     }
 
@@ -280,15 +280,21 @@ final class GiftAdminController extends Controller
             $this->redirect('/admin/presentes/importar');
         }
 
-        // Valida a extensão (apenas .csv é aceito).
+        // Aceita .csv (presentes sem foto) ou .zip (CSV + imagens).
         $origName = (string) ($file['name'] ?? '');
-        if (strtolower((string) pathinfo($origName, PATHINFO_EXTENSION)) !== 'csv') {
-            $this->setFlash('error', 'Formato não suportado. Envie um arquivo .csv.');
+        $ext = strtolower((string) pathinfo($origName, PATHINFO_EXTENSION));
+
+        if ($ext !== 'csv' && $ext !== 'zip') {
+            $this->setFlash('error', 'Formato não suportado. Envie um arquivo .csv ou .zip.');
             $this->redirect('/admin/presentes/importar');
         }
 
         try {
-            $result = $this->parseCsv($tmp);
+            // O fluxo ZIP devolve a mesma estrutura do CSV (gifts + errors),
+            // já com os caminhos de imagem resolvidos nas linhas aplicáveis.
+            $result = $ext === 'zip'
+                ? $this->parseZip($tmp)
+                : $this->parseCsv($tmp);
         } catch (Throwable $e) {
             error_log('[GiftAdmin] import parse: ' . $e->getMessage());
             $this->setFlash('error', $e->getMessage());
@@ -306,10 +312,15 @@ final class GiftAdminController extends Controller
                 // Define a ordem sequencial a partir do fim da fila atual, para
                 // os importados entrarem após os existentes, na ordem do arquivo.
                 $next = $model->nextSortOrder();
+                $toInsert = [];
                 foreach ($valid as $i => $g) {
-                    $valid[$i]['sort_order'] = $next + $i;
+                    // Remove metadados internos antes de persistir (o banco só
+                    // conhece as colunas reais do presente).
+                    unset($g['_image_ref'], $g['_line']);
+                    $g['sort_order'] = $next + count($toInsert);
+                    $toInsert[] = $g;
                 }
-                $imported = $model->createManyGifts($valid);
+                $imported = $model->createManyGifts($toInsert);
             } catch (Throwable $e) {
                 error_log('[GiftAdmin] import save: ' . $e->getMessage());
                 $this->setFlash('error', 'Não foi possível salvar os presentes importados.');
@@ -330,13 +341,153 @@ final class GiftAdminController extends Controller
         if ($imported > 0) {
             $this->setFlash(
                 'success',
-                $imported . ' presente(s) importado(s). '
-                . count($errors) . ' linha(s) ignorada(s) por erro — veja os detalhes abaixo.'
+                $imported . ' presente(s) importado(s) com ' . count($errors)
+                . ' aviso(s) — veja os detalhes abaixo.'
             );
         } else {
             $this->setFlash('error', 'Nenhum presente foi importado. Corrija os erros abaixo e tente novamente.');
         }
         $this->redirect('/admin/presentes/importar');
+    }
+
+    /**
+     * Processa um arquivo ZIP contendo o CSV e as imagens. Extrai com segurança
+     * para uma pasta temporária, roda o MESMO parseCsv() do fluxo CSV e, para
+     * cada presente que referencie uma imagem (coluna "imagem"), resolve o
+     * arquivo correspondente e o processa pelo mesmo ImageUploader do cadastro
+     * manual. Imagem ausente ou inválida vira um AVISO naquela linha e o
+     * presente é importado SEM foto (não compromete os demais).
+     *
+     * @return array{gifts: array<int, array<string, mixed>>, errors: array<int, string>}
+     * @throws \RuntimeException em erro estrutural (sem suporte a ZIP, arquivo
+     *         corrompido, CSV ausente no pacote, etc.)
+     */
+    private function parseZip(string $zipPath): array
+    {
+        if (!class_exists(\ZipArchive::class)) {
+            throw new \RuntimeException(
+                'Este servidor não suporta importação por ZIP (extensão ZipArchive indisponível). '
+                . 'Envie um arquivo .csv (sem imagens).'
+            );
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            throw new \RuntimeException('Não foi possível abrir o arquivo ZIP (corrompido ou inválido).');
+        }
+
+        // Pasta temporária exclusiva para esta importação.
+        $tmpDir = rtrim(sys_get_temp_dir(), '/\\') . '/gift_import_' . bin2hex(random_bytes(6));
+        if (!@mkdir($tmpDir, 0700, true) && !is_dir($tmpDir)) {
+            $zip->close();
+            throw new \RuntimeException('Não foi possível preparar a extração do ZIP.');
+        }
+
+        $imageExt = ['jpg', 'jpeg', 'png', 'webp'];
+        $csvAbs   = null;
+        // basename (minúsculo) => caminho absoluto extraído da imagem.
+        $images   = [];
+
+        try {
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $entry = (string) $zip->getNameIndex($i);
+                if ($entry === '' || str_ends_with($entry, '/')) {
+                    continue; // diretórios
+                }
+
+                // Segurança: ignora caminhos absolutos ou com travessia (../).
+                $normalized = str_replace('\\', '/', $entry);
+                if (str_starts_with($normalized, '/') || preg_match('#(^|/)\.\.(/|$)#', $normalized)) {
+                    continue;
+                }
+
+                $base = basename($normalized);
+                $ex   = strtolower((string) pathinfo($base, PATHINFO_EXTENSION));
+
+                if ($ex === 'csv' && $csvAbs === null) {
+                    $csvAbs = $tmpDir . '/_sheet.csv';
+                    $stream = $zip->getStream($entry);
+                    if ($stream === false) {
+                        continue;
+                    }
+                    file_put_contents($csvAbs, $stream);
+                    if (is_resource($stream)) {
+                        fclose($stream);
+                    }
+                } elseif (in_array($ex, $imageExt, true)) {
+                    $dest   = $tmpDir . '/img_' . $i . '_' . $base;
+                    $stream = $zip->getStream($entry);
+                    if ($stream === false) {
+                        continue;
+                    }
+                    file_put_contents($dest, $stream);
+                    if (is_resource($stream)) {
+                        fclose($stream);
+                    }
+                    // Indexa pelo basename (case-insensitive) para casar com a
+                    // coluna "imagem" do CSV, independente da pasta interna.
+                    $images[mb_strtolower($base)] = $dest;
+                }
+            }
+            $zip->close();
+
+            if ($csvAbs === null) {
+                throw new \RuntimeException('O ZIP não contém nenhum arquivo .csv.');
+            }
+
+            $parsed = $this->parseCsv($csvAbs);
+            $gifts  = $parsed['gifts'];
+            $errors = $parsed['errors'];
+
+            // Resolve a imagem de cada presente que a referenciou.
+            foreach ($gifts as $idx => $g) {
+                $ref  = trim((string) ($g['_image_ref'] ?? ''));
+                $line = (int) ($g['_line'] ?? 0);
+                if ($ref === '') {
+                    continue; // sem imagem: comportamento normal
+                }
+
+                $key = mb_strtolower(basename($ref));
+                if (!isset($images[$key])) {
+                    $errors[] = 'Linha ' . $line . ': imagem "' . $ref
+                        . '" não encontrada no ZIP — presente importado sem foto.';
+                    continue;
+                }
+
+                try {
+                    $gifts[$idx]['image'] = ImageUploader::handlePath($images[$key], 'gifts');
+                } catch (Throwable $e) {
+                    $errors[] = 'Linha ' . $line . ': imagem "' . $ref . '" inválida ('
+                        . $e->getMessage() . ') — presente importado sem foto.';
+                }
+            }
+
+            return ['gifts' => $gifts, 'errors' => $errors];
+        } finally {
+            // Limpeza: remove a pasta temporária e seu conteúdo.
+            $this->rrmdir($tmpDir);
+        }
+    }
+
+    /** Remove recursivamente um diretório temporário da importação. */
+    private function rrmdir(string $dir): void
+    {
+        if ($dir === '' || !is_dir($dir)) {
+            return;
+        }
+        $items = @scandir($dir) ?: [];
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $path = $dir . '/' . $item;
+            if (is_dir($path)) {
+                $this->rrmdir($path);
+            } else {
+                @unlink($path);
+            }
+        }
+        @rmdir($dir);
     }
 
     /**
@@ -373,7 +524,7 @@ final class GiftAdminController extends Controller
         if (!isset($map['nome'])) {
             fclose($handle);
             throw new \RuntimeException(
-                'Cabeçalho inválido. A primeira linha deve conter as colunas: nome, descricao, preco, status.'
+                'Cabeçalho inválido. A primeira linha deve conter as colunas: nome, descricao, preco, status, imagem.'
             );
         }
 
@@ -439,6 +590,11 @@ final class GiftAdminController extends Controller
                 'image'       => null,
                 'status'      => $status,
                 'sort_order'  => 0, // definido ao salvar
+                // Metadados internos (removidos antes de salvar): nome do arquivo
+                // de imagem informado na coluna "imagem" e a linha do CSV, para
+                // montar avisos de imagem ausente/inválida na importação por ZIP.
+                '_image_ref'  => $get('imagem'),
+                '_line'       => $lineNo,
             ];
         }
 
@@ -468,6 +624,10 @@ final class GiftAdminController extends Controller
             'status'      => 'status',
             'situacao'    => 'status',
             'situação'    => 'status',
+            'imagem'      => 'imagem',
+            'image'       => 'imagem',
+            'foto'        => 'imagem',
+            'arquivo'     => 'imagem',
         ];
 
         $map = [];

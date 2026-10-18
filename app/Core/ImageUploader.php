@@ -51,11 +51,39 @@ final class ImageUploader
             throw new RuntimeException('Arquivo de upload inválido.');
         }
 
-        if ((int) ($file['size'] ?? 0) > self::MAX_BYTES) {
+        // Delega para handlePath(), que concentra validação de MIME/tamanho,
+        // processamento (GD) e gravação — compartilhado com a importação por ZIP.
+        return self::handlePath($tmp, $subdir, $targetW, $targetH);
+    }
+
+    /**
+     * Processa uma imagem a partir de um CAMINHO EM DISCO (não necessariamente
+     * um upload HTTP), aplicando exatamente o mesmo tratamento de handle():
+     * valida o tamanho e o MIME real, recorta/redimensiona (GD) e salva como
+     * JPEG padronizado em assets/img/<subdir>.
+     *
+     * Usado pela importação por ZIP, onde as imagens vêm extraídas para uma
+     * pasta temporária (e portanto não passam por is_uploaded_file()).
+     *
+     * @param string $srcPath Caminho absoluto do arquivo de origem.
+     * @param string $subdir  Subpasta dentro de assets/img (ex.: "gifts").
+     * @param int    $targetW Largura final padrão (px).
+     * @param int    $targetH Altura final padrão (px). Define a proporção.
+     *
+     * @return string Caminho relativo a assets/img (com a subpasta).
+     * @throws RuntimeException em erro de validação ou gravação.
+     */
+    public static function handlePath(string $srcPath, string $subdir = 'gifts', int $targetW = 800, int $targetH = 600): string
+    {
+        if ($srcPath === '' || !is_file($srcPath)) {
+            throw new RuntimeException('Arquivo de imagem inexistente.');
+        }
+
+        if ((int) filesize($srcPath) > self::MAX_BYTES) {
             throw new RuntimeException('A imagem excede o tamanho máximo de 5 MB.');
         }
 
-        $mime = self::detectMime($tmp);
+        $mime = self::detectMime($srcPath);
         if (!isset(self::ALLOWED[$mime])) {
             throw new RuntimeException('Formato não suportado. Envie JPG, PNG ou WebP.');
         }
@@ -65,14 +93,14 @@ final class ImageUploader
         $filename = self::uniqueName($ext);
         $destAbs  = $dir . '/' . $filename;
 
-        $ok = self::processWithGd($tmp, $destAbs, $mime, $targetW, $targetH);
+        $ok = self::processWithGd($srcPath, $destAbs, $mime, $targetW, $targetH);
         if (!$ok) {
             // Sem GD (ou falha no processamento): grava o original, preservando
             // a extensão real para que o navegador o interprete corretamente.
             $origExt  = self::ALLOWED[$mime];
             $filename = self::uniqueName($origExt);
             $destAbs  = $dir . '/' . $filename;
-            if (!@move_uploaded_file($tmp, $destAbs)) {
+            if (!@copy($srcPath, $destAbs)) {
                 throw new RuntimeException('Não foi possível salvar a imagem enviada.');
             }
         }
