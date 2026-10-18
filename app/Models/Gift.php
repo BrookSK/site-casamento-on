@@ -59,6 +59,48 @@ final class Gift extends Model
     }
 
     /**
+     * Insere vários presentes numa única transação. Reusa a mesma estrutura de
+     * dados de createGift(). Se qualquer INSERT falhar, faz rollback de todos
+     * (tudo ou nada) para não deixar a importação pela metade.
+     *
+     * @param array<int, array{name:string, description:?string, price_cents:int, image:?string, status:string, sort_order:int}> $gifts
+     * @return int Quantidade de presentes efetivamente inseridos.
+     */
+    public function createManyGifts(array $gifts): int
+    {
+        if ($gifts === []) {
+            return 0;
+        }
+
+        $pdo = $this->db();
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare(
+                'INSERT INTO ' . $this->table
+                . ' (name, description, price_cents, image, status, sort_order) '
+                . 'VALUES (:name, :description, :price_cents, :image, :status, :sort_order)'
+            );
+            $count = 0;
+            foreach ($gifts as $data) {
+                $stmt->execute([
+                    'name'        => $data['name'],
+                    'description' => $data['description'] ?? null,
+                    'price_cents' => $data['price_cents'],
+                    'image'       => $data['image'] ?? null,
+                    'status'      => $data['status'],
+                    'sort_order'  => $data['sort_order'],
+                ]);
+                $count++;
+            }
+            $pdo->commit();
+            return $count;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
      * Reordena os presentes conforme a lista de IDs informada, gravando
      * sort_order = 1, 2, 3, ... numa única transação. IDs inexistentes são
      * ignorados; presentes não citados mantêm-se após os citados, na ordem

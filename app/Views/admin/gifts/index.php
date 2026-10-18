@@ -74,14 +74,16 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
     <?php if ($rows === []): ?>
         <div class="admin-toolbar">
             <div class="spacer"></div>
+            <a class="btn-admin btn-admin--ghost" href="<?= View::e(View::url('/admin/presentes/importar', $baseUrl)) ?>">Importar planilha</a>
             <a class="btn-admin" href="<?= View::e(View::url('/admin/presentes/novo', $baseUrl)) ?>">+ Novo presente</a>
         </div>
-        <p class="admin-empty">Nenhum presente cadastrado. Clique em “Novo presente”.</p>
+        <p class="admin-empty">Nenhum presente cadastrado. Clique em “Novo presente” ou importe uma planilha.</p>
     <?php else: ?>
         <!-- Ação "Novo presente" + feedback do salvamento da ordem (via JS). -->
         <div class="admin-toolbar admin-toolbar--tight">
             <span class="gift-reorder-status" data-reorder-status role="status" aria-live="polite"></span>
             <div class="spacer"></div>
+            <a class="btn-admin btn-admin--ghost" href="<?= View::e(View::url('/admin/presentes/importar', $baseUrl)) ?>">Importar planilha</a>
             <a class="btn-admin" href="<?= View::e(View::url('/admin/presentes/novo', $baseUrl)) ?>">+ Novo presente</a>
         </div>
 

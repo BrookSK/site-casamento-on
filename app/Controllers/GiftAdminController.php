@@ -214,6 +214,295 @@ final class GiftAdminController extends Controller
         $this->redirect('/admin/presentes');
     }
 
+    /** Tela de importação de presentes via planilha (CSV). */
+    public function importForm(): void
+    {
+        $this->guard();
+        $this->viewAdmin('admin/gifts/import', [
+            'pageTitle' => 'Importar presentes',
+            'active'    => 'gifts',
+            'admin'     => Auth::user(),
+            'csrfField' => Csrf::field(),
+            'flash'     => $this->pullFlash(),
+            'report'    => $this->pullImportReport(),
+        ]);
+    }
+
+    /**
+     * Baixa um CSV modelo com os cabeçalhos corretos e uma linha de exemplo,
+     * para o usuário preencher e reenviar. UTF-8 com BOM para abrir acentuado
+     * corretamente no Excel.
+     */
+    public function importTemplate(): void
+    {
+        $this->guard();
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="modelo-presentes.csv"');
+
+        $out = fopen('php://output', 'wb');
+        // BOM para o Excel reconhecer UTF-8.
+        fwrite($out, "\xEF\xBB\xBF");
+        fputcsv($out, ['nome', 'descricao', 'preco', 'status']);
+        fputcsv($out, ['Jogo de panelas', 'Conjunto 5 peças antiaderente', '450,00', 'disponivel']);
+        fputcsv($out, ['Lua de mel', 'Contribuição para a viagem', '1.500,00', 'disponivel']);
+        fclose($out);
+    }
+
+    /**
+     * Processa o upload da planilha, valida linha a linha e cadastra os
+     * presentes válidos. Linhas inválidas são ignoradas (com relatório), sem
+     * abortar a importação toda e sem criar presentes incompletos.
+     */
+    public function import(): void
+    {
+        $this->guard();
+
+        if (!Csrf::validate($_POST[Csrf::fieldName()] ?? null)) {
+            $this->setFlash('error', 'Sessão expirada. Tente novamente.');
+            $this->redirect('/admin/presentes/importar');
+        }
+
+        $file = $_FILES['sheet'] ?? null;
+        if (!is_array($file) || (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            $this->setFlash('error', 'Selecione um arquivo CSV para importar.');
+            $this->redirect('/admin/presentes/importar');
+        }
+
+        if ((int) ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            $this->setFlash('error', 'Falha no envio do arquivo. Tente novamente.');
+            $this->redirect('/admin/presentes/importar');
+        }
+
+        $tmp = (string) ($file['tmp_name'] ?? '');
+        if (!is_uploaded_file($tmp)) {
+            $this->setFlash('error', 'Arquivo de upload inválido.');
+            $this->redirect('/admin/presentes/importar');
+        }
+
+        // Valida a extensão (apenas .csv é aceito).
+        $origName = (string) ($file['name'] ?? '');
+        if (strtolower((string) pathinfo($origName, PATHINFO_EXTENSION)) !== 'csv') {
+            $this->setFlash('error', 'Formato não suportado. Envie um arquivo .csv.');
+            $this->redirect('/admin/presentes/importar');
+        }
+
+        try {
+            $result = $this->parseCsv($tmp);
+        } catch (Throwable $e) {
+            error_log('[GiftAdmin] import parse: ' . $e->getMessage());
+            $this->setFlash('error', $e->getMessage());
+            $this->redirect('/admin/presentes/importar');
+        }
+
+        /** @var array{gifts: array<int, array<string, mixed>>, errors: array<int, string>} $result */
+        $errors = $result['errors'];
+        $valid  = $result['gifts'];
+
+        $imported = 0;
+        if ($valid !== []) {
+            try {
+                $model = new Gift($this->config);
+                // Define a ordem sequencial a partir do fim da fila atual, para
+                // os importados entrarem após os existentes, na ordem do arquivo.
+                $next = $model->nextSortOrder();
+                foreach ($valid as $i => $g) {
+                    $valid[$i]['sort_order'] = $next + $i;
+                }
+                $imported = $model->createManyGifts($valid);
+            } catch (Throwable $e) {
+                error_log('[GiftAdmin] import save: ' . $e->getMessage());
+                $this->setFlash('error', 'Não foi possível salvar os presentes importados.');
+                $this->redirect('/admin/presentes/importar');
+            }
+        }
+
+        $this->setImportReport([
+            'imported' => $imported,
+            'errors'   => $errors,
+        ]);
+
+        if ($imported > 0 && $errors === []) {
+            $this->setFlash('success', $imported . ' presente(s) importado(s) com sucesso.');
+            $this->redirect('/admin/presentes');
+        }
+
+        if ($imported > 0) {
+            $this->setFlash(
+                'success',
+                $imported . ' presente(s) importado(s). '
+                . count($errors) . ' linha(s) ignorada(s) por erro — veja os detalhes abaixo.'
+            );
+        } else {
+            $this->setFlash('error', 'Nenhum presente foi importado. Corrija os erros abaixo e tente novamente.');
+        }
+        $this->redirect('/admin/presentes/importar');
+    }
+
+    /**
+     * Lê e valida o CSV, devolvendo os presentes prontos para inserir e a
+     * lista de erros (com número da linha). Não grava nada no banco.
+     *
+     * Cabeçalhos aceitos (1ª linha): nome, descricao, preco, status.
+     * Único campo obrigatório por linha: nome.
+     *
+     * @return array{gifts: array<int, array<string, mixed>>, errors: array<int, string>}
+     * @throws \RuntimeException em erro estrutural do arquivo (não abre, sem cabeçalho, etc.)
+     */
+    private function parseCsv(string $path): array
+    {
+        $handle = @fopen($path, 'rb');
+        if ($handle === false) {
+            throw new \RuntimeException('Não foi possível ler o arquivo enviado.');
+        }
+
+        // Lê a primeira linha crua para remover BOM e detectar o separador.
+        $firstLine = fgets($handle);
+        if ($firstLine === false) {
+            fclose($handle);
+            throw new \RuntimeException('O arquivo está vazio.');
+        }
+        // Remove BOM UTF-8, se houver.
+        $firstLine = preg_replace('/^\xEF\xBB\xBF/', '', $firstLine) ?? $firstLine;
+
+        // Detecta o separador: ";" (comum no Excel pt-BR) ou ",".
+        $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
+
+        $header = str_getcsv($firstLine, $delimiter);
+        $map    = $this->mapHeader($header);
+        if (!isset($map['nome'])) {
+            fclose($handle);
+            throw new \RuntimeException(
+                'Cabeçalho inválido. A primeira linha deve conter as colunas: nome, descricao, preco, status.'
+            );
+        }
+
+        $allowedStatus = ['available', 'reserved', 'purchased'];
+        $gifts  = [];
+        $errors = [];
+        $lineNo = 1; // o cabeçalho é a linha 1
+
+        while (($cols = fgetcsv($handle, 0, $delimiter)) !== false) {
+            $lineNo++;
+
+            // Pula linhas totalmente vazias (sem conteúdo em nenhuma célula).
+            $joined = trim(implode('', array_map(static fn ($c) => (string) $c, $cols)));
+            if ($joined === '') {
+                continue;
+            }
+
+            $get = static function (string $key) use ($cols, $map): string {
+                if (!isset($map[$key])) {
+                    return '';
+                }
+                $idx = $map[$key];
+                return isset($cols[$idx]) ? trim((string) $cols[$idx]) : '';
+            };
+
+            $name = $get('nome');
+            if ($name === '') {
+                $errors[] = 'Linha ' . $lineNo . ': o campo "nome" é obrigatório — linha ignorada.';
+                continue;
+            }
+
+            // Preço: aceita "1.500,00", "1500.00" ou "1500". Vazio = 0.
+            $priceRaw = $get('preco');
+            $priceCents = 0;
+            if ($priceRaw !== '') {
+                $normalized = str_replace(['.', ' '], '', $priceRaw);
+                $normalized = str_replace(',', '.', $normalized);
+                if (!is_numeric($normalized)) {
+                    $errors[] = 'Linha ' . $lineNo . ': preço inválido ("' . $priceRaw . '") — linha ignorada.';
+                    continue;
+                }
+                $priceCents = (int) round(((float) $normalized) * 100);
+                if ($priceCents < 0) {
+                    $priceCents = 0;
+                }
+            }
+
+            // Status: aceita rótulos pt-BR ou os valores internos. Vazio = disponível.
+            $status = $this->normalizeStatus($get('status'));
+            if ($status === null) {
+                $errors[] = 'Linha ' . $lineNo . ': status inválido ("' . $get('status')
+                    . '"). Use disponivel, reservado ou presenteado — linha ignorada.';
+                continue;
+            }
+            if (!in_array($status, $allowedStatus, true)) {
+                $status = 'available';
+            }
+
+            $gifts[] = [
+                'name'        => $name,
+                'description' => $get('descricao') !== '' ? $get('descricao') : null,
+                'price_cents' => $priceCents,
+                'image'       => null,
+                'status'      => $status,
+                'sort_order'  => 0, // definido ao salvar
+            ];
+        }
+
+        fclose($handle);
+        return ['gifts' => $gifts, 'errors' => $errors];
+    }
+
+    /**
+     * Mapeia os nomes de coluna do cabeçalho para índices, aceitando variações
+     * de acento/caixa (ex.: "Descrição" -> "descricao", "Preço" -> "preco").
+     *
+     * @param array<int, string> $header
+     * @return array<string, int> chave canônica => índice da coluna
+     */
+    private function mapHeader(array $header): array
+    {
+        $aliases = [
+            'nome'        => 'nome',
+            'name'        => 'nome',
+            'descricao'   => 'descricao',
+            'descrição'   => 'descricao',
+            'description' => 'descricao',
+            'preco'       => 'preco',
+            'preço'       => 'preco',
+            'price'       => 'preco',
+            'valor'       => 'preco',
+            'status'      => 'status',
+            'situacao'    => 'status',
+            'situação'    => 'status',
+        ];
+
+        $map = [];
+        foreach ($header as $idx => $title) {
+            $key = mb_strtolower(trim((string) $title));
+            if (isset($aliases[$key]) && !isset($map[$aliases[$key]])) {
+                $map[$aliases[$key]] = $idx;
+            }
+        }
+        return $map;
+    }
+
+    /**
+     * Converte o status informado para o valor interno. Devolve null quando o
+     * texto é inválido (para reportar erro). Vazio vira 'available'.
+     */
+    private function normalizeStatus(string $raw): ?string
+    {
+        $raw = mb_strtolower(trim($raw));
+        if ($raw === '') {
+            return 'available';
+        }
+        $map = [
+            'disponivel'  => 'available',
+            'disponível'  => 'available',
+            'available'   => 'available',
+            'reservado'   => 'reserved',
+            'reserved'    => 'reserved',
+            'presenteado' => 'purchased',
+            'comprado'    => 'purchased',
+            'purchased'   => 'purchased',
+        ];
+        return $map[$raw] ?? null;
+    }
+
     /** Remove um presente. */
     public function destroy(): void
     {
@@ -316,5 +605,23 @@ final class GiftAdminController extends Controller
         $flash = $_SESSION['_flash'] ?? null;
         unset($_SESSION['_flash']);
         return $flash;
+    }
+
+    // ---- Relatório da importação (persistido na sessão até ser exibido) ----
+
+    /** @param array{imported:int,errors:array<int,string>} $report */
+    private function setImportReport(array $report): void
+    {
+        Auth::start();
+        $_SESSION['_gift_import_report'] = $report;
+    }
+
+    /** @return array{imported:int,errors:array<int,string>}|null */
+    private function pullImportReport(): ?array
+    {
+        Auth::start();
+        $report = $_SESSION['_gift_import_report'] ?? null;
+        unset($_SESSION['_gift_import_report']);
+        return $report;
     }
 }
