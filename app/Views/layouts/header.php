@@ -21,6 +21,10 @@ $bride     = $wedding['bride'] ?? 'Noiva';
 $groom     = $wedding['groom'] ?? 'Noivo';
 $siteName  = $app['name'] ?? 'Casamento';
 $title     = isset($pageTitle) ? $pageTitle . ' · ' . $siteName : $siteName;
+
+// Link de confirmação de presença na navegação: oculto por padrão (a página
+// /confirmacao-interna permanece acessível pela URL direta, ex.: QR Code).
+$showRsvpLink = !empty($app['show_rsvp_link']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -62,7 +66,9 @@ $title     = isset($pageTitle) ? $pageTitle . ' · ' . $siteName : $siteName;
                 <li><a href="<?= View::e(View::url('/#evento', $baseUrl)) ?>">O evento</a></li>
                 <li><a href="<?= View::e(View::url('/#presentes', $baseUrl)) ?>">Presentes</a></li>
                 <li><a href="<?= View::e(View::url('/galeria', $baseUrl)) ?>">Galeria de Fotos</a></li>
-                <li><a href="<?= View::e(View::url('/#rsvp', $baseUrl)) ?>" class="site-nav__cta">Confirmar presença</a></li>
+                <?php if ($showRsvpLink): ?>
+                    <li><a href="<?= View::e(View::url('/confirmacao-interna', $baseUrl)) ?>" class="site-nav__cta">Confirmar presença</a></li>
+                <?php endif; ?>
                 <?php if ($guestLogged): ?>
                     <li><a href="<?= View::e(View::url('/minha-conta', $baseUrl)) ?>" class="site-nav__account">Minha conta</a></li>
                 <?php else: ?>

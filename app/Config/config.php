@@ -22,6 +22,14 @@ return [
         'locale'   => 'pt_BR',
         'timezone' => 'America/Sao_Paulo',
         'debug'    => true,
+
+        // Exibe (ou não) o link "Confirmar presença" no menu e no rodapé do
+        // site público. A PÁGINA /confirmacao-interna continua sempre acessível
+        // pela URL direta (ex.: QR Code do cartão), independentemente deste
+        // valor — ele controla apenas a visibilidade do link na navegação.
+        //   false  -> a confirmação NÃO aparece na navegação pública (padrão).
+        //   true   -> mostra o link na navegação.
+        'show_rsvp_link' => false,
     ],
 
     /**

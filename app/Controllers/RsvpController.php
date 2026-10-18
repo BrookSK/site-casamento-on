@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Content;
 use App\Core\Controller;
 use App\Core\Csrf;
 use App\Core\EmailTemplate;
@@ -26,6 +27,46 @@ use Throwable;
  */
 final class RsvpController extends Controller
 {
+    /** Caminho da página exclusiva de confirmação de presença. */
+    private const INTERNAL_PATH = '/confirmacao-interna';
+
+    /**
+     * Página exclusiva de confirmação de presença (/confirmacao-interna).
+     *
+     * Exibe o MESMO bloco de RSVP que ficava na home, agora numa rota própria.
+     * Reaproveita a mesma preparação de dados usada pela home (convidado logado,
+     * confirmação já registrada, token CSRF e status de retorno).
+     */
+    public function internal(): void
+    {
+        $content = new Content($this->config);
+        $bride   = $content->text('bride', (string) ($this->config['wedding']['bride'] ?? 'Noiva'));
+        $groom   = $content->text('groom', (string) ($this->config['wedding']['groom'] ?? 'Noivo'));
+
+        // Convidado logado: busca a confirmação já registrada (se houver), para
+        // mostrar o resumo com edição de acompanhantes em vez do formulário.
+        $currentGuest = GuestAuth::user();
+        $myRsvp       = null;
+        if ($currentGuest !== null) {
+            try {
+                $myRsvp = (new Rsvp($this->config))->findLatestForGuest((int) $currentGuest['id']);
+            } catch (Throwable $e) {
+                error_log('[Rsvp] internal findLatestForGuest: ' . $e->getMessage());
+            }
+        }
+
+        $this->view('confirmacao-interna', [
+            'pageTitle'    => 'Confirmação de presença · ' . $bride . ' & ' . $groom,
+            'content'      => $content,
+            'csrfField'    => Csrf::field(),
+            'rsvpStatus'   => isset($_GET['rsvp']) ? (string) $_GET['rsvp'] : null,
+            'currentGuest' => $currentGuest,
+            'myRsvp'       => $myRsvp,
+            // Faz os formulários desta página redirecionarem de volta para ela.
+            'rsvpReturnTo' => self::INTERNAL_PATH,
+        ]);
+    }
+
     public function store(): void
     {
         // Proteção CSRF (token exibido no formulário da home).
@@ -322,11 +363,35 @@ final class RsvpController extends Controller
         $this->redirectHome('rsvp', 'acompanhantes-ok');
     }
 
-    /** Redireciona para a home, numa âncora, com um status de retorno. */
+    /**
+     * Redireciona de volta à página de origem (home por padrão), numa âncora,
+     * com um status de retorno.
+     *
+     * Quando o formulário informa um "return_to" entre as rotas conhecidas
+     * (ex.: /confirmacao-interna), o convidado volta para ela em vez da home —
+     * assim o fluxo continua idêntico independente de onde o bloco é exibido.
+     */
     private function redirectHome(string $anchor, string $status): void
     {
         $baseUrl = rtrim((string) ($this->config['app']['base_url'] ?? ''), '/');
-        header('Location: ' . $baseUrl . '/?rsvp=' . urlencode($status) . '#' . $anchor);
+        $path    = $this->resolveReturnPath();
+
+        // A home usa a raiz ("/"), que não deve receber barra final extra.
+        $target = $baseUrl . ($path === '/' ? '/' : $path);
+
+        header('Location: ' . $target . '?rsvp=' . urlencode($status) . '#' . $anchor);
         exit;
+    }
+
+    /**
+     * Valida o "return_to" recebido do formulário contra uma lista de caminhos
+     * permitidos (evita open redirect). Sem valor válido, volta para a home.
+     */
+    private function resolveReturnPath(): string
+    {
+        $allowed = ['/', self::INTERNAL_PATH];
+        $raw     = trim((string) ($_POST['return_to'] ?? ''));
+
+        return in_array($raw, $allowed, true) ? $raw : '/';
     }
 }

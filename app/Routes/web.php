@@ -13,6 +13,8 @@ declare(strict_types=1);
 // ---- Site público ----
 $router->get('/', 'HomeController@index');
 $router->get('/galeria', 'GalleryController@index');
+// Página exclusiva de confirmação de presença (endereço usado futuramente no QR Code).
+$router->get('/confirmacao-interna', 'RsvpController@internal');
 $router->post('/confirmar-presenca', 'RsvpController@store');
 $router->post('/confirmar-presenca/acompanhantes', 'RsvpController@updateCompanions');
 

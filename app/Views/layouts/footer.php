@@ -14,6 +14,10 @@ $bride   = $wedding['bride'] ?? 'Noiva';
 $groom   = $wedding['groom'] ?? 'Noivo';
 $year    = date('Y');
 
+// Mesmo controle do cabeçalho: oculta o link de confirmação na navegação
+// pública (a página segue acessível pela URL direta / QR Code).
+$showRsvpLink = !empty($app['show_rsvp_link']);
+
 // Música ambiente ("Die With a Smile" — Lady Gaga & Bruno Mars).
 // O arquivo deve ser colocado em public/assets/audio/die-with-a-smile.mp3.
 // Se não existir, o player simplesmente não é renderizado.
@@ -35,7 +39,9 @@ $audioUrl  = $hasAudio ? View::asset('audio/die-with-a-smile.mp3', $baseUrl) . '
                 <li><a href="<?= View::e(View::url('/#evento', $baseUrl)) ?>">O evento</a></li>
                 <li><a href="<?= View::e(View::url('/#presentes', $baseUrl)) ?>">Presentes</a></li>
                 <li><a href="<?= View::e(View::url('/galeria', $baseUrl)) ?>">Galeria de Fotos</a></li>
-                <li><a href="<?= View::e(View::url('/#rsvp', $baseUrl)) ?>">Confirmar presença</a></li>
+                <?php if ($showRsvpLink): ?>
+                    <li><a href="<?= View::e(View::url('/confirmacao-interna', $baseUrl)) ?>">Confirmar presença</a></li>
+                <?php endif; ?>
                 <li><a href="#topo">Voltar ao topo</a></li>
             </ul>
         </nav>
