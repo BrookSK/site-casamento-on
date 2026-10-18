@@ -511,6 +511,9 @@
         var toggleBtn = musicPlayer.querySelector('[data-music-toggle]');
         var musicLabel = musicPlayer.querySelector('[data-music-label]');
 
+        // Volume ambiente (0.0 a 1.0): mais baixo para não incomodar.
+        audio.volume = 0.4;
+
         var KEY_STATE = 'wedding-music-state';   // 'playing' | 'paused'
         var KEY_TIME = 'wedding-music-time';     // posição em segundos
 
