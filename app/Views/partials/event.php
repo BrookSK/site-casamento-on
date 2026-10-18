@@ -22,6 +22,36 @@ $ceremonyDetails = $content->text('ceremony_details', (string) ($wedding['ceremo
 $receptionPlace   = $content->text('reception_place',   (string) ($wedding['reception']['place'] ?? 'Local a definir'));
 $receptionAddress = $content->text('reception_address', (string) ($wedding['reception']['address'] ?? 'Endereço a definir'));
 $receptionDetails = $content->text('reception_details', (string) ($wedding['reception']['details'] ?? ''));
+
+/**
+ * Monta um link do Google Maps para um endereço REAL.
+ *
+ * Só gera o link quando há endereço de fato: ignora vazio e os
+ * placeholders padrão ("Endereço a definir" / "Local a definir"),
+ * evitando apontar para uma localização inexistente ou incorreta.
+ * Quando há também o nome do local, ele é usado junto do endereço
+ * para melhorar a precisão da busca no mapa.
+ *
+ * @return string URL do Google Maps, ou '' quando não há endereço configurado.
+ */
+$mapsUrl = static function (string $place, string $address): string {
+    $placeholders = ['', 'Endereço a definir', 'Local a definir'];
+    $place   = trim($place);
+    $address = trim($address);
+
+    if (in_array($address, $placeholders, true)) {
+        return '';
+    }
+
+    $query = in_array($place, $placeholders, true)
+        ? $address
+        : $place . ', ' . $address;
+
+    return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($query);
+};
+
+$ceremonyMapsUrl  = $mapsUrl($ceremonyPlace, $ceremonyAddress);
+$receptionMapsUrl = $mapsUrl($receptionPlace, $receptionAddress);
 ?>
 <section class="section section--event" id="evento" data-reveal>
     <div class="container">
@@ -55,6 +85,13 @@ $receptionDetails = $content->text('reception_details', (string) ($wedding['rece
                         <h3 class="invite__title">Cerimônia</h3>
                         <p class="invite__place"><?= View::e($ceremonyPlace) ?></p>
                         <p class="invite__address"><?= View::e($ceremonyAddress) ?></p>
+                        <?php if ($ceremonyMapsUrl !== ''): ?>
+                            <a class="invite__map" href="<?= View::e($ceremonyMapsUrl) ?>"
+                               target="_blank" rel="noopener noreferrer">
+                                <span class="invite__map-icon" aria-hidden="true">&#128205;</span>
+                                Ver no Google Maps
+                            </a>
+                        <?php endif; ?>
                         <?php if ($ceremonyDetails !== ''): ?>
                             <p class="invite__details"><?= View::e($ceremonyDetails) ?></p>
                         <?php endif; ?>
@@ -69,6 +106,13 @@ $receptionDetails = $content->text('reception_details', (string) ($wedding['rece
                         <h3 class="invite__title">Recepção</h3>
                         <p class="invite__place"><?= View::e($receptionPlace) ?></p>
                         <p class="invite__address"><?= View::e($receptionAddress) ?></p>
+                        <?php if ($receptionMapsUrl !== ''): ?>
+                            <a class="invite__map" href="<?= View::e($receptionMapsUrl) ?>"
+                               target="_blank" rel="noopener noreferrer">
+                                <span class="invite__map-icon" aria-hidden="true">&#128205;</span>
+                                Ver no Google Maps
+                            </a>
+                        <?php endif; ?>
                         <?php if ($receptionDetails !== ''): ?>
                             <p class="invite__details"><?= View::e($receptionDetails) ?></p>
                         <?php endif; ?>

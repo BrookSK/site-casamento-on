@@ -649,6 +649,24 @@ p { margin: 0 0 1rem; }
 .invite__place { font-weight: 500; margin: 0 0 0.2rem; }
 .invite__address { color: var(--c-muted); margin: 0 0 0.3rem; }
 .invite__details { color: var(--c-muted); font-size: 0.95rem; margin: 0; }
+.invite__map {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0 0 0.3rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--c-sage-dark);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.invite__map:hover,
+.invite__map:focus-visible {
+    color: var(--c-ink);
+    border-bottom-color: currentColor;
+}
+.invite__map-icon { font-size: 0.95em; line-height: 1; }
 .invite__divider { height: 1px; background: var(--c-line); }
 
 /* Bloco RSVP: duas colunas (aside com foto + formulário) */
