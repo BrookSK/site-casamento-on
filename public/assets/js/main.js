@@ -496,4 +496,122 @@
             }
         }, { passive: true });
     }
+
+    /* ---- Música ambiente ("Die With a Smile") ----
+       Toca ao acessar o site respeitando o bloqueio de autoplay dos
+       navegadores. Se o autoplay for bloqueado, oferece um controle
+       discreto e inicia no primeiro gesto do usuário.
+
+       O estado (tocando/pausado) e a posição são guardados em
+       sessionStorage, de modo que a navegação entre páginas não
+       reinicia a faixa — ela continua de onde parou. */
+    var musicPlayer = document.querySelector('[data-music-player]');
+    if (musicPlayer) {
+        var audio = musicPlayer.querySelector('[data-music-audio]');
+        var toggleBtn = musicPlayer.querySelector('[data-music-toggle]');
+        var musicLabel = musicPlayer.querySelector('[data-music-label]');
+
+        var KEY_STATE = 'wedding-music-state';   // 'playing' | 'paused'
+        var KEY_TIME = 'wedding-music-time';     // posição em segundos
+
+        // Lê/escreve o estado com tolerância a navegadores sem storage.
+        var readStore = function (key) {
+            try { return window.sessionStorage.getItem(key); } catch (e) { return null; }
+        };
+        var writeStore = function (key, value) {
+            try { window.sessionStorage.setItem(key, value); } catch (e) { /* ignora */ }
+        };
+
+        // Usuário já desligou a música nesta sessão? Então não insistimos.
+        var userPaused = readStore(KEY_STATE) === 'paused';
+
+        var reflectState = function (isPlaying) {
+            musicPlayer.classList.toggle('is-playing', isPlaying);
+            toggleBtn.setAttribute('aria-pressed', String(isPlaying));
+            toggleBtn.setAttribute('aria-label', isPlaying ? 'Pausar música do casamento' : 'Tocar música do casamento');
+            if (musicLabel) { musicLabel.textContent = isPlaying ? 'Pausar música' : 'Tocar música'; }
+        };
+
+        // Restaura a posição salva (continuidade entre páginas).
+        var savedTime = parseFloat(readStore(KEY_TIME) || '');
+        if (!isNaN(savedTime) && savedTime > 0) {
+            var applyTime = function () {
+                try { audio.currentTime = savedTime; } catch (e) { /* ignora */ }
+            };
+            if (audio.readyState >= 1) { applyTime(); }
+            else { audio.addEventListener('loadedmetadata', applyTime, { once: true }); }
+        }
+
+        // Mostra o controle (fica oculto por padrão para não "piscar").
+        musicPlayer.hidden = false;
+
+        // Mantém a posição salva periodicamente e nos eventos chave.
+        var persistTime = function () {
+            if (!isNaN(audio.currentTime)) { writeStore(KEY_TIME, String(audio.currentTime)); }
+        };
+        audio.addEventListener('timeupdate', persistTime);
+        window.addEventListener('pagehide', persistTime);
+        window.addEventListener('beforeunload', persistTime);
+
+        audio.addEventListener('play', function () {
+            writeStore(KEY_STATE, 'playing');
+            reflectState(true);
+        });
+        audio.addEventListener('pause', function () {
+            // Só marca como pausado pelo usuário quando a página segue ativa
+            // (evita gravar 'paused' durante a troca de página).
+            if (!document.hidden) { writeStore(KEY_STATE, 'paused'); }
+            reflectState(false);
+        });
+
+        // Tenta iniciar a reprodução; retorna a promessa (ou null).
+        var tryPlay = function () {
+            var p = audio.play();
+            if (p && typeof p.catch === 'function') {
+                p.catch(function () {
+                    // Autoplay bloqueado: deixa o controle visível e pausado.
+                    reflectState(false);
+                });
+            }
+            return p;
+        };
+
+        // Clique no controle alterna manualmente (sempre permitido).
+        toggleBtn.addEventListener('click', function () {
+            if (audio.paused) {
+                writeStore(KEY_STATE, 'playing');
+                tryPlay();
+            } else {
+                writeStore(KEY_STATE, 'paused');
+                audio.pause();
+            }
+        });
+
+        // Inicia automaticamente, a menos que o usuário tenha pausado antes.
+        if (!userPaused) {
+            tryPlay();
+
+            // Fallback para autoplay bloqueado: começa no primeiro gesto.
+            var resumeOnGesture = function () {
+                if (readStore(KEY_STATE) === 'paused') { return; }
+                if (audio.paused) { tryPlay(); }
+            };
+            var gestureEvents = ['click', 'keydown', 'touchstart', 'pointerdown'];
+            var detach = function () {
+                gestureEvents.forEach(function (evt) {
+                    document.removeEventListener(evt, onGesture);
+                });
+            };
+            var onGesture = function () {
+                resumeOnGesture();
+                // Uma vez que conseguiu tocar, não precisamos mais escutar.
+                if (!audio.paused) { detach(); }
+            };
+            gestureEvents.forEach(function (evt) {
+                document.addEventListener(evt, onGesture, { passive: true });
+            });
+        } else {
+            reflectState(false);
+        }
+    }
 })();
