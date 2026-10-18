@@ -57,6 +57,9 @@ final class RsvpController extends Controller
 
         $this->view('confirmacao-interna', [
             'pageTitle'    => 'Confirmação de presença · ' . $bride . ' & ' . $groom,
+            // Página de fundo claro: header sólido e legível desde o topo
+            // (sem isso a navbar "some" — texto claro sobre fundo claro).
+            'bodyClass'    => 'page-light',
             'content'      => $content,
             'csrfField'    => Csrf::field(),
             'rsvpStatus'   => isset($_GET['rsvp']) ? (string) $_GET['rsvp'] : null,
