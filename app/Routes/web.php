@@ -47,6 +47,9 @@ $router->get('/admin/logout', 'AuthController@logout');
 // ---- Painel (todas protegidas) ----
 $router->get('/admin', 'AdminController@index');
 
+// QR Code de acesso ao site (compartilhamento)
+$router->get('/admin/qrcode', 'QrCodeController@index');
+
 // Confirmações
 $router->get('/admin/confirmacoes', 'RsvpAdminController@index');
 $router->get('/admin/confirmacoes/exportar/excel', 'RsvpAdminController@exportExcel');

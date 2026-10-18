@@ -48,6 +48,17 @@ $textField = function (string $key, string $label, string $default = '', bool $a
     <a class="btn-admin" href="<?= View::e(View::url('/admin/galeria', $baseUrl)) ?>">Gerenciar galeria</a>
 </div>
 
+<!-- Card: QR Code de acesso (tela própria para visualizar e baixar) -->
+<div class="admin-card content-link-card">
+    <div class="content-link-card__text">
+        <h2>QR Code de acesso</h2>
+        <p>O código único que leva à confirmação de presença. Abra para
+        visualizar e <strong>baixar</strong> o QR Code (PNG ou SVG) e usá-lo no
+        cartão, convite ou onde quiser compartilhar o acesso ao site.</p>
+    </div>
+    <a class="btn-admin" href="<?= View::e(View::url('/admin/qrcode', $baseUrl)) ?>">Abrir QR Code</a>
+</div>
+
 <form method="post" action="<?= View::e(View::url('/admin/textos-e-imagens/salvar', $baseUrl)) ?>">
     <?= $csrfField ?>
 
