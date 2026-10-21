@@ -651,13 +651,15 @@ p { margin: 0 0 1rem; }
 .invite__place { font-weight: 500; margin: 0 0 0.2rem; }
 .invite__address { color: var(--c-muted); margin: 0 0 0.3rem; }
 .invite__details { color: var(--c-muted); font-size: 0.95rem; margin: 0; }
-/* Minimapa sempre visível, ao lado das informações. O iframe é só o
-   "preview" visual (pointer-events desligado); um link transparente
-   sobreposto (.invite__map-overlay) captura o clique e abre o Google
-   Maps, preservando o fluxo já existente. */
+/* Minimapa ILUSTRADO (SVG próprio), ao lado das informações. Não é um
+   mapa real: é uma arte no estilo do site que sinaliza "localização" e
+   funciona como botão — clicar abre o Google Maps do endereço cadastrado. */
 .invite__map {
     flex: 0 0 300px;
     max-width: 300px;
+    display: block;
+    text-decoration: none;
+    color: var(--c-sage-dark);
 }
 .invite__map-frame {
     position: relative;
@@ -668,46 +670,88 @@ p { margin: 0 0 1rem; }
     overflow: hidden;
     border: 1px solid var(--c-line);
     box-shadow: var(--shadow-soft);
-    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+    transition: transform 0.25s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
-.invite__map-frame iframe {
+.invite__map:hover .invite__map-frame,
+.invite__map:focus-visible .invite__map-frame {
+    transform: translateY(-2px);
+    border-color: var(--c-sage);
+    box-shadow: 0 22px 55px -22px rgba(44, 42, 38, 0.45);
+}
+
+/* ---- Arte do mapa (SVG) ---- */
+.map-art {
     display: block;
     width: 100%;
     height: 100%;
-    border: 0;
-    pointer-events: none; /* o clique vai para o link sobreposto */
 }
-/* Link transparente que cobre o mapa inteiro. */
-.invite__map-overlay {
+.map-art__bg    { fill: var(--c-cream); }
+.map-art__water { fill: var(--c-sage); opacity: 0.16; }
+.map-art__park  { fill: var(--c-sage); opacity: 0.22; }
+.map-art__roads path {
+    fill: none;
+    stroke: var(--c-line);
+    stroke-width: 7;
+    stroke-linecap: round;
+}
+.map-art__roads--thin path { stroke-width: 3; opacity: 0.7; }
+.map-art__pin-shadow { fill: rgba(44, 42, 38, 0.18); }
+.map-art__pin-body   { fill: var(--c-rose); }
+.map-art__pin-dot    { fill: var(--c-cream); }
+/* leve "pulsar" do pin no hover, respeitando quem prefere menos movimento */
+.invite__map:hover .map-art__pin,
+.invite__map:focus-visible .map-art__pin {
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    animation: map-pin-bounce 0.6s var(--ease);
+}
+@keyframes map-pin-bounce {
+    0%, 100% { transform: translateY(0); }
+    40%      { transform: translateY(-6px); }
+}
+
+/* Selo "Ver no mapa" sobre a arte. */
+.invite__map-badge {
     position: absolute;
-    inset: 0;
-    z-index: 1;
-    display: block;
-}
-.invite__map-frame:hover,
-.invite__map-overlay:focus-visible + .invite__map-frame,
-.invite__map:hover .invite__map-frame {
-    border-color: var(--c-sage);
-    box-shadow: 0 20px 55px -22px rgba(44, 42, 38, 0.45);
-}
-.invite__map-cta {
+    left: 0.6rem;
+    bottom: 0.6rem;
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.3rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--c-ink);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--c-line);
+    border-radius: 999px;
+    box-shadow: 0 6px 16px -10px rgba(44, 42, 38, 0.5);
+    backdrop-filter: blur(2px);
+}
+
+/* Link textual abaixo da arte (fallback explícito e acessível). */
+.invite__map-cta {
+    display: inline-block;
     margin-top: 0.5rem;
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--c-sage-dark);
-    text-decoration: none;
     border-bottom: 1px solid transparent;
     transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
 }
-.invite__map-cta:hover,
-.invite__map-cta:focus-visible {
+.invite__map:hover .invite__map-cta,
+.invite__map:focus-visible .invite__map-cta {
     color: var(--c-ink);
     border-bottom-color: currentColor;
 }
 .invite__map-icon { font-size: 0.95em; line-height: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+    .invite__map:hover .invite__map-frame,
+    .invite__map:focus-visible .invite__map-frame { transform: none; }
+    .invite__map:hover .map-art__pin,
+    .invite__map:focus-visible .map-art__pin { animation: none; }
+}
 
 /* Mobile: mapa abaixo das informações, ocupando a largura disponível. */
 @media (max-width: 640px) {
