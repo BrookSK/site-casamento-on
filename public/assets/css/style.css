@@ -635,6 +635,8 @@ p { margin: 0 0 1rem; }
     align-items: flex-start;
     gap: 1rem;
 }
+/* Linha com mapa: info à esquerda e minimapa à direita (desktop). */
+.invite__row--has-map .invite__info { flex: 1 1 0; }
 .invite__emoji {
     font-size: 1.8rem;
     line-height: 1.2;
@@ -649,65 +651,71 @@ p { margin: 0 0 1rem; }
 .invite__place { font-weight: 500; margin: 0 0 0.2rem; }
 .invite__address { color: var(--c-muted); margin: 0 0 0.3rem; }
 .invite__details { color: var(--c-muted); font-size: 0.95rem; margin: 0; }
+/* Minimapa sempre visível, ao lado das informações. O iframe é só o
+   "preview" visual (pointer-events desligado); um link transparente
+   sobreposto (.invite__map-overlay) captura o clique e abre o Google
+   Maps, preservando o fluxo já existente. */
 .invite__map {
-    margin: 0.5rem 0 0.3rem;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.4rem;
+    flex: 0 0 300px;
+    max-width: 300px;
 }
-/* Minimapa: placeholder leve que vira iframe só no clique (privacidade/perf). */
-.invite__map-load {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.5rem 0.9rem;
-    font: inherit;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--c-sage-dark);
-    background: var(--c-cream);
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: color 0.2s var(--ease), border-color 0.2s var(--ease), background 0.2s var(--ease);
-}
-.invite__map-load:hover,
-.invite__map-load:focus-visible {
-    color: var(--c-ink);
-    border-color: var(--c-sage);
-    background: var(--c-white);
-}
-.invite__map-icon { font-size: 0.95em; line-height: 1; }
-/* Moldura responsiva do iframe (16:9), injetado via JS ao carregar. */
 .invite__map-frame {
+    position: relative;
+    display: block;
     width: 100%;
-    max-width: 480px;
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 16 / 11;
     border-radius: var(--radius);
     overflow: hidden;
     border: 1px solid var(--c-line);
     box-shadow: var(--shadow-soft);
+    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
 .invite__map-frame iframe {
     display: block;
     width: 100%;
     height: 100%;
     border: 0;
+    pointer-events: none; /* o clique vai para o link sobreposto */
 }
-/* Quando o mapa é carregado, o botão some e o link vira discreto. */
-.invite__map.is-loaded .invite__map-load { display: none; }
-.invite__map-link {
+/* Link transparente que cobre o mapa inteiro. */
+.invite__map-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: block;
+}
+.invite__map-frame:hover,
+.invite__map-overlay:focus-visible + .invite__map-frame,
+.invite__map:hover .invite__map-frame {
+    border-color: var(--c-sage);
+    box-shadow: 0 20px 55px -22px rgba(44, 42, 38, 0.45);
+}
+.invite__map-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
     font-size: 0.85rem;
-    color: var(--c-muted);
+    font-weight: 500;
+    color: var(--c-sage-dark);
     text-decoration: none;
     border-bottom: 1px solid transparent;
     transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
 }
-.invite__map-link:hover,
-.invite__map-link:focus-visible {
+.invite__map-cta:hover,
+.invite__map-cta:focus-visible {
     color: var(--c-ink);
     border-bottom-color: currentColor;
+}
+.invite__map-icon { font-size: 0.95em; line-height: 1; }
+
+/* Mobile: mapa abaixo das informações, ocupando a largura disponível. */
+@media (max-width: 640px) {
+    .invite__row--has-map { flex-wrap: wrap; }
+    .invite__map {
+        flex-basis: 100%;
+        max-width: 100%;
+    }
 }
 .invite__divider { height: 1px; background: var(--c-line); }
 

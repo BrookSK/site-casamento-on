@@ -89,52 +89,64 @@ $receptionMap = $mapData($receptionPlace, $receptionAddress);
             </div>
 
             <div class="invite__body">
-                <div class="invite__row">
+                <div class="invite__row<?= $ceremonyMap !== null ? ' invite__row--has-map' : '' ?>">
                     <span class="invite__emoji" aria-hidden="true">&#9962;</span>
                     <div class="invite__info">
                         <h3 class="invite__title">Cerimônia</h3>
                         <p class="invite__place"><?= View::e($ceremonyPlace) ?></p>
                         <p class="invite__address"><?= View::e($ceremonyAddress) ?></p>
-                        <?php if ($ceremonyMap !== null): ?>
-                            <div class="invite__map" data-map data-map-src="<?= View::e($ceremonyMap['embed']) ?>">
-                                <button type="button" class="invite__map-load" data-map-load
-                                        aria-label="Carregar o mapa da Cerimônia">
-                                    <span class="invite__map-icon" aria-hidden="true">&#128205;</span>
-                                    Ver mapa
-                                </button>
-                                <a class="invite__map-link" href="<?= View::e($ceremonyMap['link']) ?>"
-                                   target="_blank" rel="noopener noreferrer">Abrir no Google Maps</a>
-                            </div>
-                        <?php endif; ?>
                         <?php if ($ceremonyDetails !== ''): ?>
                             <p class="invite__details"><?= View::e($ceremonyDetails) ?></p>
                         <?php endif; ?>
                     </div>
+                    <?php if ($ceremonyMap !== null): ?>
+                        <div class="invite__map">
+                            <div class="invite__map-frame">
+                                <iframe src="<?= View::e($ceremonyMap['embed']) ?>" title="Mapa da Cerimônia"
+                                        loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+                                        tabindex="-1" aria-hidden="true"></iframe>
+                                <a class="invite__map-overlay" href="<?= View::e($ceremonyMap['link']) ?>"
+                                   target="_blank" rel="noopener noreferrer"
+                                   aria-label="Abrir a localização da Cerimônia no Google Maps"></a>
+                            </div>
+                            <a class="invite__map-cta" href="<?= View::e($ceremonyMap['link']) ?>"
+                               target="_blank" rel="noopener noreferrer">
+                                <span class="invite__map-icon" aria-hidden="true">&#128205;</span>
+                                Abrir no Google Maps
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="invite__divider" aria-hidden="true"></div>
 
-                <div class="invite__row">
+                <div class="invite__row<?= $receptionMap !== null ? ' invite__row--has-map' : '' ?>">
                     <span class="invite__emoji" aria-hidden="true">&#127870;</span>
                     <div class="invite__info">
                         <h3 class="invite__title">Recepção</h3>
                         <p class="invite__place"><?= View::e($receptionPlace) ?></p>
                         <p class="invite__address"><?= View::e($receptionAddress) ?></p>
-                        <?php if ($receptionMap !== null): ?>
-                            <div class="invite__map" data-map data-map-src="<?= View::e($receptionMap['embed']) ?>">
-                                <button type="button" class="invite__map-load" data-map-load
-                                        aria-label="Carregar o mapa da Recepção">
-                                    <span class="invite__map-icon" aria-hidden="true">&#128205;</span>
-                                    Ver mapa
-                                </button>
-                                <a class="invite__map-link" href="<?= View::e($receptionMap['link']) ?>"
-                                   target="_blank" rel="noopener noreferrer">Abrir no Google Maps</a>
-                            </div>
-                        <?php endif; ?>
                         <?php if ($receptionDetails !== ''): ?>
                             <p class="invite__details"><?= View::e($receptionDetails) ?></p>
                         <?php endif; ?>
                     </div>
+                    <?php if ($receptionMap !== null): ?>
+                        <div class="invite__map">
+                            <div class="invite__map-frame">
+                                <iframe src="<?= View::e($receptionMap['embed']) ?>" title="Mapa da Recepção"
+                                        loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+                                        tabindex="-1" aria-hidden="true"></iframe>
+                                <a class="invite__map-overlay" href="<?= View::e($receptionMap['link']) ?>"
+                                   target="_blank" rel="noopener noreferrer"
+                                   aria-label="Abrir a localização da Recepção no Google Maps"></a>
+                            </div>
+                            <a class="invite__map-cta" href="<?= View::e($receptionMap['link']) ?>"
+                               target="_blank" rel="noopener noreferrer">
+                                <span class="invite__map-icon" aria-hidden="true">&#128205;</span>
+                                Abrir no Google Maps
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
