@@ -114,6 +114,36 @@
         }
     }
 
+    /* ---- Minimapa do evento: carrega o iframe só no clique ----
+       Mantém a página leve e preserva a privacidade: o mapa (iframe de
+       terceiros) só é injetado quando a pessoa pede "Ver mapa". O link
+       "Abrir no Google Maps" continua funcionando independentemente. */
+    var mapBlocks = document.querySelectorAll('[data-map]');
+    Array.prototype.forEach.call(mapBlocks, function (block) {
+        var loadBtn = block.querySelector('[data-map-load]');
+        var src = block.getAttribute('data-map-src');
+        if (!loadBtn || !src) { return; }
+
+        loadBtn.addEventListener('click', function () {
+            if (block.classList.contains('is-loaded')) { return; }
+
+            var frame = document.createElement('div');
+            frame.className = 'invite__map-frame';
+
+            var iframe = document.createElement('iframe');
+            iframe.src = src;
+            iframe.loading = 'lazy';
+            iframe.referrerPolicy = 'no-referrer-when-downgrade';
+            iframe.setAttribute('allowfullscreen', '');
+            iframe.title = 'Mapa do local do evento';
+
+            frame.appendChild(iframe);
+            // Insere o mapa antes do link, logo após o botão.
+            block.insertBefore(frame, loadBtn.nextSibling);
+            block.classList.add('is-loaded');
+        });
+    });
+
     /* ---- RSVP: acompanhantes adicionados um a um ---- */
     var MAX_COMPANIONS = 20;
 

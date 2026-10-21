@@ -650,23 +650,65 @@ p { margin: 0 0 1rem; }
 .invite__address { color: var(--c-muted); margin: 0 0 0.3rem; }
 .invite__details { color: var(--c-muted); font-size: 0.95rem; margin: 0; }
 .invite__map {
+    margin: 0.5rem 0 0.3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+}
+/* Minimapa: placeholder leve que vira iframe só no clique (privacidade/perf). */
+.invite__map-load {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    margin: 0 0 0.3rem;
+    gap: 0.4rem;
+    padding: 0.5rem 0.9rem;
+    font: inherit;
     font-size: 0.9rem;
     font-weight: 500;
     color: var(--c-sage-dark);
+    background: var(--c-cream);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: color 0.2s var(--ease), border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.invite__map-load:hover,
+.invite__map-load:focus-visible {
+    color: var(--c-ink);
+    border-color: var(--c-sage);
+    background: var(--c-white);
+}
+.invite__map-icon { font-size: 0.95em; line-height: 1; }
+/* Moldura responsiva do iframe (16:9), injetado via JS ao carregar. */
+.invite__map-frame {
+    width: 100%;
+    max-width: 480px;
+    aspect-ratio: 16 / 10;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--c-line);
+    box-shadow: var(--shadow-soft);
+}
+.invite__map-frame iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+/* Quando o mapa é carregado, o botão some e o link vira discreto. */
+.invite__map.is-loaded .invite__map-load { display: none; }
+.invite__map-link {
+    font-size: 0.85rem;
+    color: var(--c-muted);
     text-decoration: none;
     border-bottom: 1px solid transparent;
     transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
 }
-.invite__map:hover,
-.invite__map:focus-visible {
+.invite__map-link:hover,
+.invite__map-link:focus-visible {
     color: var(--c-ink);
     border-bottom-color: currentColor;
 }
-.invite__map-icon { font-size: 0.95em; line-height: 1; }
 .invite__divider { height: 1px; background: var(--c-line); }
 
 /* Bloco RSVP: duas colunas (aside com foto + formulário) */

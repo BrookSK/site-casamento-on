@@ -24,34 +24,44 @@ $receptionAddress = $content->text('reception_address', (string) ($wedding['rece
 $receptionDetails = $content->text('reception_details', (string) ($wedding['reception']['details'] ?? ''));
 
 /**
- * Monta um link do Google Maps para um endereço REAL.
+ * Resolve os dados de mapa para um endereço REAL.
  *
- * Só gera o link quando há endereço de fato: ignora vazio e os
+ * Só retorna algo quando há endereço de fato: ignora vazio e os
  * placeholders padrão ("Endereço a definir" / "Local a definir"),
  * evitando apontar para uma localização inexistente ou incorreta.
  * Quando há também o nome do local, ele é usado junto do endereço
  * para melhorar a precisão da busca no mapa.
  *
- * @return string URL do Google Maps, ou '' quando não há endereço configurado.
+ * Devolve ['link' => URL do Maps, 'embed' => URL do iframe de embed]
+ * ou null quando não há endereço configurado.
+ *
+ * @return array{link:string,embed:string}|null
  */
-$mapsUrl = static function (string $place, string $address): string {
+$mapData = static function (string $place, string $address): ?array {
     $placeholders = ['', 'Endereço a definir', 'Local a definir'];
     $place   = trim($place);
     $address = trim($address);
 
     if (in_array($address, $placeholders, true)) {
-        return '';
+        return null;
     }
 
     $query = in_array($place, $placeholders, true)
         ? $address
         : $place . ', ' . $address;
 
-    return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($query);
+    $encoded = rawurlencode($query);
+
+    return [
+        // Link para abrir o Google Maps completo (rota, app nativo no mobile).
+        'link'  => 'https://www.google.com/maps/search/?api=1&query=' . $encoded,
+        // Embed sem chave de API — exibe o minimapa dentro do site.
+        'embed' => 'https://maps.google.com/maps?q=' . $encoded . '&z=15&output=embed',
+    ];
 };
 
-$ceremonyMapsUrl  = $mapsUrl($ceremonyPlace, $ceremonyAddress);
-$receptionMapsUrl = $mapsUrl($receptionPlace, $receptionAddress);
+$ceremonyMap  = $mapData($ceremonyPlace, $ceremonyAddress);
+$receptionMap = $mapData($receptionPlace, $receptionAddress);
 ?>
 <section class="section section--event" id="evento" data-reveal>
     <div class="container">
@@ -85,12 +95,16 @@ $receptionMapsUrl = $mapsUrl($receptionPlace, $receptionAddress);
                         <h3 class="invite__title">Cerimônia</h3>
                         <p class="invite__place"><?= View::e($ceremonyPlace) ?></p>
                         <p class="invite__address"><?= View::e($ceremonyAddress) ?></p>
-                        <?php if ($ceremonyMapsUrl !== ''): ?>
-                            <a class="invite__map" href="<?= View::e($ceremonyMapsUrl) ?>"
-                               target="_blank" rel="noopener noreferrer">
-                                <span class="invite__map-icon" aria-hidden="true">&#128205;</span>
-                                Ver no Google Maps
-                            </a>
+                        <?php if ($ceremonyMap !== null): ?>
+                            <div class="invite__map" data-map data-map-src="<?= View::e($ceremonyMap['embed']) ?>">
+                                <button type="button" class="invite__map-load" data-map-load
+                                        aria-label="Carregar o mapa da Cerimônia">
+                                    <span class="invite__map-icon" aria-hidden="true">&#128205;</span>
+                                    Ver mapa
+                                </button>
+                                <a class="invite__map-link" href="<?= View::e($ceremonyMap['link']) ?>"
+                                   target="_blank" rel="noopener noreferrer">Abrir no Google Maps</a>
+                            </div>
                         <?php endif; ?>
                         <?php if ($ceremonyDetails !== ''): ?>
                             <p class="invite__details"><?= View::e($ceremonyDetails) ?></p>
@@ -106,12 +120,16 @@ $receptionMapsUrl = $mapsUrl($receptionPlace, $receptionAddress);
                         <h3 class="invite__title">Recepção</h3>
                         <p class="invite__place"><?= View::e($receptionPlace) ?></p>
                         <p class="invite__address"><?= View::e($receptionAddress) ?></p>
-                        <?php if ($receptionMapsUrl !== ''): ?>
-                            <a class="invite__map" href="<?= View::e($receptionMapsUrl) ?>"
-                               target="_blank" rel="noopener noreferrer">
-                                <span class="invite__map-icon" aria-hidden="true">&#128205;</span>
-                                Ver no Google Maps
-                            </a>
+                        <?php if ($receptionMap !== null): ?>
+                            <div class="invite__map" data-map data-map-src="<?= View::e($receptionMap['embed']) ?>">
+                                <button type="button" class="invite__map-load" data-map-load
+                                        aria-label="Carregar o mapa da Recepção">
+                                    <span class="invite__map-icon" aria-hidden="true">&#128205;</span>
+                                    Ver mapa
+                                </button>
+                                <a class="invite__map-link" href="<?= View::e($receptionMap['link']) ?>"
+                                   target="_blank" rel="noopener noreferrer">Abrir no Google Maps</a>
+                            </div>
                         <?php endif; ?>
                         <?php if ($receptionDetails !== ''): ?>
                             <p class="invite__details"><?= View::e($receptionDetails) ?></p>
