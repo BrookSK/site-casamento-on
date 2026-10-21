@@ -655,8 +655,8 @@ p { margin: 0 0 1rem; }
    mapa real: é uma arte no estilo do site que sinaliza "localização" e
    funciona como botão — clicar abre o Google Maps do endereço cadastrado. */
 .invite__map {
-    flex: 0 0 300px;
-    max-width: 300px;
+    flex: 0 0 195px;
+    max-width: 195px;
     display: block;
     text-decoration: none;
     color: var(--c-sage-dark);
