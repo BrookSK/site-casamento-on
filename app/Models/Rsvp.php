@@ -28,9 +28,19 @@ final class Rsvp extends Model
      *   - Convidado existente COM senha (conta ativa): preserva a conta; apenas
      *     completa dados de contato que estejam faltando. Não gera token novo.
      *
-     * @param array{name:string, email:?string, phone:?string} $guest
+     * Quando $individualGuestId é informado (convite individual identificado
+     * pelo token do QR), a confirmação é amarrada EXATAMENTE a esse convidado,
+     * sem buscar por e-mail/telefone/CPF e sem criar outro registro.
+     *
+     * No convite público, a identificação/deduplicação é feita pelo CPF
+     * (guest['cpf'], apenas dígitos): se já existir convidado com o mesmo CPF,
+     * ele é reutilizado; caso contrário, cai no comportamento anterior
+     * (e-mail/telefone) e grava o CPF no cadastro.
+     *
+     * @param array{name:string, email:?string, phone:?string, cpf?:?string} $guest
      * @param array{status:string, companions:int, message:?string} $rsvp
      * @param array<int, string> $companionNames Nomes dos acompanhantes
+     * @param int|null $individualGuestId  ID do convidado do convite individual
      *
      * @return array{
      *   rsvp_id:int,
@@ -39,8 +49,12 @@ final class Rsvp extends Model
      *   has_password:bool
      * }
      */
-    public function createWithGuest(array $guest, array $rsvp, array $companionNames = []): array
-    {
+    public function createWithGuest(
+        array $guest,
+        array $rsvp,
+        array $companionNames = [],
+        ?int $individualGuestId = null
+    ): array {
         $pdo = $this->db();
         $pdo->beginTransaction();
 
@@ -50,9 +64,38 @@ final class Rsvp extends Model
             $phone      = $guest['phone'] ?? null;
             $phoneNorm  = $phone !== null ? Guest::normalizePhone((string) $phone) : '';
             $phoneNorm  = $phoneNorm !== '' ? $phoneNorm : null;
+            $cpfNorm    = isset($guest['cpf']) && $guest['cpf'] !== null
+                ? Guest::normalizeCpf((string) $guest['cpf'])
+                : '';
+            $cpfNorm    = $cpfNorm !== '' ? $cpfNorm : null;
 
-            // Procura um convidado existente por e-mail OU por telefone.
-            $existing = $this->findGuestForRsvp($pdo, $email, $phoneNorm);
+            // --- Convite INDIVIDUAL: amarra ao convidado do token, sem busca. ---
+            if ($individualGuestId !== null) {
+                return $this->storeForIndividual(
+                    $pdo,
+                    $individualGuestId,
+                    $name,
+                    $email,
+                    $phone,
+                    $phoneNorm,
+                    $rsvp,
+                    $companionNames
+                );
+            }
+
+            // --- Convite PÚBLICO: identifica primeiro pelo CPF (chave única). ---
+            $existing = null;
+            if ($cpfNorm !== null) {
+                $stmt = $pdo->prepare('SELECT * FROM guests WHERE cpf_normalized = :c LIMIT 1');
+                $stmt->execute(['c' => $cpfNorm]);
+                $row = $stmt->fetch();
+                $existing = $row !== false ? $row : null;
+            }
+
+            // Sem CPF correspondente: cai no comportamento anterior (e-mail/telefone).
+            if ($existing === null) {
+                $existing = $this->findGuestForRsvp($pdo, $email, $phoneNorm);
+            }
 
             $inviteToken = null;
             $hasPassword = false;
@@ -62,14 +105,15 @@ final class Rsvp extends Model
                 $inviteToken = Guest::generateToken();
                 try {
                     $stmt = $pdo->prepare(
-                        'INSERT INTO guests (name, email, phone, phone_normalized, invite_token, invite_token_expires_at, account_created_at) '
-                        . 'VALUES (:name, :email, :phone, :pnorm, :token, DATE_ADD(NOW(), INTERVAL 7 DAY), NOW())'
+                        'INSERT INTO guests (name, email, phone, phone_normalized, cpf_normalized, invite_token, invite_token_expires_at, account_created_at) '
+                        . 'VALUES (:name, :email, :phone, :pnorm, :cpf, :token, DATE_ADD(NOW(), INTERVAL 7 DAY), NOW())'
                     );
                     $stmt->execute([
                         'name'  => $name,
                         'email' => $email,
                         'phone' => $phone,
                         'pnorm' => $phoneNorm,
+                        'cpf'   => $cpfNorm,
                         'token' => $inviteToken,
                     ]);
                     $guestId    = (int) $pdo->lastInsertId();
@@ -100,15 +144,18 @@ final class Rsvp extends Model
 
                 if ($hasPassword) {
                     // Conta ativa: não gera token; só atualiza nome/contatos.
+                    // Grava o CPF apenas se ainda não houver (COALESCE).
                     $pdo->prepare(
                         'UPDATE guests SET name = :name, email = :email, '
-                        . 'phone = :phone, phone_normalized = :pnorm WHERE id = :id'
+                        . 'phone = :phone, phone_normalized = :pnorm, '
+                        . 'cpf_normalized = COALESCE(cpf_normalized, :cpf) WHERE id = :id'
                     )->execute([
                         'id'    => $guestId,
                         'name'  => $name,
                         'email' => $newEmail,
                         'phone' => $newPhone,
                         'pnorm' => $newPnorm,
+                        'cpf'   => $cpfNorm,
                     ]);
                 } else {
                     // Sem senha: gera um token novo (7 dias) a cada confirmação,
@@ -117,6 +164,7 @@ final class Rsvp extends Model
                     $pdo->prepare(
                         'UPDATE guests SET name = :name, email = :email, '
                         . 'phone = :phone, phone_normalized = :pnorm, '
+                        . 'cpf_normalized = COALESCE(cpf_normalized, :cpf), '
                         . 'invite_token = :token, '
                         . 'invite_token_expires_at = DATE_ADD(NOW(), INTERVAL 7 DAY), '
                         . 'account_created_at = COALESCE(account_created_at, NOW()) '
@@ -127,6 +175,7 @@ final class Rsvp extends Model
                         'email' => $newEmail,
                         'phone' => $newPhone,
                         'pnorm' => $newPnorm,
+                        'cpf'   => $cpfNorm,
                         'token' => $inviteToken,
                     ]);
                 }
@@ -172,6 +221,89 @@ final class Rsvp extends Model
             $pdo->rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Grava a confirmação de um CONVITE INDIVIDUAL, amarrada ao convidado
+     * identificado pelo token do QR (já criado pelo admin). Não busca por
+     * e-mail/telefone/CPF e não cria outro convidado — apenas completa o nome
+     * e os contatos informados no formulário e insere o RSVP.
+     *
+     * @param array{status:string, companions:int, message:?string} $rsvp
+     * @param array<int, string> $companionNames
+     * @return array{rsvp_id:int, guest:array{id:int,name:string,email:string}, invite_token:?string, has_password:bool}
+     */
+    private function storeForIndividual(
+        \PDO $pdo,
+        int $guestId,
+        string $name,
+        ?string $email,
+        ?string $phone,
+        ?string $phoneNorm,
+        array $rsvp,
+        array $companionNames
+    ): array {
+        // Confere o convidado e seu estado atual (dentro da transação).
+        $stmt = $pdo->prepare('SELECT * FROM guests WHERE id = :id LIMIT 1');
+        $stmt->execute(['id' => $guestId]);
+        $existing = $stmt->fetch();
+        if ($existing === false) {
+            throw new \RuntimeException('Convite individual não encontrado.');
+        }
+
+        $hasPassword = !empty($existing['password_hash']);
+
+        // Atualiza o nome informado pelo convidado e completa contatos que
+        // faltarem, sem sobrescrever o que já existe (COALESCE em e-mail/tel).
+        $pdo->prepare(
+            'UPDATE guests SET name = :name, '
+            . 'email = COALESCE(email, :email), '
+            . 'phone = COALESCE(phone, :phone), '
+            . 'phone_normalized = COALESCE(phone_normalized, :pnorm) '
+            . 'WHERE id = :id'
+        )->execute([
+            'id'    => $guestId,
+            'name'  => $name,
+            'email' => $email,
+            'phone' => $phone,
+            'pnorm' => $phoneNorm,
+        ]);
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO rsvps (guest_id, status, companions, message, responded_at) '
+            . 'VALUES (:gid, :status, :companions, :message, NOW())'
+        );
+        $stmt->execute([
+            'gid'        => $guestId,
+            'status'     => $rsvp['status'],
+            'companions' => $rsvp['companions'],
+            'message'    => $rsvp['message'] ?? null,
+        ]);
+        $rsvpId = (int) $pdo->lastInsertId();
+
+        if ($companionNames !== []) {
+            $ins = $pdo->prepare('INSERT INTO rsvp_companions (rsvp_id, name) VALUES (:rid, :name)');
+            foreach ($companionNames as $cname) {
+                $cname = trim($cname);
+                if ($cname === '') {
+                    continue;
+                }
+                $ins->execute(['rid' => $rsvpId, 'name' => mb_substr($cname, 0, 150)]);
+            }
+        }
+
+        $pdo->commit();
+
+        return [
+            'rsvp_id'      => $rsvpId,
+            'guest'        => [
+                'id'    => $guestId,
+                'name'  => $name,
+                'email' => (string) ($existing['email'] ?? ($email ?? '')),
+            ],
+            'invite_token' => null,
+            'has_password' => $hasPassword,
+        ];
     }
 
     /**

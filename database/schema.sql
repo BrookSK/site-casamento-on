@@ -35,10 +35,14 @@ CREATE TABLE IF NOT EXISTS `settings` (
 CREATE TABLE IF NOT EXISTS `guests` (
     `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `name`           VARCHAR(150) NOT NULL,
+    -- Tipo do convite: 'public' (link único + CPF) ou 'individual' (link + QR).
+    `invite_type`    ENUM('public','individual') NOT NULL DEFAULT 'public',
     `email`          VARCHAR(190) NULL,
     `phone`          VARCHAR(30) NULL,
     -- Telefone só com dígitos (ex.: 11988887777), para login por telefone.
     `phone_normalized` VARCHAR(20) NULL,
+    -- CPF só com dígitos (ex.: 12345678901), identificação no convite público.
+    `cpf_normalized` VARCHAR(11) NULL,
     -- Senha para login (sempre via password_hash). Nula até criar conta.
     `password_hash`  VARCHAR(255) NULL,
     -- Quando o convidado criou/assumiu a conta.
@@ -55,6 +59,7 @@ CREATE TABLE IF NOT EXISTS `guests` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_guests_email` (`email`),
     UNIQUE KEY `uq_guests_phone_normalized` (`phone_normalized`),
+    UNIQUE KEY `uq_guests_cpf_normalized` (`cpf_normalized`),
     UNIQUE KEY `uq_guests_invite_token` (`invite_token`),
     UNIQUE KEY `uq_guests_password_reset_token` (`password_reset_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -18,6 +18,9 @@ $router->get('/confirmacao-interna', 'RsvpController@internal');
 $router->post('/confirmar-presenca', 'RsvpController@store');
 $router->post('/confirmar-presenca/acompanhantes', 'RsvpController@updateCompanions');
 
+// Convite individual (link + QR exclusivos). O token vai na query string.
+$router->get('/convite', 'IndividualInviteController@show');
+
 // Presentes (pagamento real via ASAAS)
 $router->post('/presentear', 'GiftController@store');
 // Checkout transparente de cartão: recebe os dados do cartão da tela de pagamento.
@@ -52,6 +55,10 @@ $router->get('/admin/qrcode', 'QrCodeController@index');
 
 // Confirmações
 $router->get('/admin/confirmacoes', 'RsvpAdminController@index');
+
+// Convites individuais (criação manual + link/QR exclusivos)
+$router->get('/admin/convites/novo', 'InviteAdminController@create');
+$router->post('/admin/convites/novo', 'InviteAdminController@store');
 $router->get('/admin/confirmacoes/exportar/excel', 'RsvpAdminController@exportExcel');
 $router->get('/admin/confirmacoes/exportar/pdf', 'RsvpAdminController@exportPdf');
 $router->post('/admin/confirmacoes/remover', 'RsvpAdminController@destroy');

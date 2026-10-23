@@ -207,6 +207,18 @@
     var editRsvpForm = document.querySelector('[data-rsvp-edit]');
     if (editRsvpForm) { setupCompanions(editRsvpForm); }
 
+    /* ---- CPF (convite público): aceita apenas números ----
+       Remove qualquer caractere não numérico enquanto o convidado digita e
+       limita a 11 dígitos. Não bloqueia a digitação — apenas filtra. A
+       normalização definitiva (só dígitos) também é feita no servidor. */
+    var cpfInputs = document.querySelectorAll('[data-cpf-input]');
+    Array.prototype.forEach.call(cpfInputs, function (input) {
+        input.addEventListener('input', function () {
+            var digits = input.value.replace(/\D+/g, '').slice(0, 11);
+            if (digits !== input.value) { input.value = digits; }
+        });
+    });
+
     /* ---- Lista de presentes: filtro por valor máximo (slider) ---- */
     var giftFilter = document.querySelector('[data-gift-filter]');
     if (giftFilter) {

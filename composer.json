@@ -5,7 +5,8 @@
     "require": {
         "php": ">=8.0",
         "phpoffice/phpspreadsheet": "^1.29",
-        "mpdf/mpdf": "^8.2"
+        "mpdf/mpdf": "^8.2",
+        "endroid/qr-code": "^4.8"
     },
     "config": {
         "optimize-autoloader": true,

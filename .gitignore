@@ -27,6 +27,11 @@ node_modules/
 /storage/mpdf/*
 !/storage/mpdf/.gitkeep
 
+# ---- QR Codes de convites individuais (gerados em runtime) ----
+# A pasta é mantida via .gitkeep; os PNGs gerados não são versionados.
+/public/assets/img/invites/*
+!/public/assets/img/invites/.gitkeep
+
 # ---- Sistema operacional ----
 .DS_Store
 Thumbs.db

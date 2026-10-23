@@ -53,6 +53,10 @@ $exportQs = $status !== '' ? ('?status=' . $status) : '';
 ?>
 <!-- Exportação acima do card, alinhada à direita. -->
 <div class="export-bar">
+    <a class="btn-admin btn-admin--sm"
+       href="<?= View::e(View::url('/admin/convites/novo', $baseUrl)) ?>">
+        + Convite individual
+    </a>
     <a class="btn-admin btn-admin--ghost btn-admin--sm"
        href="<?= View::e(View::url('/admin/confirmacoes/exportar/excel' . $exportQs, $baseUrl)) ?>">
         Exportar Excel
