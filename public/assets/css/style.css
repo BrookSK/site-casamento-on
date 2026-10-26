@@ -753,13 +753,19 @@ p { margin: 0 0 1rem; }
     .invite__map:focus-visible .map-art__pin { animation: none; }
 }
 
-/* Mobile: mapa abaixo das informações, ocupando a largura disponível. */
+/* Mobile: mapa abaixo das informações. Em vez de ocupar a largura inteira
+   (ficava grande demais para a estética simples do site), fica compacto e
+   alinhado à esquerda — combinando com o texto do endereço acima. */
 @media (max-width: 640px) {
     .invite__row--has-map { flex-wrap: wrap; }
     .invite__map {
-        flex-basis: 100%;
-        max-width: 100%;
+        flex-basis: auto;
+        width: 100%;
+        max-width: 240px;
+        margin-top: 0.4rem;
     }
+    /* Moldura um pouco mais baixa: leitura de "miniatura", não de painel. */
+    .invite__map-frame { aspect-ratio: 16 / 9; }
 }
 .invite__divider { height: 1px; background: var(--c-line); }
 
@@ -1955,7 +1961,9 @@ p { margin: 0 0 1rem; }
     .gift-grid { grid-template-columns: repeat(2, 1fr); }
     .gallery-grid { grid-template-columns: 1fr; max-width: 420px; }
     .invite__header { flex-direction: column; }
-    .invite__header-divider { width: 60px; height: 1px; }
+    /* Linha entre Data e Horário ocupa toda a largura (ponta a ponta),
+       em vez dos 60px curtos. */
+    .invite__header-divider { width: auto; align-self: stretch; height: 1px; }
 }
 
 /* Respeita quem prefere menos movimento */
