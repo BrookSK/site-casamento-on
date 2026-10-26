@@ -2156,6 +2156,20 @@ p { margin: 0 0 1rem; }
 .account__actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 .account__actions .btn { flex: 1; text-align: center; }
 
+/* Mobile: no celular os botões de ação ("Voltar ao site" / "Sair") ganham
+   largura e o texto parecia deslocado à esquerda. O letter-spacing do .btn
+   deixa um "respiro" extra depois da última letra que, com text-align:center,
+   é contado à direita e empurra o texto. Centralizamos via flex e compensamos
+   esse espaço com um text-indent igual ao letter-spacing. */
+@media (max-width: 560px) {
+    .account__actions .btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-indent: 0.18em;
+    }
+}
+
 /* =============================================================
    Tela de pagamento do presente ("Finalize o seu presente")
    Antes sem estilo próprio (branco no branco, desalinhado). Reaproveita a
