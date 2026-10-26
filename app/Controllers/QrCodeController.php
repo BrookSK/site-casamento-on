@@ -6,20 +6,13 @@ namespace App\Controllers;
 
 use App\Core\Auth;
 use App\Core\Controller;
-use App\Core\QrImage;
-use App\Models\Guest;
-use Throwable;
 
 /**
  * QR Code de acesso ao site (compartilhamento).
  *
- * Exibe, no painel administrativo:
- *   - o QR Code PÚBLICO único, que aponta para a página de confirmação
- *     (/confirmacao-interna). É um arquivo estático já gerado
- *     (public/assets/img/qr-confirmacao.*);
- *   - os QR Codes INDIVIDUAIS já criados (um por convidado), com link
- *     exclusivo e download. As imagens individuais são geradas sob demanda
- *     por QrImage (endroid/qr-code) e é aqui que o admin as encontra.
+ * Exibe, no painel administrativo, o QR Code PÚBLICO único, que aponta para a
+ * página de confirmação (/confirmacao-interna). É um arquivo estático já gerado
+ * (public/assets/img/qr-confirmacao.*).
  */
 final class QrCodeController extends Controller
 {
@@ -43,32 +36,6 @@ final class QrCodeController extends Controller
         $pngExists = $dir !== '' && is_file($dir . self::IMAGE_BASENAME . '.png');
         $svgExists = $dir !== '' && is_file($dir . self::IMAGE_BASENAME . '.svg');
 
-        // Convites individuais já criados: monta link + QR de cada um.
-        $individualInvites = [];
-        $invitesError      = null;
-        try {
-            $rows = (new Guest($this->config))->listIndividualInvites(200);
-            foreach ($rows as $row) {
-                $token = (string) ($row['invite_token'] ?? '');
-                if ($token === '') {
-                    continue;
-                }
-                $link   = $baseUrl . '/convite?token=' . $token;
-                $qrPath = QrImage::generatePng($token, $link);
-                $individualInvites[] = [
-                    'name'      => (string) ($row['name'] ?? ''),
-                    'token'     => $token,
-                    'link'      => $link,
-                    'qr_url'    => $qrPath !== null ? ($baseUrl . '/' . $qrPath) : null,
-                    'confirmed' => ($row['rsvp_status'] ?? null) === 'confirmed',
-                    'declined'  => ($row['rsvp_status'] ?? null) === 'declined',
-                ];
-            }
-        } catch (Throwable $e) {
-            error_log('[QrCode] individual invites: ' . $e->getMessage());
-            $invitesError = 'Não foi possível carregar os convites individuais.';
-        }
-
         $this->viewAdmin('admin/qrcode/index', [
             'pageTitle'  => 'QR Code de acesso',
             // Destaca "Conteúdo" no menu: esta tela é acessada de lá (card de atalho).
@@ -80,11 +47,6 @@ final class QrCodeController extends Controller
             'imageBase'  => self::IMAGE_BASENAME,
             'pngExists'  => $pngExists,
             'svgExists'  => $svgExists,
-            // Convites individuais (seção nova nesta mesma tela).
-            'individualInvites' => $individualInvites,
-            'invitesError'      => $invitesError,
-            'qrAvailable'       => QrImage::isAvailable(),
-            'createInviteUrl'   => $baseUrl . '/admin/convites/novo',
         ]);
     }
 }

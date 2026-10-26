@@ -102,79 +102,6 @@ $isStagingUrl = str_contains($baseUrl, 'plesk.page');
         </div>
     </div>
 
-    <!-- ============ Convites individuais (QR por convidado) ============ -->
-    <div class="admin-card">
-        <div class="qr-individual__head">
-            <h2>QR Codes individuais</h2>
-            <a class="btn-admin btn-admin--sm" href="<?= View::e($createInviteUrl) ?>">
-                + Criar convite individual
-            </a>
-        </div>
-        <p class="qr-page__muted">
-            Cada convite individual tem um <strong>link</strong> e um
-            <strong>QR Code próprios</strong>, ligados a um único convidado. Use
-            para enviar convites online. A confirmação feita por esse link é
-            identificada pelo convidado correspondente — sem precisar de CPF.
-        </p>
-
-        <?php if (!empty($invitesError)): ?>
-            <div class="flash flash--error"><?= View::e($invitesError) ?></div>
-        <?php endif; ?>
-
-        <?php if (empty($qrAvailable)): ?>
-            <div class="flash flash--error">
-                A biblioteca de geração de QR Code ainda não está instalada no
-                servidor. Os <strong>links</strong> abaixo já funcionam; as
-                imagens dos QR Codes aparecerão após rodar
-                <code>composer install</code> no servidor.
-            </div>
-        <?php endif; ?>
-
-        <?php if (empty($individualInvites)): ?>
-            <p class="qr-page__muted">
-                Nenhum convite individual criado ainda.
-                <a href="<?= View::e($createInviteUrl) ?>">Criar o primeiro &rarr;</a>
-            </p>
-        <?php else: ?>
-            <div class="qr-individual__list">
-                <?php foreach ($individualInvites as $inv): ?>
-                    <?php
-                    $statusLabel = $inv['confirmed']
-                        ? ['yes', 'Confirmou']
-                        : ($inv['declined'] ? ['no', 'Não vai'] : ['pending', 'Sem resposta']);
-                    ?>
-                    <div class="qr-individual__item">
-                        <div class="qr-individual__visual">
-                            <?php if ($inv['qr_url'] !== null): ?>
-                                <img src="<?= View::e($inv['qr_url']) ?>" width="150" height="150"
-                                     alt="QR Code do convite de <?= View::e($inv['name']) ?>">
-                                <a class="qr-individual__download" href="<?= View::e($inv['qr_url']) ?>"
-                                   download="convite-<?= View::e($inv['token']) ?>.png">Baixar QR</a>
-                            <?php else: ?>
-                                <div class="qr-individual__empty">QR indisponível</div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="qr-individual__body">
-                            <div class="qr-individual__name-row">
-                                <h3 class="qr-individual__name"><?= View::e($inv['name']) ?></h3>
-                                <span class="qr-badge qr-badge--<?= $statusLabel[0] ?>">
-                                    <?= View::e($statusLabel[1]) ?>
-                                </span>
-                            </div>
-                            <label class="qr-individual__label">Link exclusivo</label>
-                            <div class="qr-copy">
-                                <input type="text" readonly value="<?= View::e($inv['link']) ?>"
-                                       data-copy-src aria-label="Link do convite">
-                                <button type="button" class="btn-admin btn-admin--ghost btn-admin--sm"
-                                        data-copy-btn>Copiar</button>
-                            </div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </div>
-
     <!-- ============ Avisos importantes ============ -->
     <div class="admin-card">
         <h3 class="qr-page__subtitle">Antes de imprimir, confira</h3>
@@ -201,31 +128,6 @@ $isStagingUrl = str_contains($baseUrl, 'plesk.page');
     </div>
 
 </div>
-
-<script>
-// Copiar link do convite individual (com fallback para navegadores antigos).
-document.querySelectorAll('[data-copy-btn]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-        var wrap = btn.closest('.qr-copy');
-        var input = wrap ? wrap.querySelector('[data-copy-src]') : null;
-        if (!input) { return; }
-        input.select();
-        input.setSelectionRange(0, 99999);
-        var done = function () {
-            var old = btn.textContent;
-            btn.textContent = 'Copiado!';
-            setTimeout(function () { btn.textContent = old; }, 1500);
-        };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(input.value).then(done, function () {
-                try { document.execCommand('copy'); done(); } catch (e) {}
-            });
-        } else {
-            try { document.execCommand('copy'); done(); } catch (e) {}
-        }
-    });
-});
-</script>
 
 <style>
 /* Estilos específicos da tela de QR Code (paleta do admin). */
@@ -297,71 +199,5 @@ document.querySelectorAll('[data-copy-btn]').forEach(function (btn) {
 
 @media (max-width: 640px) {
     .qr-card { grid-template-columns: 1fr; }
-}
-
-/* ---- Convites individuais ---- */
-.qr-individual__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.8rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.3rem;
-}
-.qr-individual__head h2 { margin: 0; }
-
-.qr-individual__list { display: grid; gap: 1rem; margin-top: 1rem; }
-.qr-individual__item {
-    display: grid;
-    grid-template-columns: 170px 1fr;
-    gap: 1rem;
-    padding: 1rem;
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius);
-    background: var(--c-white);
-}
-.qr-individual__visual { text-align: center; }
-.qr-individual__visual img {
-    display: block;
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius);
-    background: #fff;
-}
-.qr-individual__empty {
-    width: 150px; height: 150px;
-    display: grid; place-items: center;
-    color: var(--c-muted); font-size: 0.8rem; text-align: center;
-    background: var(--c-cream); border-radius: var(--radius);
-}
-.qr-individual__download { display: inline-block; margin-top: 0.5rem; font-size: 0.82rem; }
-
-.qr-individual__name-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-.qr-individual__name { margin: 0; font-family: var(--font-serif); font-size: 1.1rem; }
-.qr-individual__label { display: block; margin: 0.8rem 0 0.3rem; font-size: 0.82rem; color: var(--c-muted); }
-
-.qr-copy { display: flex; gap: 0.5rem; }
-.qr-copy input {
-    flex: 1;
-    padding: 0.5rem 0.6rem;
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius);
-    background: var(--c-cream);
-    font-size: 0.85rem;
-    overflow-wrap: anywhere;
-}
-
-.qr-badge {
-    font-size: 0.72rem;
-    padding: 0.18rem 0.55rem;
-    border-radius: 999px;
-    font-weight: 500;
-}
-.qr-badge--yes { background: #e4f1e4; color: #2f6b36; }
-.qr-badge--no { background: #f6e3e3; color: #9a3b3b; }
-.qr-badge--pending { background: var(--c-cream); color: var(--c-muted); }
-
-@media (max-width: 600px) {
-    .qr-individual__item { grid-template-columns: 1fr; }
-    .qr-individual__visual { margin: 0 auto; }
 }
 </style>

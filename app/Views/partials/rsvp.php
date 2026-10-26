@@ -36,19 +36,13 @@ $feedback = [
     'ok'          => ['success', 'Obrigado! Sua resposta foi registrada com carinho.'],
     'erro'        => ['error', 'Não foi possível registrar agora. Tente novamente.'],
     'erro-nome'   => ['error', 'Por favor, informe seu nome.'],
-    'erro-cpf'    => ['error', 'Por favor, informe um CPF válido (11 dígitos).'],
-    'erro-token'  => ['error', 'Convite inválido ou expirado. Verifique o link recebido.'],
+    'erro-telefone' => ['error', 'Por favor, informe um telefone válido com DDD.'],
     'erro-email'  => ['error', 'Este e-mail já foi usado em uma confirmação.'],
     'erro-acompanhantes' => ['error', 'Por favor, informe o nome de cada acompanhante.'],
     'erro-sessao' => ['error', 'A sessão expirou. Recarregue a página e tente de novo.'],
     'acompanhantes-ok' => ['success', 'Lista de acompanhantes atualizada!'],
 ];
 
-// Token do convite INDIVIDUAL. Quando presente, a identificação é feita pelo
-// token (link/QR exclusivo) e o campo de CPF NÃO é exibido. Ausente/vazio =
-// convite PÚBLICO, que exige o CPF para localizar/identificar o convidado.
-$inviteToken = isset($inviteToken) ? (string) $inviteToken : '';
-$isIndividual = $inviteToken !== '';
 // Imagem decorativa da coluna esquerda (fixa: gallery-2 em assets/img).
 $rsvpImg = View::image('gallery-2', $app['base_url'] ?? '');
 
@@ -141,9 +135,6 @@ $alreadyConfirmed = $myRsvp !== null;
             <?php if ($rsvpReturnTo !== ''): ?>
                 <input type="hidden" name="return_to" value="<?= View::e($rsvpReturnTo) ?>">
             <?php endif; ?>
-            <?php if ($isIndividual): ?>
-                <input type="hidden" name="invite_token" value="<?= View::e($inviteToken) ?>">
-            <?php endif; ?>
 
             <fieldset class="rsvp-choice">
                 <legend>Você vai comparecer? *</legend>
@@ -173,23 +164,15 @@ $alreadyConfirmed = $myRsvp !== null;
                     <input type="text" id="rsvp-name" name="name" required>
                 </div>
                 <div class="rsvp-field">
-                    <label for="rsvp-phone">Telefone</label>
-                    <input type="text" id="rsvp-phone" name="phone" inputmode="tel">
+                    <label for="rsvp-phone">Telefone *</label>
+                    <input type="text" id="rsvp-phone" name="phone" inputmode="tel"
+                           required placeholder="(DDD) 00000-0000"
+                           aria-describedby="rsvp-phone-hint">
+                    <small id="rsvp-phone-hint" class="rsvp-field__hint">
+                        Com DDD. Usamos para identificar sua confirmação.
+                    </small>
                 </div>
             </div>
-
-            <?php if (!$isIndividual): ?>
-            <div class="rsvp-field">
-                <label for="rsvp-cpf">CPF *</label>
-                <input type="text" id="rsvp-cpf" name="cpf" inputmode="numeric"
-                       autocomplete="off" maxlength="14" required
-                       placeholder="Somente números"
-                       data-cpf-input aria-describedby="rsvp-cpf-hint">
-                <small id="rsvp-cpf-hint" class="rsvp-field__hint">
-                    Informe os 11 números do seu CPF. Pontos e traços são ignorados.
-                </small>
-            </div>
-            <?php endif; ?>
 
             <div class="rsvp-field">
                 <label for="rsvp-email">E-mail</label>

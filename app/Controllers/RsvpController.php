@@ -77,40 +77,17 @@ final class RsvpController extends Controller
             $this->redirectHome('rsvp', 'erro-sessao');
         }
 
-        // Identifica o tipo de convite pelo token individual (vindo do link/QR
-        // exclusivo). Se o token existir e corresponder a um convite individual
-        // válido, a identificação é feita por ele — SEM exigir CPF. Caso
-        // contrário, trata-se do convite público (identificação por CPF).
-        $individualToken = trim((string) ($_POST['invite_token'] ?? ''));
-        $individualGuest = null;
-        if ($individualToken !== '') {
-            try {
-                $individualGuest = (new \App\Models\Guest($this->config))
-                    ->findByIndividualToken($individualToken);
-            } catch (Throwable $e) {
-                error_log('[Rsvp] store findByIndividualToken: ' . $e->getMessage());
-            }
-            // Token informado mas inválido: não confirma às cegas no público.
-            if ($individualGuest === null) {
-                $this->redirectHome('rsvp', 'erro-token');
-            }
-        }
-        $isIndividual = $individualGuest !== null;
-
         $name = trim((string) ($_POST['name'] ?? ''));
         if ($name === '') {
             $this->redirectHome('rsvp', 'erro-nome');
         }
 
-        // CPF: obrigatório SOMENTE no convite público (no individual o token já
-        // identifica a pessoa). Normalizado para apenas dígitos — pontos,
-        // hífens, espaços e qualquer outro caractere são descartados.
-        $cpfNormalized = null;
-        if (!$isIndividual) {
-            $cpfNormalized = \App\Models\Guest::normalizeCpf((string) ($_POST['cpf'] ?? ''));
-            if (strlen($cpfNormalized) !== 11) {
-                $this->redirectHome('rsvp', 'erro-cpf');
-            }
+        // Telefone obrigatório: é a chave de identificação/deduplicação do
+        // convidado (no lugar do antigo CPF). Exige pelo menos 10 dígitos
+        // (DDD + número), ignorando parênteses, traços e espaços.
+        $phoneInput = trim((string) ($_POST['phone'] ?? ''));
+        if (strlen(\App\Models\Guest::normalizePhone($phoneInput)) < 10) {
+            $this->redirectHome('rsvp', 'erro-telefone');
         }
 
         $attending = ($_POST['attending'] ?? '') === 'yes';
@@ -142,9 +119,11 @@ final class RsvpController extends Controller
         $data = [
             'name'  => mb_substr($name, 0, 150),
             'email' => trim((string) ($_POST['email'] ?? '')) ?: null,
-            'phone' => trim((string) ($_POST['phone'] ?? '')) ?: null,
-            // Chave de identificação do convite público (NULL no individual).
-            'cpf'   => $cpfNormalized,
+            'phone' => $phoneInput,
+            // CPF não é mais solicitado no formulário: a identificação do
+            // convidado passa a ser por e-mail/telefone. Mantido como NULL
+            // para compatibilidade do Model.
+            'cpf'   => null,
         ];
 
         $rsvp = [
@@ -154,16 +133,13 @@ final class RsvpController extends Controller
         ];
 
         try {
-            // Grava a confirmação e cria/assume a conta do convidado.
-            //   - Convite individual: o convidado já existe (criado pelo admin
-            //     via token); a confirmação é amarrada a ele, sem duplicar.
-            //   - Convite público: identifica/deduplica pelo CPF (chave única),
-            //     reutilizando o cadastro quando o mesmo CPF confirma de novo.
+            // Grava a confirmação e cria/assume a conta do convidado,
+            // identificando/deduplicando por e-mail ou telefone e reutilizando
+            // o cadastro quando já existir.
             $result = (new Rsvp($this->config))->createWithGuest(
                 $data,
                 $rsvp,
-                $companionNames,
-                $isIndividual ? (int) $individualGuest['id'] : null
+                $companionNames
             );
         } catch (Throwable $e) {
             error_log('[Rsvp] store: ' . $e->getMessage());
@@ -422,8 +398,6 @@ final class RsvpController extends Controller
         // A home usa a raiz ("/"), que não deve receber barra final extra.
         $target = $baseUrl . ($path === '/' ? '/' : $path);
 
-        // Convite individual: preserva o token na URL de retorno para que a
-        // página do convite seja recarregada com o contexto correto.
         $sep   = str_contains($target, '?') ? '&' : '?';
         $query = $sep . 'rsvp=' . urlencode($status);
 
@@ -434,10 +408,6 @@ final class RsvpController extends Controller
     /**
      * Valida o "return_to" recebido do formulário contra uma lista de caminhos
      * permitidos (evita open redirect). Sem valor válido, volta para a home.
-     *
-     * Além da home e da página pública, aceita o link do convite individual
-     * (/convite?token=...), validando o formato do token (32 hex) para não
-     * permitir redirecionamentos arbitrários.
      */
     private function resolveReturnPath(): string
     {
@@ -446,11 +416,6 @@ final class RsvpController extends Controller
         $allowed = ['/', self::INTERNAL_PATH];
         if (in_array($raw, $allowed, true)) {
             return $raw;
-        }
-
-        // Caminho do convite individual com token válido no formato esperado.
-        if (preg_match('#^/convite\?token=([a-f0-9]{32})$#', $raw, $m) === 1) {
-            return '/convite?token=' . $m[1];
         }
 
         return '/';
