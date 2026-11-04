@@ -172,12 +172,6 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
         <?php if ($showFilter): ?>
             <p class="gift-empty" data-gift-empty hidden>Nenhum presente dentro desse valor.</p>
         <?php endif; ?>
-
-        <?php if (!$paymentsEnabled): ?>
-            <p class="gift-note">
-                <em>Os presentes acima são provisórios e meramente ilustrativos.</em>
-            </p>
-        <?php endif; ?>
     </div>
 </section>
 

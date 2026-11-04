@@ -57,7 +57,7 @@ final class HomeController extends Controller
 
     /**
      * Carrega presentes disponíveis do banco. Se o banco falhar ou estiver
-     * vazio, usa a lista provisória da config (mantém a home sempre bonita).
+     * vazio, retorna uma lista vazia — nenhum card provisório é exibido.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -90,9 +90,11 @@ final class HomeController extends Controller
                 }, $rows);
             }
         } catch (Throwable $e) {
-            error_log('[Home] loadGifts fallback: ' . $e->getMessage());
+            error_log('[Home] loadGifts: ' . $e->getMessage());
         }
 
-        return $this->config['gifts'] ?? [];
+        // Sem presentes cadastrados (ou banco indisponível): não exibe cards
+        // provisórios — a seção fica sem a grade de presentes.
+        return [];
     }
 }
