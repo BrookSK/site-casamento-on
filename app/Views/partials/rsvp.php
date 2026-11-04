@@ -166,11 +166,7 @@ $alreadyConfirmed = $myRsvp !== null;
                 <div class="rsvp-field">
                     <label for="rsvp-phone">Telefone *</label>
                     <input type="text" id="rsvp-phone" name="phone" inputmode="tel"
-                           required placeholder="(DDD) 00000-0000"
-                           aria-describedby="rsvp-phone-hint">
-                    <small id="rsvp-phone-hint" class="rsvp-field__hint">
-                        Com DDD. Usamos para identificar sua confirmação.
-                    </small>
+                           required placeholder="(DDD) 00000-0000">
                 </div>
             </div>
 
