@@ -18,10 +18,10 @@ return [
         // URL base pública do site (sem barra final). Usada para montar links
         // absolutos — ex.: a URL do webhook do ASAAS.
         // Deixe vazio APENAS em desenvolvimento local servindo a partir da raiz.
-        'base_url' => 'https://zen-raman.186-209-113-140.plesk.page',
+        'base_url' => 'https://flaelipe.com.br',
         'locale'   => 'pt_BR',
         'timezone' => 'America/Sao_Paulo',
-        'debug'    => true,
+        'debug'    => false,
 
         // Exibe (ou não) o link "Confirmar presença" no menu e no rodapé do
         // site público. A PÁGINA /confirmacao-interna continua sempre acessível
