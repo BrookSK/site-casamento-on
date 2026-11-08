@@ -70,7 +70,10 @@
                         obs.unobserve(entry.target);
                     }
                 });
-            }, { threshold: 0.12 });
+            // threshold 0 + rootMargin: revela assim que o topo da seção entra
+            // na tela, independente da altura (seções longas no mobile, como a
+            // lista de presentes, nunca atingiam 12% visíveis e ficavam ocultas).
+            }, { threshold: 0, rootMargin: '0px 0px -10% 0px' });
 
             revealEls.forEach(function (el) { observer.observe(el); });
         }
