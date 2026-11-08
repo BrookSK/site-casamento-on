@@ -753,16 +753,25 @@ p { margin: 0 0 1rem; }
     .invite__map:focus-visible .map-art__pin { animation: none; }
 }
 
-/* Mobile: mapa abaixo das informações. Em vez de ocupar a largura inteira
-   (ficava grande demais para a estética simples do site), fica compacto e
-   alinhado à esquerda — combinando com o texto do endereço acima. */
+/* Mobile: mapa abaixo das informações, compacto (não ocupa a largura toda,
+   que ficava grande demais) e centralizado no eixo do card. */
 @media (max-width: 640px) {
-    .invite__row--has-map { flex-wrap: wrap; }
-    .invite__map {
-        flex-basis: auto;
+    /* Grid em vez de flex-wrap: emoji + texto na 1ª linha e o mapa na 2ª,
+       ocupando a largura toda e centralizado no eixo do card. */
+    .invite__row--has-map {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        column-gap: 1rem;
+        align-items: start;
+    }
+    .invite__row--has-map .invite__map {
+        grid-column: 1 / -1;
+        flex: none;
         width: 100%;
         max-width: 240px;
-        margin-top: 0.4rem;
+        justify-self: center;
+        margin: 0.9rem auto 0;
+        text-align: center;
     }
     /* Moldura um pouco mais baixa: leitura de "miniatura", não de painel. */
     .invite__map-frame { aspect-ratio: 16 / 9; }
