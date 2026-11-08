@@ -75,17 +75,10 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
         <div class="section__head section__head--center">
             <p class="section__eyebrow">Com carinho</p>
             <h2 class="section__title">Lista de presentes</h2>
-            <?php if ($paymentsEnabled): ?>
-                <p class="section__intro">
-                    Preparamos uma seleção especial de presentes para
-                    compartilhar esse momento tão importante com vocês.
-                </p>
-            <?php else: ?>
-                <p class="section__intro">
-                    Prévia visual da futura lista de presentes. As compras ainda
-                    <strong>não estão disponíveis</strong> nesta etapa.
-                </p>
-            <?php endif; ?>
+            <p class="section__intro">
+                Preparamos uma seleção especial de presentes para
+                compartilhar esse momento tão importante com vocês.
+            </p>
         </div>
 
         <?php if ($giftMsg !== null): ?>
@@ -103,7 +96,7 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                 </div>
                 <input type="range" id="gift-range"
                        min="<?= (int) $minCents ?>" max="<?= (int) $maxCents ?>"
-                       value="<?= (int) $maxCents ?>" step="100"
+                       value="<?= (int) $maxCents ?>" step="1"
                        data-gift-range
                        aria-label="Valor máximo do presente">
                 <div class="gift-filter__scale">
