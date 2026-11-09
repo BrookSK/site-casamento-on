@@ -49,10 +49,21 @@ final class HomeController extends Controller
             'csrfField'       => Csrf::field(),
             'rsvpStatus'      => isset($_GET['rsvp']) ? (string) $_GET['rsvp'] : null,
             'giftStatus'      => isset($_GET['gift']) ? (string) $_GET['gift'] : null,
+            // Dados do último envio do formulário de presente que voltou com
+            // erro (uso único): reabre o popup preenchido com o motivo.
+            'giftOld'         => $this->pullGiftOld(),
             'paymentsEnabled' => Asaas::isConfigured($this->config),
             'currentGuest'    => $currentGuest,
             'myRsvp'          => $myRsvp,
         ]);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function pullGiftOld(): ?array
+    {
+        $old = $_SESSION['gift_old'] ?? null;
+        unset($_SESSION['gift_old']);
+        return is_array($old) ? $old : null;
     }
 
     /**
@@ -64,26 +75,22 @@ final class HomeController extends Controller
     private function loadGifts(): array
     {
         try {
-            // Antes de listar, libera reservas presas em pagamentos pendentes
-            // vencidos (ponto 9) — assim os presentes voltam a ficar disponíveis
-            // sem depender de um agendador externo.
-            GiftController::releaseExpiredReservations($this->config);
+            // Limpeza oportunista das cobranças pendentes abandonadas.
+            GiftController::expireStalePayments($this->config);
 
-            // Traz TODOS os presentes (inclusive os já comprados), para que os
-            // adquiridos permaneçam visíveis na lista, porém indisponíveis.
-            $rows = (new Gift($this->config))->listAll(false);
+            // Todos os presentes ficam sempre disponíveis: o mesmo presente
+            // pode ser dado por várias pessoas (o casal pediu para não mostrar
+            // "já escolhido" — muita gente escolhe pelo valor).
+            // Só os ocultos (definidos no painel) ficam de fora.
+            $rows = (new Gift($this->config))->listAll(true);
             if ($rows !== []) {
                 return array_map(static function (array $g): array {
-                    $cents  = (int) $g['price_cents'];
-                    $status = (string) ($g['status'] ?? 'available');
+                    $cents = (int) $g['price_cents'];
                     return [
                         'id'          => (int) $g['id'],
                         'name'        => (string) $g['name'],
                         'description' => (string) ($g['description'] ?? ''),
                         'image'       => (string) ($g['image'] ?? ''),
-                        'status'      => $status,
-                        // Indisponível para compra quando reservado ou comprado.
-                        'taken'       => in_array($status, ['purchased', 'reserved'], true),
                         'price'       => 'R$ ' . number_format($cents / 100, 2, ',', '.'),
                         'price_cents' => $cents,
                     ];

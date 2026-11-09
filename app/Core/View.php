@@ -40,6 +40,25 @@ final class View
         return $url . '?v=' . $ver;
     }
 
+    /**
+     * Tags <link> do favicon (aba do navegador, atalho no celular e manifest).
+     * Os arquivos ficam na raiz de public/ — o /favicon.ico também atende os
+     * navegadores que o pedem direto, sem ler o <head>.
+     */
+    public static function favicons(string $baseUrl = ''): string
+    {
+        $base = rtrim($baseUrl, '/');
+        $ver  = static function (string $file): string {
+            $path = defined('PUBLIC_PATH') ? PUBLIC_PATH . '/' . $file : '';
+            return ($path !== '' && is_file($path)) ? '?v=' . filemtime($path) : '';
+        };
+
+        return '<link rel="icon" href="' . self::e($base . '/favicon.ico' . $ver('favicon.ico')) . '" sizes="48x48">' . "\n"
+            . '    <link rel="icon" href="' . self::e($base . '/favicon.svg' . $ver('favicon.svg')) . '" type="image/svg+xml">' . "\n"
+            . '    <link rel="apple-touch-icon" href="' . self::e($base . '/apple-touch-icon.png' . $ver('apple-touch-icon.png')) . '">' . "\n"
+            . '    <link rel="manifest" href="' . self::e($base . '/site.webmanifest') . '">';
+    }
+
     /** Monta uma URL interna respeitando a base_url. */
     public static function url(string $path, string $baseUrl = ''): string
     {

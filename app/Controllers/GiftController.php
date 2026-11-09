@@ -34,13 +34,23 @@ final class GiftController extends Controller
     public function store(): void
     {
         if (!Csrf::validate($_POST[Csrf::fieldName()] ?? null)) {
-            $this->redirectHome('presentes', 'erro-sessao');
+            // Sessão expirada (aba aberta por muito tempo no celular, etc.).
+            // Se o envio veio do próprio site, guarda o que foi digitado para
+            // reabrir o formulário preenchido em vez de perder tudo.
+            $this->back('erro-sessao', null, $this->isSameOriginPost());
         }
 
         $giftId      = (int) ($_POST['gift_id'] ?? 0);
         $billingType = strtoupper(trim((string) ($_POST['billing_type'] ?? 'PIX')));
         if (!in_array($billingType, self::BILLING_TYPES, true)) {
             $billingType = 'PIX';
+        }
+
+        // Envio repetido do mesmo presente (toque duplo no botão, voltar e
+        // reenviar, recarregar): se ESTA sessão já gerou a cobrança, mostra o
+        // mesmo pagamento em vez de dizer que o presente está indisponível.
+        if ($this->showExistingPayment($giftId, $billingType)) {
+            return;
         }
 
         // Dados de quem está presenteando. Se houver convidado logado, usa-o
@@ -53,11 +63,18 @@ final class GiftController extends Controller
         $message     = trim((string) ($_POST['message'] ?? '')) ?: null;
 
         if ($buyerName === '') {
-            $this->redirectHome('presentes', 'erro-nome');
+            $this->back('erro-nome');
+        }
+
+        // O ASAAS exige CPF/CNPJ do pagador em qualquer cobrança (PIX também),
+        // então o documento é pedido e validado sempre — antes, convidado
+        // logado pagando PIX seguia sem CPF e a cobrança falhava no ASAAS.
+        if (!Guest::isValidCpfCnpj($buyerCpf)) {
+            $this->back('erro-cpf');
         }
 
         // Fluxo reaproveitado da confirmação de presença (ponto 6): quando o
-        // visitante NÃO está logado, exigimos CPF, e-mail e telefone para criar
+        // visitante NÃO está logado, exigimos e-mail e telefone para criar
         // automaticamente a conta e vincular a compra. Convidado já autenticado
         // segue direto com a conta atual.
         $isLogged  = GuestAuth::check();
@@ -66,13 +83,10 @@ final class GiftController extends Controller
 
         if (!$isLogged) {
             if ($buyerMail === '' || !filter_var($buyerMail, FILTER_VALIDATE_EMAIL)) {
-                $this->redirectHome('presentes', 'erro-email');
+                $this->back('erro-email');
             }
-            if (preg_replace('/\D+/', '', $buyerPhone) === '') {
-                $this->redirectHome('presentes', 'erro-telefone');
-            }
-            if (preg_replace('/\D+/', '', $buyerCpf) === '') {
-                $this->redirectHome('presentes', 'erro-cpf');
+            if (strlen(Asaas::nationalPhone($buyerPhone)) < 10) {
+                $this->back('erro-telefone');
             }
 
             try {
@@ -85,36 +99,38 @@ final class GiftController extends Controller
                 ]);
                 $guestId = (int) $welcome['guest']['id'];
 
-                // Login automático: mantém a pessoa autenticada no fluxo.
-                GuestAuth::login($welcome['guest']);
+                // Login automático só para conta nova / ainda sem senha. Conta
+                // com senha exige login de verdade: digitar o e-mail de alguém
+                // no formulário não pode dar acesso à conta dessa pessoa. A
+                // compra continua vinculada a ela pelo guest_id.
+                if (empty($welcome['has_password'])) {
+                    GuestAuth::login($welcome['guest']);
+                }
+                // Guarda o comprador na sessão para o passo do cartão (payCard)
+                // vincular a compra mesmo sem login.
+                $_SESSION['gift_buyer_guest_id'] = $guestId;
             } catch (\RuntimeException $e) {
                 // E-mail e telefone pertencem a convidados diferentes.
                 if ($e->getMessage() === 'conflict') {
-                    $this->redirectHome('presentes', 'erro-conflito');
+                    $this->back('erro-conflito');
                 }
                 error_log('[Gift] findOrCreateForPurchase: ' . $e->getMessage());
-                $this->redirectHome('presentes', 'erro');
+                $this->back('erro');
             } catch (Throwable $e) {
                 error_log('[Gift] findOrCreateForPurchase: ' . $e->getMessage());
-                $this->redirectHome('presentes', 'erro');
-            }
-        } else {
-            // Convidado logado: boleto e cartão exigem CPF/CNPJ no ASAAS.
-            if (($billingType === 'BOLETO' || $billingType === 'CREDIT_CARD')
-                && preg_replace('/\D+/', '', $buyerCpf) === '') {
-                $this->redirectHome('presentes', 'erro-cpf');
+                $this->back('erro');
             }
         }
 
         $giftModel = new Gift($this->config);
-        $reserved  = false;
 
-        // Libera reservas vencidas antes de avaliar a disponibilidade, para que
-        // um presente abandonado por outro visitante volte a ser comprável.
-        self::releaseExpiredReservations($this->config);
+        // Marca como expiradas as cobranças pendentes abandonadas (limpeza).
+        self::expireStalePayments($this->config);
 
         try {
-            $gift = $giftModel->findAvailable($giftId);
+            // O mesmo presente pode ser dado por várias pessoas: não há
+            // reserva nem bloqueio — basta existir, não estar oculto e ter valor.
+            $gift = $giftModel->findPurchasable($giftId);
             if ($gift === null) {
                 $this->redirectHome('presentes', 'erro-indisponivel');
             }
@@ -125,23 +141,26 @@ final class GiftController extends Controller
             }
             $value = round($amountCents / 100, 2);
 
-            // Reserva temporária ATÔMICA do presente antes de abrir a cobrança
-            // (ponto 9). Se outro presenteador reservou/comprou no intervalo, o
-            // UPDATE condicional não afeta a linha e abortamos como indisponível,
-            // impedindo compras duplicadas simultâneas.
-            if (!$giftModel->reserveIfAvailable($giftId)) {
-                $this->redirectHome('presentes', 'erro-indisponivel');
-            }
-            $reserved = true;
-
-            // CARTÃO: não cria a cobrança agora. O presente fica reservado e
-            // abrimos a tela de pagamento com o FORMULÁRIO do cartão. A cobrança
-            // só é criada quando esse formulário for enviado (payCard()).
+            // CARTÃO: não cria a cobrança agora. Abrimos a tela de pagamento
+            // com o FORMULÁRIO do cartão; a cobrança só é criada quando esse
+            // formulário for enviado (payCard()).
             if ($billingType === 'CREDIT_CARD') {
                 // Conta nova sem senha: já envia as boas-vindas (link de senha).
                 if ($welcome !== null) {
                     $this->sendWelcome($welcome);
                 }
+                $cardForm = [
+                    'gift_id'     => $giftId,
+                    'buyer_name'  => $buyerName,
+                    'buyer_email' => $buyerMail,
+                    'buyer_phone' => $buyerPhone,
+                    'buyer_cpf'   => $buyerCpf,
+                    'message'     => $message,
+                ];
+                $this->rememberPayment($giftId, 'CREDIT_CARD', null, $cardForm);
+                // Novo presente com cartão (pode ser o mesmo item de novo):
+                // esquece a aprovação anterior para não mostrar sucesso falso.
+                unset($_SESSION['gift_paid'][$giftId]);
                 $this->view('gift/pay', [
                     'pageTitle'   => 'Pagamento do presente',
                     'bodyClass'   => 'page-light',
@@ -150,14 +169,7 @@ final class GiftController extends Controller
                     'value'       => $value,
                     'cardApproved'=> null,
                     // Dados repassados ao formulário do cartão (passo seguinte).
-                    'cardForm'    => [
-                        'gift_id'     => $giftId,
-                        'buyer_name'  => $buyerName,
-                        'buyer_email' => $buyerMail,
-                        'buyer_phone' => $buyerPhone,
-                        'buyer_cpf'   => $buyerCpf,
-                        'message'     => $message,
-                    ],
+                    'cardForm'    => $cardForm,
                 ]);
                 return;
             }
@@ -222,6 +234,9 @@ final class GiftController extends Controller
                 'pix_qr_base64'     => $pixQr,
                 'message'           => $message,
             ]);
+            if ($paymentId !== '') {
+                $this->rememberPayment($giftId, $billingType, $paymentId);
+            }
 
             // 4.1) Conta recém-criada/assumida sem senha: envia as boas-vindas
             // com o link seguro de definição de senha (e-mail e, se configurado,
@@ -247,16 +262,104 @@ final class GiftController extends Controller
             return;
         } catch (Throwable $e) {
             error_log('[Gift] store: ' . $e->getMessage());
-            // Libera a reserva feita acima quando a cobrança não chegou a ser
-            // concluída, para o presente não ficar preso em 'reserved'.
-            if ($reserved) {
-                try {
-                    $giftModel->releaseIfReserved($giftId);
-                } catch (Throwable $re) {
-                    error_log('[Gift] release on error: ' . $re->getMessage());
-                }
+            $this->back('erro', self::payerErrorDetail($e));
+        }
+    }
+
+    /**
+     * Motivo legível de uma recusa do ASAAS por dados do pagador (HTTP 400,
+     * ex.: "O CPF/CNPJ informado é inválido."). Outros erros (chave, rede,
+     * banco) ficam só no log e o visitante vê a mensagem genérica.
+     */
+    private static function payerErrorDetail(Throwable $e): ?string
+    {
+        $msg = $e->getMessage();
+        if ($e->getCode() !== 400 || !str_starts_with($msg, 'ASAAS: ')) {
+            return null;
+        }
+        $detail = trim(substr($msg, 7));
+        return $detail !== '' ? mb_substr($detail, 0, 240) : null;
+    }
+
+    /**
+     * Guarda na sessão a cobrança aberta para um presente. Se o mesmo envio
+     * chegar de novo (toque duplo, voltar/reenviar), showExistingPayment()
+     * reaproveita a cobrança em vez de responder "indisponível".
+     *
+     * @param array<string, mixed>|null $cardForm dados do comprador (cartão)
+     */
+    private function rememberPayment(int $giftId, string $billingType, ?string $paymentRef, ?array $cardForm = null): void
+    {
+        $_SESSION['gift_pending'][$giftId] = [
+            'type'     => $billingType,
+            'ref'      => $paymentRef,
+            'card'     => $cardForm,
+            'at'       => time(),
+        ];
+    }
+
+    /**
+     * Mostra de novo o pagamento já gerado NESTA sessão para o presente, se
+     * ainda estiver pendente e for da mesma forma de pagamento. Evita que um
+     * toque duplo crie duas cobranças. Depois de pago (webhook), a mesma
+     * pessoa pode presentear o mesmo item de novo normalmente.
+     */
+    private function showExistingPayment(int $giftId, string $billingType): bool
+    {
+        $entry = $_SESSION['gift_pending'][$giftId] ?? null;
+        if (!is_array($entry) || ($entry['type'] ?? '') !== $billingType) {
+            return false;
+        }
+        // Um pouco antes da expiração das pendentes (expireStalePayments, 60 min).
+        if ((int) ($entry['at'] ?? 0) < time() - 55 * 60) {
+            unset($_SESSION['gift_pending'][$giftId]);
+            return false;
+        }
+
+        try {
+            $gift = (new Gift($this->config))->find($giftId);
+            if ($gift === null) {
+                return false;
             }
-            $this->redirectHome('presentes', 'erro');
+            $value = round(((int) $gift['price_cents']) / 100, 2);
+
+            if ($billingType === 'CREDIT_CARD') {
+                if (!is_array($entry['card'] ?? null)) {
+                    return false;
+                }
+                $this->view('gift/pay', [
+                    'pageTitle'    => 'Pagamento do presente',
+                    'bodyClass'    => 'page-light',
+                    'gift'         => $gift,
+                    'billingType'  => 'CREDIT_CARD',
+                    'value'        => $value,
+                    'cardApproved' => null,
+                    'cardForm'     => $entry['card'],
+                ]);
+                return true;
+            }
+
+            $ref = (string) ($entry['ref'] ?? '');
+            $purchase = $ref !== '' ? (new GiftPurchase($this->config))->findByPaymentRef($ref) : null;
+            if ($purchase === null || (string) ($purchase['payment_status'] ?? '') !== 'pending') {
+                return false;
+            }
+
+            $this->view('gift/pay', [
+                'pageTitle'   => 'Pagamento do presente',
+                'bodyClass'   => 'page-light',
+                'gift'        => $gift,
+                'billingType' => $billingType,
+                'value'       => $value,
+                'invoiceUrl'  => $purchase['invoice_url'] ?? null,
+                'bankSlipUrl' => $purchase['bank_slip_url'] ?? null,
+                'pixPayload'  => $purchase['pix_payload'] ?? null,
+                'pixQr'       => $purchase['pix_qr_base64'] ?? null,
+            ]);
+            return true;
+        } catch (Throwable $e) {
+            error_log('[Gift] showExistingPayment: ' . $e->getMessage());
+            return false;
         }
     }
 
@@ -274,14 +377,34 @@ final class GiftController extends Controller
         }
 
         $giftId     = (int) ($_POST['gift_id'] ?? 0);
+
+        // Cartão já aprovado nesta sessão (envio repetido): mostra o sucesso.
+        if ((int) ($_SESSION['gift_paid'][$giftId] ?? 0) > time() - 3600) {
+            $paidGift = (new Gift($this->config))->find($giftId);
+            if ($paidGift !== null) {
+                $this->view('gift/pay', [
+                    'pageTitle'    => 'Pagamento do presente',
+                    'bodyClass'    => 'page-light',
+                    'gift'         => $paidGift,
+                    'billingType'  => 'CREDIT_CARD',
+                    'value'        => round(((int) $paidGift['price_cents']) / 100, 2),
+                    'cardApproved' => true,
+                ]);
+                return;
+            }
+        }
+
         $buyerName  = trim((string) ($_POST['buyer_name'] ?? ''));
         $buyerMail  = trim((string) ($_POST['buyer_email'] ?? ''));
         $buyerPhone = trim((string) ($_POST['buyer_phone'] ?? ''));
         $buyerCpf   = trim((string) ($_POST['buyer_cpf'] ?? ''));
         $message    = trim((string) ($_POST['message'] ?? '')) ?: null;
-        $guestId    = GuestAuth::user()['id'] ?? null;
+        // Convidado logado ou, sem login, o comprador identificado no passo
+        // anterior (store) desta mesma sessão.
+        $guestId    = GuestAuth::user()['id'] ?? ($_SESSION['gift_buyer_guest_id'] ?? null);
+        $guestId    = $guestId !== null ? (int) $guestId : null;
 
-        if ($buyerName === '' || preg_replace('/\D+/', '', $buyerCpf) === '') {
+        if ($buyerName === '' || !Guest::isValidCpfCnpj($buyerCpf)) {
             $this->redirectHome('presentes', 'erro-cpf');
         }
 
@@ -295,21 +418,8 @@ final class GiftController extends Controller
 
         $giftModel = new Gift($this->config);
         try {
-            $gift = $giftModel->find($giftId);
+            $gift = $giftModel->findPurchasable($giftId);
             if ($gift === null) {
-                $this->redirectHome('presentes', 'erro-indisponivel');
-            }
-
-            // Garante a reserva antes de cobrar:
-            //  - 1ª tentativa (veio do store): já está 'reserved' — segue.
-            //  - Nova tentativa após recusa: está 'available' — reserva agora.
-            //  - 'purchased' / reservado por outra pessoa: indisponível.
-            $giftStatus = (string) ($gift['status'] ?? '');
-            if ($giftStatus === 'available') {
-                if (!$giftModel->reserveIfAvailable($giftId)) {
-                    $this->redirectHome('presentes', 'erro-indisponivel');
-                }
-            } elseif ($giftStatus !== 'reserved') {
                 $this->redirectHome('presentes', 'erro-indisponivel');
             }
 
@@ -342,7 +452,7 @@ final class GiftController extends Controller
                     'cpfCnpj'       => preg_replace('/\D+/', '', $buyerCpf),
                     'postalCode'    => preg_replace('/\D+/', '', (string) ($_POST['card_cep'] ?? '')),
                     'addressNumber' => trim((string) ($_POST['card_address_number'] ?? '')),
-                    'phone'         => preg_replace('/\D+/', '', $buyerPhone) ?: null,
+                    'phone'         => Asaas::nationalPhone($buyerPhone) ?: null,
                 ],
                 'remoteIp'          => $this->clientIp(),
             ]);
@@ -387,7 +497,10 @@ final class GiftController extends Controller
                         error_log('[Gift] payCard finance: ' . $e->getMessage());
                     }
                 }
-                $giftModel->markPurchased($giftId);
+                // Reenvio do mesmo formulário (toque duplo) mostra o sucesso
+                // de novo em vez de "presente indisponível".
+                unset($_SESSION['gift_pending'][$giftId]);
+                $_SESSION['gift_paid'][$giftId] = time();
 
                 // Confirmação por e-mail + WhatsApp AGORA (cartão aprovado na
                 // hora). Como já marcamos "paid", quando o webhook do ASAAS
@@ -407,15 +520,7 @@ final class GiftController extends Controller
             return;
         } catch (Throwable $e) {
             error_log('[Gift] payCard: ' . $e->getMessage());
-            // Cartão recusado: NÃO há pagamento em andamento, então o presente
-            // volta a ficar DISPONÍVEL imediatamente (sem exigir ação do admin).
-            // A própria pessoa pode tentar outro cartão: o reenvio reserva de
-            // novo antes de cobrar. Se ela desistir, o presente já está livre.
-            try {
-                $giftModel->releaseIfReserved($giftId);
-            } catch (Throwable $re) {
-                error_log('[Gift] payCard release: ' . $re->getMessage());
-            }
+            // Cartão recusado: reabre o formulário para tentar outro cartão.
             $this->renderCardForm($giftId, $buyerName, $buyerMail, $buyerPhone, $buyerCpf, $message, 'declined');
             return;
         }
@@ -568,28 +673,20 @@ final class GiftController extends Controller
     }
 
     /**
-     * Expira as reservas presas em pagamentos pendentes antigos e devolve os
-     * presentes à disponibilidade (ponto 9). Oportunista e tolerante a falhas:
-     * é chamado ao renderizar a lista (home) e antes de uma nova compra, de
-     * modo que a limpeza acontece sem depender de um cron.
+     * Marca como expiradas as cobranças pendentes abandonadas (PIX/boleto não
+     * pagos). Oportunista e tolerante a falhas: é chamado ao renderizar a
+     * lista (home) e antes de uma nova compra, sem depender de um cron. Não
+     * mexe na disponibilidade dos presentes — eles nunca ficam bloqueados.
      *
      * @param array<string, mixed> $config
      * @param int $maxAgeMinutes Idade máxima de uma compra pendente (minutos).
      */
-    public static function releaseExpiredReservations(array $config, int $maxAgeMinutes = 60): void
+    public static function expireStalePayments(array $config, int $maxAgeMinutes = 60): void
     {
         try {
-            $purchases = new GiftPurchase($config);
-            $giftIds   = $purchases->expireStalePending($maxAgeMinutes);
-            if ($giftIds === []) {
-                return;
-            }
-            $gifts = new Gift($config);
-            foreach ($giftIds as $giftId) {
-                $gifts->releaseIfNoActivePurchase((int) $giftId);
-            }
+            (new GiftPurchase($config))->expireStalePending($maxAgeMinutes);
         } catch (Throwable $e) {
-            error_log('[Gift] releaseExpiredReservations: ' . $e->getMessage());
+            error_log('[Gift] expireStalePayments: ' . $e->getMessage());
         }
     }
 
@@ -665,5 +762,57 @@ final class GiftController extends Controller
         $baseUrl = rtrim((string) ($this->config['app']['base_url'] ?? ''), '/');
         header('Location: ' . $baseUrl . '/?gift=' . urlencode($status) . '#' . $anchor);
         exit;
+    }
+
+    /**
+     * Volta para a lista com o erro E com o que a pessoa digitou guardado na
+     * sessão: a home reabre o popup de pagamento já preenchido e mostra o
+     * motivo dentro dele. Antes a página só "recarregava" e os dados sumiam.
+     *
+     * @param string|null $detail motivo específico (ex.: recusa do ASAAS)
+     */
+    private function back(string $status, ?string $detail = null, bool $keepInput = true): void
+    {
+        if ($keepInput) {
+            $field = static fn (string $k, int $max): string
+                => mb_substr(trim((string) ($_POST[$k] ?? '')), 0, $max);
+
+            $billing = strtoupper($field('billing_type', 20));
+            $_SESSION['gift_old'] = [
+                'gift_id'      => (int) ($_POST['gift_id'] ?? 0),
+                'buyer_name'   => $field('buyer_name', 150),
+                'buyer_email'  => $field('buyer_email', 190),
+                'buyer_phone'  => $field('buyer_phone', 30),
+                'buyer_cpf'    => $field('buyer_cpf', 20),
+                'billing_type' => in_array($billing, self::BILLING_TYPES, true) ? $billing : 'PIX',
+                'message'      => $field('message', 255),
+                'status'       => $status,
+                'detail'       => $detail,
+            ];
+        }
+        $this->redirectHome('presentes', $status);
+    }
+
+    /**
+     * O POST veio de uma página do próprio site? (Origin/Referer com o host do
+     * base_url, com ou sem www). Usado para só guardar dados de um envio com
+     * sessão expirada quando ele partiu do nosso formulário.
+     */
+    private function isSameOriginPost(): bool
+    {
+        $canonical = strtolower((string) parse_url((string) ($this->config['app']['base_url'] ?? ''), PHP_URL_HOST));
+        $allowed   = array_filter([
+            $canonical,
+            $canonical !== '' ? 'www.' . $canonical : '',
+            strtolower(explode(':', (string) ($_SERVER['HTTP_HOST'] ?? ''))[0]),
+        ]);
+
+        $source = (string) ($_SERVER['HTTP_ORIGIN'] ?? '');
+        if ($source === '' || $source === 'null') {
+            $source = (string) ($_SERVER['HTTP_REFERER'] ?? '');
+        }
+        $host = strtolower((string) parse_url($source, PHP_URL_HOST));
+
+        return $host !== '' && in_array($host, $allowed, true);
     }
 }

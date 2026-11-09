@@ -67,12 +67,12 @@ final class GiftPurchase extends Model
     }
 
     /**
-     * Expira compras pendentes antigas (ponto 9: "liberar o presente caso o
-     * pagamento ... expire"). Marca como 'failed'/'canceled' toda compra que
-     * continua 'pending' após `maxAgeMinutes` minutos — cobre o caso em que o
-     * presenteador abandona o PIX/boleto e o gateway nunca envia um evento.
+     * Expira compras pendentes antigas. Marca como 'failed'/'canceled' toda
+     * compra que continua 'pending' após `maxAgeMinutes` minutos — cobre o caso
+     * em que o presenteador abandona o PIX/boleto e o gateway nunca envia um
+     * evento. Se o pagamento chegar depois, o webhook marca como pago.
      *
-     * Retorna os IDs dos presentes afetados (para liberar a reserva em seguida).
+     * Retorna os IDs dos presentes afetados.
      *
      * @return array<int, int> gift_ids distintos das compras expiradas
      */
@@ -212,6 +212,26 @@ final class GiftPurchase extends Model
             . 'ORDER BY p.created_at DESC, p.id DESC',
             ['gid' => $guestId]
         );
+    }
+
+    /**
+     * Quantas vezes cada presente foi efetivamente presenteado (pagamentos
+     * confirmados). Usado na lista do admin, já que o mesmo presente pode ser
+     * dado por várias pessoas.
+     *
+     * @return array<int, int> gift_id => quantidade paga
+     */
+    public function paidCountsByGift(): array
+    {
+        $rows = $this->select(
+            'SELECT gift_id, COUNT(*) AS n FROM ' . $this->table
+            . " WHERE payment_status = 'paid' GROUP BY gift_id"
+        );
+        $map = [];
+        foreach ($rows as $r) {
+            $map[(int) $r['gift_id']] = (int) $r['n'];
+        }
+        return $map;
     }
 
     /**

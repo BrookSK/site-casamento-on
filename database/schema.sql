@@ -111,7 +111,9 @@ CREATE TABLE IF NOT EXISTS `gifts` (
     -- Preço em centavos evita problemas de arredondamento (ex.: 15000 = R$ 150,00).
     `price_cents`  INT UNSIGNED NOT NULL DEFAULT 0,
     `image`        VARCHAR(255) NULL,
-    `status`       ENUM('available','reserved','purchased') NOT NULL DEFAULT 'available',
+    -- 'available' = exibido no site; 'hidden' = oculto. Um presente pode ser
+    -- dado várias vezes ('reserved'/'purchased' são legados e não bloqueiam).
+    `status`       ENUM('available','reserved','purchased','hidden') NOT NULL DEFAULT 'available',
     `sort_order`   INT NOT NULL DEFAULT 0,
     `created_at`   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

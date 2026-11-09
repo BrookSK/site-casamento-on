@@ -97,8 +97,9 @@ $report  = $report ?? null;
                     <tr>
                         <td><code>status</code></td>
                         <td><span class="pill">Opcional</span></td>
-                        <td><code>disponivel</code>, <code>reservado</code> ou <code>presenteado</code>.
-                            <br>Vazio = <strong>disponivel</strong>.</td>
+                        <td><code>disponivel</code> (aparece no site) ou <code>oculto</code>.
+                            <br>Vazio = <strong>disponivel</strong>. Cada presente pode ser dado
+                            várias vezes.</td>
                     </tr>
                     <tr>
                         <td><code>imagem</code></td>

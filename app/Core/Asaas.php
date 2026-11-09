@@ -98,7 +98,17 @@ final class Asaas
     {
         $payload = ['name' => $data['name']];
         if (!empty($data['email']))   { $payload['email']   = $data['email']; }
-        if (!empty($data['phone']))   { $payload['phone']   = preg_replace('/\D+/', '', (string) $data['phone']); }
+        if (!empty($data['phone'])) {
+            // Celular (11 dígitos) vai em mobilePhone; fixo (10) em phone.
+            // Número fora do padrão não é enviado: o telefone é opcional no
+            // ASAAS e um formato inválido derrubaria a cobrança inteira.
+            $phone = self::nationalPhone((string) $data['phone']);
+            if (strlen($phone) === 11) {
+                $payload['mobilePhone'] = $phone;
+            } elseif (strlen($phone) === 10) {
+                $payload['phone'] = $phone;
+            }
+        }
         if (!empty($data['cpfCnpj'])) { $payload['cpfCnpj'] = preg_replace('/\D+/', '', (string) $data['cpfCnpj']); }
 
         $res = $this->request('POST', '/customers', $payload);
@@ -107,6 +117,24 @@ final class Asaas
             throw new RuntimeException('Resposta inesperada do ASAAS ao criar o cliente.');
         }
         return $id;
+    }
+
+    /**
+     * Telefone no formato nacional (DDD + número, só dígitos). Remove o DDI 55
+     * e o zero de operadora que o preenchimento automático do celular costuma
+     * incluir (ex.: "+55 11 98888-7777" -> "11988887777").
+     */
+    public static function nationalPhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+        if (strlen($digits) >= 12 && str_starts_with($digits, '55')) {
+            $digits = substr($digits, 2);
+        }
+        // Nenhum DDD começa com 0: um zero inicial é o prefixo de operadora.
+        if ((strlen($digits) === 11 || strlen($digits) === 12) && $digits[0] === '0') {
+            $digits = substr($digits, 1);
+        }
+        return $digits;
     }
 
     /**
@@ -238,7 +266,9 @@ final class Asaas
         }
 
         if ($status < 200 || $status >= 300) {
-            throw new RuntimeException($this->describeError($status, $decoded));
+            // O código HTTP vai no código da exceção: 400 = erro de validação
+            // dos dados do pagador (mensagem segura para mostrar ao visitante).
+            throw new RuntimeException($this->describeError($status, $decoded), $status);
         }
 
         return $decoded;

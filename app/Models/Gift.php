@@ -11,17 +11,20 @@ final class Gift extends Model
 {
     protected string $table = 'gifts';
 
+    /** Status que tira o presente do site (definido no painel). */
+    public const STATUS_HIDDEN = 'hidden';
+
     /**
      * Lista presentes ordenados.
      *
-     * @param bool $onlyAvailable Se true, traz só os disponíveis (site público)
+     * @param bool $onlyVisible Se true, omite os ocultos (site público)
      * @return array<int, array<string, mixed>>
      */
-    public function listAll(bool $onlyAvailable = false): array
+    public function listAll(bool $onlyVisible = false): array
     {
         $sql = 'SELECT * FROM ' . $this->table;
-        if ($onlyAvailable) {
-            $sql .= " WHERE status = 'available'";
+        if ($onlyVisible) {
+            $sql .= " WHERE status <> '" . self::STATUS_HIDDEN . "'";
         }
         $sql .= ' ORDER BY sort_order ASC, id ASC';
         return $this->select($sql);
@@ -232,77 +235,18 @@ final class Gift extends Model
     }
 
     /**
-     * Busca um presente disponível pelo ID (usado no fluxo de presentear).
+     * Presente que pode ser comprado agora: existe e não está oculto. Não há
+     * mais reserva nem "já comprado" — o mesmo presente pode ser dado quantas
+     * vezes as pessoas quiserem (pedido do casal: muita gente escolhe pelo
+     * valor).
      *
      * @return array<string, mixed>|null
      */
-    public function findAvailable(int $id): ?array
+    public function findPurchasable(int $id): ?array
     {
         return $this->selectOne(
-            'SELECT * FROM ' . $this->table . ' WHERE id = :id AND status = \'available\' LIMIT 1',
-            ['id' => $id]
-        );
-    }
-
-    /**
-     * Reserva um presente de forma atômica: só muda para 'reserved' quando ele
-     * ainda está 'available'. Retorna true se a reserva foi feita por ESTA
-     * chamada — e false se outra transação já o havia reservado/comprado.
-     *
-     * O UPDATE condicional (status = 'available' no WHERE) garante exclusão
-     * mútua mesmo com dois pagamentos simultâneos: apenas um afeta a linha,
-     * impedindo compras duplicadas do mesmo item (ponto 9).
-     */
-    public function reserveIfAvailable(int $id): bool
-    {
-        $affected = $this->execute(
-            'UPDATE ' . $this->table
-            . " SET status = 'reserved' WHERE id = :id AND status = 'available'",
-            ['id' => $id]
-        );
-        return $affected > 0;
-    }
-
-    /** Marca o presente como adquirido (pagamento confirmado). */
-    public function markPurchased(int $id): int
-    {
-        return $this->execute(
-            'UPDATE ' . $this->table . " SET status = 'purchased' WHERE id = :id",
-            ['id' => $id]
-        );
-    }
-
-    /**
-     * Libera a reserva, voltando o presente a 'available'. Só atua quando ele
-     * está 'reserved' — nunca "desfaz" um presente já 'purchased'. Usado quando
-     * um pagamento pendente falha, expira ou é cancelado/estornado (ponto 9).
-     */
-    public function releaseIfReserved(int $id): int
-    {
-        return $this->execute(
-            'UPDATE ' . $this->table
-            . " SET status = 'available' WHERE id = :id AND status = 'reserved'",
-            ['id' => $id]
-        );
-    }
-
-    /**
-     * Libera a reserva com segurança: só volta a 'available' quando o presente
-     * está 'reserved' E não há nenhuma compra ainda ativa para ele (pendente
-     * ou paga). Protege contra liberar um item que tenha outra tentativa de
-     * pagamento legítima em andamento. Usado após expirar compras pendentes.
-     */
-    public function releaseIfNoActivePurchase(int $id): int
-    {
-        return $this->execute(
-            'UPDATE ' . $this->table . ' g'
-            . " SET g.status = 'available' "
-            . " WHERE g.id = :id AND g.status = 'reserved' "
-            . '   AND NOT EXISTS ('
-            . '       SELECT 1 FROM gift_purchases p '
-            . "       WHERE p.gift_id = g.id AND p.payment_status IN ('pending','paid')"
-            . '   )',
-            ['id' => $id]
+            'SELECT * FROM ' . $this->table . ' WHERE id = :id AND status <> :hidden LIMIT 1',
+            ['id' => $id, 'hidden' => self::STATUS_HIDDEN]
         );
     }
 }

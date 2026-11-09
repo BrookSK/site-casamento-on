@@ -35,6 +35,7 @@ $showRsvpLink = !empty($app['show_rsvp_link']);
     <meta name="theme-color" content="#8a8f6f">
 
     <title><?= View::e($title) ?></title>
+    <?= View::favicons($baseUrl) ?>
 
     <!-- Fontes: carregadas via <link> do Google Fonts (não é dependência de build) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

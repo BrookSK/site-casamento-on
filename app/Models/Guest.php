@@ -31,6 +31,55 @@ final class Guest extends Model
     }
 
     /**
+     * Valida CPF (11 dígitos) ou CNPJ (14 dígitos) pelos dígitos verificadores.
+     * Evita mandar ao ASAAS um documento que ele recusaria, o que fazia a
+     * página voltar com um erro genérico.
+     */
+    public static function isValidCpfCnpj(string $doc): bool
+    {
+        $d = self::normalizeCpf($doc);
+
+        if (strlen($d) === 11) {
+            if (preg_match('/^(\d)\1{10}$/', $d)) {
+                return false;
+            }
+            for ($t = 9; $t < 11; $t++) {
+                $sum = 0;
+                for ($i = 0; $i < $t; $i++) {
+                    $sum += (int) $d[$i] * (($t + 1) - $i);
+                }
+                $check = ((10 * $sum) % 11) % 10;
+                if ((int) $d[$t] !== $check) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        if (strlen($d) === 14) {
+            if (preg_match('/^(\d)\1{13}$/', $d)) {
+                return false;
+            }
+            $weights = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+            for ($t = 12; $t < 14; $t++) {
+                $sum = 0;
+                $w   = array_slice($weights, 13 - $t);
+                for ($i = 0; $i < $t; $i++) {
+                    $sum += (int) $d[$i] * $w[$i];
+                }
+                $rest  = $sum % 11;
+                $check = $rest < 2 ? 0 : 11 - $rest;
+                if ((int) $d[$t] !== $check) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Localiza um convidado pelo CPF (somente dígitos). Usado no convite
      * público para encontrar/associar a confirmação à pessoa certa.
      *
@@ -358,18 +407,20 @@ final class Guest extends Model
             $newPnorm = ($existing['phone_normalized'] ?? null) ?: $phoneNorm;
 
             if ($hasPassword) {
-                // Conta ativa: não gera token; só atualiza nome/contatos.
+                // Conta ativa (com senha): quem compra sem login não prova ser
+                // o dono, então NÃO altera o nome — só completa contatos que
+                // estejam vazios. O nome exibido continua o da conta.
                 $this->execute(
-                    'UPDATE ' . $this->table . ' SET name = :name, email = :email, '
+                    'UPDATE ' . $this->table . ' SET email = :email, '
                     . 'phone = :phone, phone_normalized = :pnorm WHERE id = :id',
                     [
                         'id'    => $id,
-                        'name'  => $name,
                         'email' => $newEmail,
                         'phone' => $newPhone,
                         'pnorm' => $newPnorm,
                     ]
                 );
+                $name = (string) ($existing['name'] ?? $name);
             } else {
                 // Sem senha: gera um token novo (7 dias), garantindo link válido.
                 $inviteToken = self::generateToken();

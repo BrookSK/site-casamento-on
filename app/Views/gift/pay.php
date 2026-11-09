@@ -201,18 +201,41 @@ document.querySelectorAll('[data-copy-target]').forEach(function (btn) {
         if (!el) { return; }
         el.select();
         el.setSelectionRange(0, 99999);
-        try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(el.value);
-            } else {
-                document.execCommand('copy');
-            }
-            var original = btn.textContent;
+        var original = btn.getAttribute('data-label') || btn.textContent;
+        btn.setAttribute('data-label', original);
+        var done = function () {
             btn.textContent = 'Copiado!';
             setTimeout(function () { btn.textContent = original; }, 2000);
-        } catch (e) { /* silencioso */ }
+        };
+        var legacy = function () {
+            try { if (document.execCommand('copy')) { done(); } } catch (e) { /* silencioso */ }
+        };
+        // A API moderna pode recusar (ex.: navegador interno de apps); nesse
+        // caso cai no método antigo, com o texto já selecionado.
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(el.value).then(done, legacy);
+        } else {
+            legacy();
+        }
     });
 });
+
+// Trava o botão do cartão após o envio: o toque duplo criava duas cobranças.
+(function () {
+    var form = document.querySelector('.pay-cardform');
+    if (!form) { return; }
+    var btn = form.querySelector('[type="submit"]');
+    var label = btn ? btn.textContent : '';
+    form.addEventListener('submit', function (e) {
+        if (form.getAttribute('data-sending') === '1') { e.preventDefault(); return; }
+        form.setAttribute('data-sending', '1');
+        if (btn) { btn.disabled = true; btn.textContent = 'Processando pagamento…'; }
+    });
+    window.addEventListener('pageshow', function () {
+        form.removeAttribute('data-sending');
+        if (btn) { btn.disabled = false; btn.textContent = label; }
+    });
+})();
 
 // Máscaras dos campos do cartão (formulário de pagamento por cartão).
 (function () {

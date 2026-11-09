@@ -1456,26 +1456,9 @@ p { margin: 0 0 1rem; }
     display: block;
 }
 
-/* Presente já escolhido: acinzentado e selo. Não removemos da lista. */
+/* Não existe mais o estado "presente já escolhido": o mesmo presente pode
+   ser dado por várias pessoas. */
 .gift-card { position: relative; }
-/* Presente já escolhido (ponto 9): a foto fica acinzentada (grayscale + menor
-   opacidade) para transmitir "indisponível", e o selo "Presente já escolhido"
-   reforça o estado. O nome/preço continuam legíveis. */
-.gift-card--taken { background: #faf8f4; }
-.gift-card--taken .gift-card__img,
-.gift-card--taken .gift-card__icon {
-    filter: grayscale(100%);
-    opacity: 0.55;
-    transition: filter 0.3s var(--ease), opacity 0.3s var(--ease);
-}
-.gift-card--taken .gift-card__name,
-.gift-card--taken .gift-card__price { color: var(--c-muted); }
-.gift-card--taken:hover {
-    transform: none;
-    box-shadow: none;
-}
-/* O card já escolhido continua clicável (abre o popup de detalhes, apenas
-   para ver a descrição — sem a opção de presentear). */
 
 .gift-note { text-align: center; margin-top: 2rem; color: var(--c-muted); }
 
@@ -1504,12 +1487,24 @@ p { margin: 0 0 1rem; }
     width: 100%;
     max-width: 860px;              /* retangular (landscape) no PC */
     max-height: 90vh;
-    overflow-y: auto;
+    max-height: 90dvh;             /* desconta a barra do navegador móvel */
     background: var(--c-white);
     border-radius: var(--radius);
     box-shadow: 0 30px 80px -30px rgba(0,0,0,0.5);
-    padding: clamp(1.75rem, 3.5vw, 2.75rem);
     animation: giftPop 0.28s var(--ease);
+    /* A rolagem fica no miolo (.gift-modal__scroll); o "×" fica fora dela e
+       continua visível mesmo com o formulário rolado até o fim. */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.gift-modal__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: clamp(1.75rem, 3.5vw, 2.75rem);
     /* Duas colunas: apresentação à esquerda, formulário à direita. */
     display: grid;
     grid-template-columns: 1fr 1.15fr;
@@ -1525,9 +1520,10 @@ p { margin: 0 0 1rem; }
     position: absolute;
     top: 0.75rem;
     right: 0.9rem;
+    z-index: 2;
     width: 36px; height: 36px;
     border: 0;
-    background: transparent;
+    background: rgba(255, 255, 255, 0.92);
     font-size: 1.6rem;
     line-height: 1;
     color: var(--c-muted);
@@ -1645,42 +1641,30 @@ p { margin: 0 0 1rem; }
 .field__hint { font-size: 0.78rem; color: var(--c-muted); }
 .gift-modal__submit { margin-top: 0.5rem; text-align: center; justify-self: start; }
 
+/* Motivo do erro ao voltar do envio (popup reaberto já preenchido). */
+.gift-modal__error {
+    margin: 0;
+    padding: 0.75rem 0.9rem;
+    border-radius: var(--radius);
+    background: #f0dcd6;
+    color: #9c3b26;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+.gift-modal__submit:disabled { opacity: 0.7; cursor: progress; }
+
 /* Mobile: o popup volta a empilhar (uma coluna). */
 @media (max-width: 680px) {
-    .gift-modal__dialog { grid-template-columns: 1fr; max-width: 440px; }
+    .gift-modal { padding: 0.75rem; }
+    .gift-modal__dialog { max-width: 440px; max-height: 92vh; max-height: 92dvh; }
+    .gift-modal__scroll { grid-template-columns: 1fr; }
+    .gift-modal__close { box-shadow: 0 2px 10px -4px rgba(0, 0, 0, 0.25); }
     .gift-modal__form { grid-template-columns: 1fr; }
     .gift-modal__head, .gift-modal__intro { text-align: center; }
+    .gift-modal__desc { text-align: center; }
+    /* Imagem mais baixa: o formulário aparece sem tanta rolagem. */
+    .gift-modal__media { aspect-ratio: 16 / 9; }
     .gift-modal__submit { justify-self: stretch; }
-}
-
-/* -------------------------------------------------------------
-   Status do presente no card ("Já escolhido" / "Não escolhido")
-   ------------------------------------------------------------- */
-/* Notificação discreta de "presente já escolhido" (ocupa o lugar do botão). */
-.gift-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    margin-top: 0.7rem;
-    padding: 0.4rem 1rem;
-    border-radius: 999px;
-    font-family: var(--font-sans);
-    font-size: 0.74rem;
-    font-weight: 300;
-    letter-spacing: 0.08em;
-    line-height: 1;
-}
-.gift-status__dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: var(--c-rose-soft);
-}
-.gift-status--taken {
-    background: #f3efe8;
-    color: var(--c-muted);
-    border: 1px solid var(--c-line);
 }
 
 /* Card clicável: dica visual de que abre os detalhes. */
@@ -1693,7 +1677,7 @@ p { margin: 0 0 1rem; }
 /* -------------------------------------------------------------
    Popup 1: detalhes do presente (mesma identidade do popup 2)
    ------------------------------------------------------------- */
-.gift-modal__dialog--detail {
+.gift-modal__dialog--detail .gift-modal__scroll {
     /* Mesma largura e proporção de colunas do popup de pagamento. */
     grid-template-columns: 1fr 1.15fr;
     align-items: center;
@@ -1766,7 +1750,8 @@ p { margin: 0 0 1rem; }
 .gift-detail__authwall-actions .btn { flex: 1 1 auto; text-align: center; }
 
 @media (max-width: 680px) {
-    .gift-modal__dialog--detail { grid-template-columns: 1fr; max-width: 440px; }
+    .gift-modal__dialog--detail { max-width: 440px; }
+    .gift-modal__dialog--detail .gift-modal__scroll { grid-template-columns: 1fr; }
     .gift-detail__media { max-width: 320px; margin: 0 auto; }
     .gift-detail__body { text-align: center; }
     .gift-detail__cta { width: 100%; padding-inline: 1.5rem; }
@@ -1870,15 +1855,24 @@ p { margin: 0 0 1rem; }
         height: 100dvh;
         width: min(80vw, 320px);
         background: var(--c-cream);
-        box-shadow: -20px 0 60px -30px rgba(0,0,0,0.5);
+        /* Fechado: sem sombra (ela vazava como uma faixa cinza na borda
+           direita da tela) e invisível para o Tab/leitor de tela. A
+           visibilidade só some depois que o painel termina de deslizar. */
+        box-shadow: none;
+        visibility: hidden;
         transform: translateX(100%);
-        transition: transform 0.4s var(--ease);
+        transition: transform 0.4s var(--ease), visibility 0s linear 0.4s;
         padding: 6rem 2rem 2rem;
         overflow-y: auto;
         z-index: 120; /* acima do header fixo */
         -webkit-overflow-scrolling: touch;
     }
-    .site-nav.is-open { transform: translateX(0); }
+    .site-nav.is-open {
+        transform: translateX(0);
+        visibility: visible;
+        box-shadow: -20px 0 60px -30px rgba(0,0,0,0.5);
+        transition: transform 0.4s var(--ease), visibility 0s;
+    }
 
     /* Enquanto o menu está aberto:
        - remove o backdrop-filter do header (evita o painel encolher);

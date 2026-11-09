@@ -961,7 +961,8 @@ a { color: var(--c-sage-dark); }
     .status-dot--confirmed, .status-dot--available, .status-dot--paid, .status-dot--sent { background: #6b8e3d; }
     .status-dot--pending,   .status-dot--reserved                                        { background: #c9a23a; }
     .status-dot--declined,  .status-dot--failed                                          { background: #c0392b; }
-    .status-dot--purchased, .status-dot--skipped, .status-dot--refunded                  { background: #9a9a9a; }
+    .status-dot--purchased, .status-dot--skipped, .status-dot--refunded,
+    .status-dot--hidden                                                                  { background: #9a9a9a; }
 
     /* Esconde o badge textual no cartão quando usamos a bolinha. */
     .admin-table--cards .cell-badge-dot { display: none !important; }

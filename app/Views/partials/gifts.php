@@ -27,6 +27,7 @@ $paymentsEnabled = $paymentsEnabled ?? false;
 $csrfField       = $csrfField ?? '';
 $currentGuest    = $currentGuest ?? null;
 $giftStatus      = $giftStatus ?? null;
+$giftOld         = is_array($giftOld ?? null) ? $giftOld : null;
 $baseUrl         = $app['base_url'] ?? '';
 
 // Preços em centavos (para o filtro). Só habilita o slider se houver preços > 0.
@@ -42,19 +43,51 @@ $giftMessages = [
     'erro-sessao'     => 'Sua sessão expirou. Recarregue a página e tente novamente.',
     'erro-nome'       => 'Informe o seu nome para presentear.',
     'erro-email'      => 'Informe um e-mail válido para criarmos a sua conta.',
-    'erro-telefone'   => 'Informe o seu telefone para criarmos a sua conta.',
+    'erro-telefone'   => 'Informe o seu telefone com DDD para criarmos a sua conta.',
     'erro-cpf'        => 'Informe um CPF/CNPJ válido para concluir o pagamento.',
     'erro-cartao'     => 'Verifique os dados do cartão e tente novamente.',
     'erro-cartao-recusado' => 'O pagamento com cartão foi recusado. Confira os '
                        . 'dados ou tente outro cartão/forma de pagamento.',
     'erro-conflito'   => 'O e-mail e o telefone informados pertencem a cadastros '
                        . 'diferentes. Verifique os dados ou faça login.',
-    'erro-indisponivel' => 'Este presente não está mais disponível.',
+    'erro-indisponivel' => 'Este presente não está mais na lista. Que tal escolher outro?',
     'erro-valor'      => 'Este presente ainda não tem um valor definido.',
     'login'           => 'Você ainda não possui uma conta ou não está conectado. '
                        . 'Crie uma conta ou faça login para continuar com seu presente.',
 ];
 $giftMsg = $giftStatus !== null ? ($giftMessages[$giftStatus] ?? null) : null;
+
+// Envio que voltou com erro: reabre o popup de pagamento com os dados
+// digitados e o motivo dentro dele (o aviso da lista fica de reserva, caso o
+// presente não possa mais ser aberto).
+$reopenId  = 0;
+$reopenMsg = '';
+if ($giftOld !== null && (int) ($giftOld['gift_id'] ?? 0) > 0) {
+    $oldStatus = (string) ($giftOld['status'] ?? '');
+    if (!in_array($oldStatus, ['erro-indisponivel', 'erro-valor'], true)) {
+        $reopenId  = (int) $giftOld['gift_id'];
+        $reopenMsg = $giftMessages[$oldStatus] ?? $giftMessages['erro'];
+        if ($oldStatus === 'erro-sessao') {
+            $reopenMsg = 'Sua sessão expirou. Seus dados foram mantidos: confira e toque em continuar novamente.';
+        }
+        $detail = trim((string) ($giftOld['detail'] ?? ''));
+        if ($detail !== '') {
+            $reopenMsg = 'Não foi possível gerar o pagamento: ' . $detail;
+        }
+        if ($giftMsg === null) {
+            $giftMsg = $reopenMsg;
+        }
+    }
+}
+// Valor inicial dos campos: o que foi digitado (se voltou com erro) ou os
+// dados do convidado logado.
+$oldVal = static function (string $key, string $fallback = '') use ($giftOld, $reopenId): string {
+    if ($reopenId > 0 && isset($giftOld[$key]) && (string) $giftOld[$key] !== '') {
+        return (string) $giftOld[$key];
+    }
+    return $fallback;
+};
+$oldBilling = $oldVal('billing_type', 'PIX');
 
 /**
  * Resolve a URL da imagem de um presente (aceita caminho absoluto, http ou
@@ -82,7 +115,8 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
         </div>
 
         <?php if ($giftMsg !== null): ?>
-            <p class="flash flash--error" style="text-align:center"><?= View::e($giftMsg) ?></p>
+            <p class="flash flash--error" style="text-align:center" role="alert" data-gift-flash
+               <?= $reopenId > 0 ? 'hidden' : '' ?>><?= View::e($giftMsg) ?></p>
         <?php endif; ?>
 
         <?php if ($showFilter): ?>
@@ -111,23 +145,20 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                 <?php
                 $priceCents = (int) ($gift['price_cents'] ?? 0);
                 $giftId     = (int) ($gift['id'] ?? 0);
-                // Presente já escolhido (pago) ou reservado durante um pagamento.
-                $taken      = (bool) ($gift['taken'] ?? false);
                 $name       = (string) ($gift['name'] ?? 'Presente');
                 $desc       = trim((string) ($gift['description'] ?? ''));
                 $priceText  = (string) ($gift['price'] ?? 'R$ ---');
                 $imageUrl   = $resolveImage((string) ($gift['image'] ?? ''));
-                // Só pode comprar se há pagamento ativo, id/preço válidos E não
-                // estiver indisponível (reservado/comprado).
-                $canBuy     = $paymentsEnabled && $giftId > 0 && $priceCents > 0 && !$taken;
+                // O mesmo presente pode ser dado por várias pessoas (pedido do
+                // casal): nunca aparece como "já escolhido". Só precisa de
+                // pagamento ativo e de id/preço válidos.
+                $canBuy     = $paymentsEnabled && $giftId > 0 && $priceCents > 0;
                 // Card clicável (abre o popup de detalhes) sempre que há
-                // pagamento ativo — inclusive os já escolhidos, que abrem o
-                // popup só para ver a descrição (sem a opção de presentear).
+                // pagamento ativo.
                 $clickable  = $paymentsEnabled;
                 ?>
-                <article class="gift-card<?= $taken ? ' gift-card--taken' : '' ?><?= $clickable ? ' gift-card--clickable' : '' ?>"
+                <article class="gift-card<?= $clickable ? ' gift-card--clickable' : '' ?>"
                          data-gift-card data-price="<?= $priceCents ?>"
-                         <?= $taken ? 'data-taken="1"' : '' ?>
                          <?php if ($clickable): ?>
                          tabindex="0" role="button"
                          aria-label="Ver detalhes do presente <?= View::e($name) ?>"
@@ -151,13 +182,6 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                     <h3 class="gift-card__name"><?= View::e($name) ?></h3>
                     <p class="gift-card__price"><?= View::e($priceText) ?></p>
 
-                    <?php if ($taken): ?>
-                        <!-- Já escolhido: notificação discreta no lugar do "Presentear". -->
-                        <span class="gift-status gift-status--taken">
-                            <span class="gift-status__dot" aria-hidden="true"></span>
-                            Presente já escolhido
-                        </span>
-                    <?php endif; ?>
                 </article>
             <?php endforeach; ?>
         </div>
@@ -177,6 +201,7 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
          aria-labelledby="gift-detail-title">
         <button class="gift-modal__close" type="button" data-gift-detail-close aria-label="Fechar">&times;</button>
 
+        <div class="gift-modal__scroll">
         <div class="gift-detail__media">
             <img class="gift-detail__img" src="" alt="" data-gift-detail-image hidden>
             <div class="gift-detail__icon" aria-hidden="true" data-gift-detail-icon>&#127873;</div>
@@ -192,7 +217,7 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                 Presentear
             </button>
             <p class="gift-detail__unavailable" data-gift-detail-unavailable hidden>
-                Este presente já foi escolhido. Que tal escolher outro?
+                Este presente ainda não está disponível para presentear. Que tal escolher outro?
             </p>
 
             <!-- Aviso de login: exibido quando um visitante NÃO autenticado
@@ -208,15 +233,18 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                 </div>
             </div>
         </div>
+        </div><!-- /.gift-modal__scroll -->
     </div>
 </div>
 
 <!-- Popup 2: dados de pagamento (reutilizado para qualquer presente). -->
-<div class="gift-modal" data-gift-modal hidden>
+<div class="gift-modal" data-gift-modal hidden
+     <?php if ($reopenId > 0): ?>data-reopen-id="<?= $reopenId ?>"<?php endif; ?>>
     <div class="gift-modal__overlay" data-gift-close></div>
     <div class="gift-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="gift-modal-title">
         <button class="gift-modal__close" type="button" data-gift-close aria-label="Fechar">&times;</button>
 
+        <div class="gift-modal__scroll">
         <div class="gift-modal__aside">
             <div class="gift-modal__head">
                 <p class="gift-modal__eyebrow">Presentear</p>
@@ -233,21 +261,27 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
             <p class="gift-modal__desc" data-gift-modal-desc hidden></p>
 
             <p class="gift-modal__intro">
-                Preencha os dados ao lado para contribuir. O pagamento é
+                Preencha os seus dados para contribuir. O pagamento é
                 processado com segurança &mdash; você escolhe entre PIX, cartão
                 de crédito ou boleto.
             </p>
         </div>
 
-        <form class="gift-modal__form" method="post"
+        <form class="gift-modal__form" method="post" data-gift-modal-form
               action="<?= View::e(View::url('/presentear', $baseUrl)) ?>">
             <?= $csrfField ?>
             <input type="hidden" name="gift_id" value="" data-gift-modal-id>
 
+            <?php if ($reopenId > 0): ?>
+                <p class="gift-modal__error field--full" role="alert" data-gift-modal-error>
+                    <?= View::e($reopenMsg) ?>
+                </p>
+            <?php endif; ?>
+
             <div class="field field--full">
                 <label for="gm_name">Seu nome</label>
-                <input type="text" id="gm_name" name="buyer_name"
-                       value="<?= View::e((string) ($currentGuest['name'] ?? '')) ?>" required>
+                <input type="text" id="gm_name" name="buyer_name" autocomplete="name"
+                       value="<?= View::e($oldVal('buyer_name', (string) ($currentGuest['name'] ?? ''))) ?>" required>
             </div>
 
             <?php /* Visitante sem conta: cria automaticamente a conta com estes
@@ -264,15 +298,17 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
 
                 <div class="field field--full">
                     <label for="gm_email">E-mail</label>
-                    <input type="email" id="gm_email" name="buyer_email"
-                           value="<?= View::e((string) ($currentGuest['email'] ?? '')) ?>"
+                    <input type="email" id="gm_email" name="buyer_email" autocomplete="email"
+                           inputmode="email" autocapitalize="off" spellcheck="false"
+                           value="<?= View::e($oldVal('buyer_email', (string) ($currentGuest['email'] ?? ''))) ?>"
                            <?= $guestLogged ? '' : 'required' ?>>
                 </div>
 
                 <div class="field field--full">
                     <label for="gm_phone">Telefone/WhatsApp</label>
-                    <input type="tel" id="gm_phone" name="buyer_phone" inputmode="numeric"
-                           placeholder="(DDD) número"
+                    <input type="tel" id="gm_phone" name="buyer_phone" inputmode="tel"
+                           autocomplete="tel" placeholder="(11) 98888-7777" maxlength="20"
+                           value="<?= View::e($oldVal('buyer_phone')) ?>" data-gift-phone
                            <?= $guestLogged ? '' : 'required' ?>>
                 </div>
             </div>
@@ -280,28 +316,33 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
             <div class="field field--full">
                 <label for="gm_billing">Forma de pagamento</label>
                 <select id="gm_billing" name="billing_type" data-gift-modal-billing>
-                    <option value="PIX">PIX (aprovação na hora)</option>
-                    <option value="CREDIT_CARD">Cartão de crédito</option>
-                    <option value="BOLETO">Boleto bancário</option>
+                    <option value="PIX" <?= $oldBilling === 'PIX' ? 'selected' : '' ?>>PIX (aprovação na hora)</option>
+                    <option value="CREDIT_CARD" <?= $oldBilling === 'CREDIT_CARD' ? 'selected' : '' ?>>Cartão de crédito</option>
+                    <option value="BOLETO" <?= $oldBilling === 'BOLETO' ? 'selected' : '' ?>>Boleto bancário</option>
                 </select>
             </div>
 
-            <div class="field field--full" data-gift-modal-cpf hidden>
-                <label for="gm_cpf">CPF/CNPJ</label>
+            <?php /* O ASAAS exige o CPF/CNPJ do pagador em qualquer forma de
+                     pagamento (inclusive PIX), por isso o campo é sempre pedido. */ ?>
+            <div class="field field--full">
+                <label for="gm_cpf">CPF/CNPJ do pagador</label>
                 <input type="text" id="gm_cpf" name="buyer_cpf" inputmode="numeric"
-                       placeholder="Somente números">
+                       placeholder="000.000.000-00" maxlength="18" required
+                       value="<?= View::e($oldVal('buyer_cpf')) ?>">
             </div>
 
             <div class="field field--full">
                 <label for="gm_msg">Mensagem (opcional)</label>
                 <input type="text" id="gm_msg" name="message" maxlength="255"
+                       value="<?= View::e($oldVal('message')) ?>"
                        placeholder="Uma mensagem carinhosa para o casal">
             </div>
 
-            <button class="btn btn--primary gift-modal__submit" type="submit">
+            <button class="btn btn--primary gift-modal__submit" type="submit" data-gift-modal-submit>
                 Continuar para o pagamento
             </button>
         </form>
+        </div><!-- /.gift-modal__scroll -->
     </div>
 </div>
 
@@ -315,8 +356,6 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
     var nameEl  = modal.querySelector('[data-gift-modal-name]');
     var priceEl = modal.querySelector('[data-gift-modal-price]');
     var idEl    = modal.querySelector('[data-gift-modal-id]');
-    var billing = modal.querySelector('[data-gift-modal-billing]');
-    var cpf     = modal.querySelector('[data-gift-modal-cpf]');
     var extraFields = modal.querySelector('[data-gift-modal-extra]');
     var payImg   = modal.querySelector('[data-gift-modal-image]');
     var payIcon  = modal.querySelector('[data-gift-modal-icon]');
@@ -372,7 +411,7 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
         // Volta ao estado inicial: esconde o aviso de login a cada abertura.
         if (dAuth) { dAuth.hidden = true; }
 
-        // Valida a disponibilidade antes de permitir a compra.
+        // Só bloqueia presente sem valor definido (nunca por já ter sido dado).
         if (canBuy) {
             dBuy.hidden = false;
             dUnav.hidden = true;
@@ -422,9 +461,6 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
             payDesc.hidden = current.desc === '';
         }
 
-        // Aplica o estado da forma de pagamento (CPF e campos de cartão)
-        // conforme a opção selecionada ao abrir o pagamento.
-        if (typeof applyBilling === 'function') { applyBilling(); }
         detail.hidden = true;   // fecha o de detalhes
         modal.hidden = false;   // abre o de pagamento
         lockScroll();
@@ -461,40 +497,144 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
         else if (!detail.hidden) { closeDetail(); }
     });
 
-    // Mostra/oculta o CPF conforme a forma de pagamento. Para visitante sem
-    // conta, o CPF é sempre exigido; para logado, aparece em boleto e cartão
-    // (ambos exigem CPF do titular/pagador no ASAAS).
-    var applyBilling = function () {
-        var v = billing ? billing.value : 'PIX';
-        var needCpf = v === 'BOLETO' || v === 'CREDIT_CARD';
-        if (cpf) {
-            cpf.hidden = isLogged ? !needCpf : false;
+    // Validação de CPF/CNPJ pelos dígitos verificadores (mesma regra do
+    // servidor), para avisar no próprio campo antes de enviar.
+    var validDoc = function (v) {
+        var d = (v || '').replace(/\D/g, '');
+        var i, t, sum, check;
+        if (d.length === 11) {
+            if (/^(\d)\1{10}$/.test(d)) { return false; }
+            for (t = 9; t < 11; t++) {
+                for (sum = 0, i = 0; i < t; i++) { sum += +d[i] * (t + 1 - i); }
+                check = ((10 * sum) % 11) % 10;
+                if (+d[t] !== check) { return false; }
+            }
+            return true;
         }
+        if (d.length === 14) {
+            if (/^(\d)\1{13}$/.test(d)) { return false; }
+            var w = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+            for (t = 12; t < 14; t++) {
+                var ww = w.slice(13 - t);
+                for (sum = 0, i = 0; i < t; i++) { sum += +d[i] * ww[i]; }
+                check = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+                if (+d[t] !== check) { return false; }
+            }
+            return true;
+        }
+        return false;
     };
-    if (billing) {
-        billing.addEventListener('change', applyBilling);
-        applyBilling(); // estado inicial
-    }
 
     // Máscara de CPF/CNPJ: formata automaticamente enquanto digita.
     // CPF: 000.000.000-00  |  CNPJ: 00.000.000/0000-00
     var cpfInput = modal.querySelector('#gm_cpf');
+    var formatDoc = function (value) {
+        var d = value.replace(/\D/g, '').slice(0, 14);
+        if (d.length <= 11) {
+            return d.replace(/^(\d{3})(\d)/, '$1.$2')
+                    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+                    .replace(/\.(\d{3})(\d)/, '.$1-$2');
+        }
+        return d.replace(/^(\d{2})(\d)/, '$1.$2')
+                .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+                .replace(/\.(\d{3})(\d)/, '.$1/$2')
+                .replace(/(\d{4})(\d)/, '$1-$2');
+    };
     if (cpfInput) {
         cpfInput.addEventListener('input', function () {
-            var d = cpfInput.value.replace(/\D/g, '').slice(0, 14);
-            var out;
-            if (d.length <= 11) {
-                out = d.replace(/^(\d{3})(\d)/, '$1.$2')
-                       .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
-                       .replace(/\.(\d{3})(\d)/, '.$1-$2');
-            } else {
-                out = d.replace(/^(\d{2})(\d)/, '$1.$2')
-                       .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-                       .replace(/\.(\d{3})(\d)/, '.$1/$2')
-                       .replace(/(\d{4})(\d)/, '$1-$2');
-            }
-            cpfInput.value = out;
+            cpfInput.value = formatDoc(cpfInput.value);
+            cpfInput.setCustomValidity('');
         });
+        if (cpfInput.value) { cpfInput.value = formatDoc(cpfInput.value); }
+    }
+
+    // Máscara do telefone: aceita o número colado/preenchido pelo celular com
+    // +55 e deixa no formato (DDD) 00000-0000.
+    var phoneInput = modal.querySelector('[data-gift-phone]');
+    var formatPhone = function (value) {
+        var d = value.replace(/\D/g, '');
+        if (d.length >= 12 && d.indexOf('55') === 0) { d = d.slice(2); }
+        d = d.slice(0, 11);
+        if (d.length <= 2) { return d.length ? '(' + d : ''; }
+        if (d.length <= 6) { return '(' + d.slice(0, 2) + ') ' + d.slice(2); }
+        if (d.length <= 10) { return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6); }
+        return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
+    };
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function (e) {
+            // Não reformata enquanto apaga (deixa o Backspace fluir).
+            if (e && e.inputType && e.inputType.indexOf('delete') === 0) { return; }
+            phoneInput.value = formatPhone(phoneInput.value);
+        });
+        phoneInput.addEventListener('blur', function () {
+            phoneInput.value = formatPhone(phoneInput.value);
+        });
+        if (phoneInput.value) { phoneInput.value = formatPhone(phoneInput.value); }
+    }
+
+    // Envio: valida o documento/telefone e trava o botão. Sem a trava, o toque
+    // duplo no celular enviava duas vezes; a 2ª resposta ("indisponível")
+    // substituía a tela do PIX gerado pela 1ª.
+    var form   = modal.querySelector('[data-gift-modal-form]');
+    var submit = modal.querySelector('[data-gift-modal-submit]');
+    var submitLabel = submit ? submit.textContent : '';
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            if (form.getAttribute('data-sending') === '1') { e.preventDefault(); return; }
+            if (cpfInput && !validDoc(cpfInput.value)) {
+                e.preventDefault();
+                cpfInput.setCustomValidity('Informe um CPF ou CNPJ válido.');
+                cpfInput.reportValidity();
+                return;
+            }
+            if (phoneInput && !isLogged && phoneInput.value.replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '').length < 10) {
+                e.preventDefault();
+                phoneInput.setCustomValidity('Informe o telefone com DDD.');
+                phoneInput.reportValidity();
+                phoneInput.addEventListener('input', function clear() {
+                    phoneInput.setCustomValidity('');
+                    phoneInput.removeEventListener('input', clear);
+                });
+                return;
+            }
+            form.setAttribute('data-sending', '1');
+            if (submit) {
+                submit.disabled = true;
+                submit.textContent = 'Gerando pagamento…';
+            }
+        });
+    }
+    // Ao voltar para a página pelo botão "voltar" (cache do navegador), libera
+    // o botão de novo.
+    window.addEventListener('pageshow', function () {
+        if (!form) { return; }
+        form.removeAttribute('data-sending');
+        if (submit) { submit.disabled = false; submit.textContent = submitLabel; }
+    });
+
+    // Voltou com erro: reabre o pagamento do mesmo presente, já preenchido,
+    // com o motivo no topo do formulário.
+    var reopenId = modal.getAttribute('data-reopen-id');
+    if (reopenId) {
+        var card = document.querySelector('[data-gift-detail][data-gift-id="' + reopenId + '"]');
+        var flash = document.querySelector('[data-gift-flash]');
+        if (card && card.getAttribute('data-gift-canbuy') === '1') {
+            openDetail(card);
+            openPayment();
+            var err = modal.querySelector('[data-gift-modal-error]');
+            // Rola o popup até o aviso (no celular o formulário fica abaixo da foto).
+            if (err && err.scrollIntoView) { err.scrollIntoView({ block: 'center' }); }
+        } else if (flash) {
+            flash.hidden = false;
+        }
+    }
+
+    // Remove o ?gift=... da URL: recarregar a página não repete o aviso.
+    if (window.history && history.replaceState && window.URLSearchParams && /[?&]gift=/.test(location.search)) {
+        var params = new URLSearchParams(location.search);
+        params.delete('gift');
+        var qs = params.toString();
+        history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
     }
 })();
 </script>

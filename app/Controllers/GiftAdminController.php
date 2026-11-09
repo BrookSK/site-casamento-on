@@ -29,14 +29,17 @@ final class GiftAdminController extends Controller
     {
         $this->guard();
 
-        $rows  = [];
-        $error = null;
+        $rows       = [];
+        $paidCounts = [];
+        $error      = null;
         try {
             $model = new Gift($this->config);
             // Normaliza a sequência (1..N) para a coluna "Ordem" fazer sentido
             // mesmo em bases antigas com vários sort_order iguais a 0.
             $model->normalizeOrder();
             $rows = $model->listAll();
+            // Quantas vezes cada presente já foi pago (pode ser dado várias vezes).
+            $paidCounts = (new GiftPurchase($this->config))->paidCountsByGift();
         } catch (Throwable $e) {
             error_log('[GiftAdmin] ' . $e->getMessage());
             $error = 'Não foi possível carregar os presentes.';
@@ -46,10 +49,11 @@ final class GiftAdminController extends Controller
             'pageTitle' => 'Presentes',
             'active'    => 'gifts',
             'admin'     => Auth::user(),
-            'rows'      => $rows,
-            'error'     => $error,
-            'csrfField' => Csrf::field(),
-            'flash'     => $this->pullFlash(),
+            'rows'       => $rows,
+            'paidCounts' => $paidCounts,
+            'error'      => $error,
+            'csrfField'  => Csrf::field(),
+            'flash'      => $this->pullFlash(),
         ]);
     }
 
@@ -128,9 +132,10 @@ final class GiftAdminController extends Controller
         $priceRaw   = str_replace(',', '.', $priceRaw);
         $priceCents = (int) round(((float) $priceRaw) * 100);
 
-        $allowedStatus = ['available', 'reserved', 'purchased'];
-        $status = in_array($_POST['status'] ?? '', $allowedStatus, true)
-            ? (string) $_POST['status'] : 'available';
+        // Status = visibilidade no site. Não existe mais "reservado" nem
+        // "presenteado": o mesmo presente pode ser dado várias vezes.
+        $status = ($_POST['status'] ?? '') === Gift::STATUS_HIDDEN
+            ? Gift::STATUS_HIDDEN : 'available';
 
         $model = new Gift($this->config);
 
@@ -139,14 +144,6 @@ final class GiftAdminController extends Controller
         if ($id > 0) {
             $existing = $model->find($id);
             $currentImage = $existing !== null ? ($existing['image'] ?? null) : null;
-
-            // Trava de segurança: um presente efetivamente PAGO (purchased) não
-            // pode ter o status alterado (nem voltar a disponível). Protege o
-            // histórico financeiro e evita vender o mesmo presente duas vezes.
-            // A view já esconde a opção; aqui garantimos no servidor.
-            if ($existing !== null && (string) ($existing['status'] ?? '') === 'purchased') {
-                $status = 'purchased';
-            }
         }
         $image = $currentImage;
 
@@ -528,7 +525,7 @@ final class GiftAdminController extends Controller
             );
         }
 
-        $allowedStatus = ['available', 'reserved', 'purchased'];
+        $allowedStatus = ['available', Gift::STATUS_HIDDEN];
         $gifts  = [];
         $errors = [];
         $lineNo = 1; // o cabeçalho é a linha 1
@@ -576,7 +573,7 @@ final class GiftAdminController extends Controller
             $status = $this->normalizeStatus($get('status'));
             if ($status === null) {
                 $errors[] = 'Linha ' . $lineNo . ': status inválido ("' . $get('status')
-                    . '"). Use disponivel, reservado ou presenteado — linha ignorada.';
+                    . '"). Use disponivel ou oculto — linha ignorada.';
                 continue;
             }
             if (!in_array($status, $allowedStatus, true)) {
@@ -654,11 +651,16 @@ final class GiftAdminController extends Controller
             'disponivel'  => 'available',
             'disponível'  => 'available',
             'available'   => 'available',
-            'reservado'   => 'reserved',
-            'reserved'    => 'reserved',
-            'presenteado' => 'purchased',
-            'comprado'    => 'purchased',
-            'purchased'   => 'purchased',
+            'exibido'     => 'available',
+            'oculto'      => Gift::STATUS_HIDDEN,
+            'hidden'      => Gift::STATUS_HIDDEN,
+            // Legados (planilhas antigas): o presente fica disponível, pois
+            // agora pode ser dado várias vezes.
+            'reservado'   => 'available',
+            'reserved'    => 'available',
+            'presenteado' => 'available',
+            'comprado'    => 'available',
+            'purchased'   => 'available',
         ];
         return $map[$raw] ?? null;
     }
@@ -684,8 +686,8 @@ final class GiftAdminController extends Controller
                 $this->setFlash(
                     'error',
                     'Este presente possui compras registradas e não pode ser excluído '
-                    . '(para preservar o histórico financeiro). Marque-o como '
-                    . '“Presenteado” se não quiser mais exibi-lo.'
+                    . '(para preservar o histórico financeiro). Edite-o e escolha '
+                    . '“Oculto” se não quiser mais exibi-lo no site.'
                 );
                 $this->redirect('/admin/presentes');
             }

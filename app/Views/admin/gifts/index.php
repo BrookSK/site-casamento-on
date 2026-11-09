@@ -16,30 +16,34 @@ use App\Core\View;
 
 $baseUrl = $app['base_url'] ?? '';
 
+// Status = visibilidade no site. O mesmo presente pode ser dado várias vezes,
+// então não há mais "reservado"/"presenteado" (valores antigos contam como
+// exibidos).
 $statusLabels = [
-    'available' => ['Disponível', 'badge--available'],
-    'reserved'  => ['Reservado',  'badge--reserved'],
-    'purchased' => ['Presenteado','badge--purchased'],
+    'available' => ['Exibido', 'badge--available'],
+    'hidden'    => ['Oculto',  'badge--purchased'],
 ];
 
 $money = static fn (int $cents): string => 'R$ ' . number_format($cents / 100, 2, ',', '.');
 
-// Resumo do catálogo (calculado a partir das linhas já carregadas — não há
-// consulta extra ao banco nem mudança de comportamento).
+// Resumo do catálogo (calculado a partir das linhas já carregadas).
 $rows        = $rows ?? [];
+$paidCounts  = $paidCounts ?? [];
 $countTotal  = count($rows);
-$countAvail  = 0;
-$countReserv = 0;
-$countBought = 0;
+$countShown  = 0;
+$countHidden = 0;
+$countPaid   = 0;
 $sumCents    = 0;
 foreach ($rows as $g) {
     $sumCents += (int) ($g['price_cents'] ?? 0);
-    switch ((string) ($g['status'] ?? '')) {
-        case 'available':  $countAvail++;  break;
-        case 'reserved':   $countReserv++; break;
-        case 'purchased':  $countBought++; break;
+    if ((string) ($g['status'] ?? '') === 'hidden') {
+        $countHidden++;
+    } else {
+        $countShown++;
     }
+    $countPaid += (int) ($paidCounts[(int) $g['id']] ?? 0);
 }
+$timesText = static fn (int $n): string => $n === 0 ? 'Ainda não' : ($n === 1 ? '1 vez' : $n . ' vezes');
 // Resolve a URL de uma imagem salva (http, absoluta, ou relativa a assets/img).
 $imageUrl = static function (string $image) use ($baseUrl): string {
     $image = trim($image);
@@ -63,9 +67,9 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
     <!-- Indicadores independentes, soltos no topo (igual ao painel de Confirmações). -->
     <div class="stat-grid">
         <div class="stat"><span class="stat__value"><?= (int) $countTotal ?></span><span class="stat__label">Presentes</span></div>
-        <div class="stat"><span class="stat__value"><?= (int) $countAvail ?></span><span class="stat__label">Disponíveis</span></div>
-        <div class="stat"><span class="stat__value"><?= (int) $countReserv ?></span><span class="stat__label">Reservados</span></div>
-        <div class="stat"><span class="stat__value"><?= (int) $countBought ?></span><span class="stat__label">Presenteados</span></div>
+        <div class="stat"><span class="stat__value"><?= (int) $countShown ?></span><span class="stat__label">Exibidos no site</span></div>
+        <div class="stat"><span class="stat__value"><?= (int) $countHidden ?></span><span class="stat__label">Ocultos</span></div>
+        <div class="stat"><span class="stat__value"><?= (int) $countPaid ?></span><span class="stat__label">Presentes recebidos</span></div>
         <div class="stat"><span class="stat__value"><?= $money((int) $sumCents) ?></span><span class="stat__label">Valor da lista</span></div>
     </div>
 <?php endif; ?>
@@ -100,6 +104,7 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
                     <th>Foto</th>
                     <th>Nome</th>
                     <th>Preço</th>
+                    <th>Presenteado</th>
                     <th>Status</th>
                     <th></th>
                 </tr>
@@ -107,9 +112,10 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
             <tbody data-reorder-body>
                 <?php foreach ($rows as $g): ?>
                     <?php
-                    [$label, $cls] = $statusLabels[$g['status']] ?? ['—', ''];
+                    $st    = (string) ($g['status'] ?? '') === 'hidden' ? 'hidden' : 'available';
+                    [$label, $cls] = $statusLabels[$st];
                     $thumb = $imageUrl((string) ($g['image'] ?? ''));
-                    $st    = (string) ($g['status'] ?? '');
+                    $times = $timesText((int) ($paidCounts[(int) $g['id']] ?? 0));
                     // Dados para o popup de detalhes do presente (somente leitura;
                     // Editar/Remover continuam usando as rotas existentes).
                     $giftData = [
@@ -118,6 +124,7 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
                         'price'       => $money((int) $g['price_cents']),
                         'status'      => $label,
                         'status_cls'  => $cls,
+                        'times'       => $times,
                         'image'       => $thumb,
                         'description' => (string) ($g['description'] ?? ''),
                         'edit_url'    => View::url('/admin/presentes/editar?id=' . (int) $g['id'], $baseUrl),
@@ -147,6 +154,7 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
                             <?php endif; ?>
                         </td>
                         <td data-label="Preço"><?= $money((int) $g['price_cents']) ?></td>
+                        <td data-label="Presenteado"><?= View::e($times) ?></td>
                         <td data-label="Status" class="cell-status-mobile-hide"><span class="badge cell-badge-dot <?= $cls ?>"><?= View::e($label) ?></span></td>
                         <td style="white-space:nowrap;" class="cell-action-mobile-hide">
                             <?php /* Gatilho do popup usado só no mobile (linha clicável). Fica oculto. */ ?>
@@ -227,6 +235,7 @@ $imageUrl = static function (string $image) use ($baseUrl): string {
         detailBox.innerHTML =
             row('Nome', d.name)
           + row('Preço', d.price)
+          + row('Presenteado', d.times)
           + row('Status', d.status);
 
         if (d.image && d.image !== '') {

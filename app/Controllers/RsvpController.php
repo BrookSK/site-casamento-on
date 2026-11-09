@@ -148,8 +148,13 @@ final class RsvpController extends Controller
 
         // Login automático: mantém o convidado autenticado após confirmar,
         // liberando o acesso à lista de presentes e aos pagamentos (ponto 6).
+        // Só para conta nova / sem senha: conta com senha exige login de
+        // verdade (informar o telefone de alguém no formulário não pode abrir
+        // a conta dessa pessoa).
         try {
-            GuestAuth::login($result['guest']);
+            if (empty($result['has_password'])) {
+                GuestAuth::login($result['guest']);
+            }
         } catch (Throwable $e) {
             // Falha ao autenticar não impede a confirmação já gravada.
             error_log('[Rsvp] autologin: ' . $e->getMessage());

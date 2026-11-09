@@ -61,6 +61,8 @@ final class App
      */
     public function run(): void
     {
+        $this->enforceCanonicalHost();
+
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         $uri    = $_SERVER['REQUEST_URI'] ?? '/';
 
@@ -83,21 +85,47 @@ final class App
         $controller->{$action}();
     }
 
-    private function renderNotFound(): void
+    /**
+     * Redireciona o "www." para o domínio do base_url (e vice-versa).
+     *
+     * Os formulários e links usam o base_url absoluto. Quem abria o site pelo
+     * www tinha o cookie de sessão gravado só para o www; ao enviar um
+     * formulário para o domínio sem www, o cookie não ia junto, o token CSRF
+     * falhava e a página simplesmente "recarregava" (ex.: gerar o PIX).
+     * Mantendo um único host, a sessão é sempre a mesma.
+     */
+    private function enforceCanonicalHost(): void
     {
-        http_response_code(404);
-        $config  = $this->config;
-        $wedding = $this->config['wedding'] ?? [];
-        $app     = $this->config['app'] ?? [];
-
-        $notFound = APP_PATH . '/Views/errors/404.php';
-        if (is_file($notFound)) {
-            require APP_PATH . '/Views/layouts/header.php';
-            require $notFound;
-            require APP_PATH . '/Views/layouts/footer.php';
+        if (PHP_SAPI === 'cli') {
             return;
         }
 
-        echo '404 — Página não encontrada.';
+        $baseUrl   = rtrim((string) ($this->config['app']['base_url'] ?? ''), '/');
+        $canonical = strtolower((string) parse_url($baseUrl, PHP_URL_HOST));
+        $host      = strtolower(explode(':', (string) ($_SERVER['HTTP_HOST'] ?? ''))[0]);
+
+        if ($canonical === '' || $host === '' || $host === $canonical) {
+            return;
+        }
+        // Só trata a variação www/sem www do próprio domínio — localhost, IPs
+        // e outros hosts (ex.: ambiente de teste) seguem intactos.
+        if ($host !== 'www.' . $canonical && 'www.' . $host !== $canonical) {
+            return;
+        }
+
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        // 308 preserva o método/corpo de um POST que chegue pelo host antigo.
+        $status = in_array($method, ['GET', 'HEAD'], true) ? 301 : 308;
+        $uri    = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+
+        header('Location: ' . $baseUrl . '/' . ltrim($uri, '/'), true, $status);
+        exit;
+    }
+
+    private function renderNotFound(): void
+    {
+        // Usa o Controller base para o layout receber os nomes editáveis do
+        // casal (antes aparecia "Noiva & Noivo") e o header sólido.
+        (new \App\Controllers\ErrorController($this->config))->notFound();
     }
 }

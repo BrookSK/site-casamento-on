@@ -35,6 +35,11 @@ final class Router
     public function match(string $method, string $uri): ?string
     {
         $method = strtoupper($method);
+        // HEAD usa as mesmas rotas do GET (o servidor descarta o corpo).
+        // Antes, verificadores de link/pré-visualizações recebiam 404.
+        if ($method === 'HEAD') {
+            $method = 'GET';
+        }
         $path   = $this->normalize($uri);
 
         return $this->routes[$method][$path] ?? null;

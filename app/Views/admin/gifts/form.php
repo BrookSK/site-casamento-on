@@ -20,13 +20,11 @@ $description = $isEdit ? (string) ($gift['description'] ?? '') : '';
 // Formato brasileiro: ponto para milhar, vírgula para decimal (ex.: 5.000,00).
 $priceVal    = $isEdit ? number_format(((int) $gift['price_cents']) / 100, 2, ',', '.') : '';
 $image       = $isEdit ? (string) ($gift['image'] ?? '') : '';
-$statusCur   = $isEdit ? (string) $gift['status'] : 'available';
+// Status = visibilidade no site. Valores antigos (reservado/presenteado)
+// contam como exibidos: o mesmo presente pode ser dado várias vezes.
+$statusCur = ($isEdit && (string) $gift['status'] === 'hidden') ? 'hidden' : 'available';
 
-$statuses = ['available' => 'Disponível', 'reserved' => 'Reservado', 'purchased' => 'Presenteado'];
-
-// Presente efetivamente PAGO (purchased) não pode voltar a ficar disponível:
-// o status fica travado, protegendo o histórico e evitando vender duas vezes.
-$statusLocked = $isEdit && $statusCur === 'purchased';
+$statuses = ['available' => 'Exibido no site', 'hidden' => 'Oculto (não aparece no site)'];
 ?>
 <?php
 // Resolve a URL da imagem atual (aceita http, caminho absoluto ou nome
@@ -67,26 +65,17 @@ if ($image !== '') {
 
         <div class="field">
             <label for="status">Status</label>
-            <?php if ($statusLocked): ?>
-                <!-- Pago: status travado. Mostra "Presenteado" (desabilitado) e
-                     envia o valor por um hidden para preservar no save. -->
-                <select id="status" disabled>
-                    <option selected>Presenteado</option>
-                </select>
-                <input type="hidden" name="status" value="purchased">
-                <small style="color:var(--c-muted);font-size:0.8rem;">
-                    Este presente já foi <strong>pago</strong>. O status não pode
-                    ser alterado para preservar o histórico financeiro.
-                </small>
-            <?php else: ?>
-                <select id="status" name="status">
-                    <?php foreach ($statuses as $value => $label): ?>
-                        <option value="<?= View::e($value) ?>" <?= $statusCur === $value ? 'selected' : '' ?>>
-                            <?= View::e($label) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            <?php endif; ?>
+            <select id="status" name="status">
+                <?php foreach ($statuses as $value => $label): ?>
+                    <option value="<?= View::e($value) ?>" <?= $statusCur === $value ? 'selected' : '' ?>>
+                        <?= View::e($label) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <small style="color:var(--c-muted);font-size:0.8rem;">
+                O mesmo presente pode ser dado por várias pessoas. Use “Oculto”
+                para tirá-lo da lista do site.
+            </small>
         </div>
 
         <div class="field">

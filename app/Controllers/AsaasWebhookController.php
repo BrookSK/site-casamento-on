@@ -81,7 +81,6 @@ final class AsaasWebhookController extends Controller
                     $purchaseId = (int) $purchase['id'];
                     $prevStatus = (string) ($purchase['payment_status'] ?? '');
                     $wasPaid    = $prevStatus === 'paid';
-                    $giftId     = (int) ($purchase['gift_id'] ?? 0);
 
                     $purchases->updateStatus($purchaseId, $status);
 
@@ -94,16 +93,8 @@ final class AsaasWebhookController extends Controller
                     // extraídas do payload do gateway, gravadas na transação.
                     $purchases->updateFinance($purchaseId, $this->extractFinance($payment, $status));
 
-                    // Disponibilidade do presente (ponto 9): confirma a aquisição
-                    // ao pagar; libera a reserva quando falha/estorna.
-                    if ($giftId > 0) {
-                        $gifts = new Gift($this->config);
-                        if ($status === 'paid') {
-                            $gifts->markPurchased($giftId);
-                        } elseif ($status === 'failed' || $status === 'refunded') {
-                            $gifts->releaseIfReserved($giftId);
-                        }
-                    }
+                    // O pagamento não altera a disponibilidade do presente: o
+                    // mesmo item pode ser dado por várias pessoas.
 
                     // Confirmação de pagamento por e-mail + WhatsApp (ponto 8),
                     // apenas na transição para "paid" (evita mensagens duplicadas).
