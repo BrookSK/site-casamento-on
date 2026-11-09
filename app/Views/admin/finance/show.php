@@ -60,6 +60,9 @@ $buyer = (string) ($p['guest_name'] ?? ($p['buyer_name'] ?? '—'));
         <div class="finance-detail__item"><span>Forma de pagamento</span><strong><?= View::e($billingLabels[$bt] ?? $bt) ?></strong></div>
         <div class="finance-detail__item"><span>Referência (gateway)</span><strong><?= View::e((string) ($p['payment_ref'] ?? '—')) ?></strong></div>
 
+        <?php if ((int) ($p['installment_count'] ?? 1) > 1): ?>
+            <div class="finance-detail__item"><span>Parcelamento</span><strong><?= (int) $p['installment_count'] ?>x no cartão (taxas pagas por quem presenteou)</strong></div>
+        <?php endif; ?>
         <div class="finance-detail__item"><span>Valor bruto</span><strong><?= $money((int) ($p['amount_cents'] ?? 0)) ?></strong></div>
         <div class="finance-detail__item"><span>Taxas</span><strong><?= $money((int) ($p['fee_cents'] ?? 0)) ?></strong></div>
         <div class="finance-detail__item"><span>Valor líquido</span><strong><?= $money((int) ($p['net_cents'] ?? 0)) ?></strong></div>

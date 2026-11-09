@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Asaas;
+use App\Core\CardInstallments;
 use App\Core\Controller;
 use App\Core\Csrf;
 use App\Core\GuestAuth;
@@ -160,17 +161,8 @@ final class GiftController extends Controller
                 $this->rememberPayment($giftId, 'CREDIT_CARD', null, $cardForm);
                 // Novo presente com cartão (pode ser o mesmo item de novo):
                 // esquece a aprovação anterior para não mostrar sucesso falso.
-                unset($_SESSION['gift_paid'][$giftId]);
-                $this->view('gift/pay', [
-                    'pageTitle'   => 'Pagamento do presente',
-                    'bodyClass'   => 'page-light',
-                    'gift'        => $gift,
-                    'billingType' => 'CREDIT_CARD',
-                    'value'       => $value,
-                    'cardApproved'=> null,
-                    // Dados repassados ao formulário do cartão (passo seguinte).
-                    'cardForm'    => $cardForm,
-                ]);
+                unset($_SESSION['gift_paid'][$giftId], $_SESSION['gift_paid_info'][$giftId]);
+                $this->renderCardForm($giftId, $buyerName, $buyerMail, $buyerPhone, $buyerCpf, $message);
                 return;
             }
 
@@ -324,18 +316,18 @@ final class GiftController extends Controller
             $value = round(((int) $gift['price_cents']) / 100, 2);
 
             if ($billingType === 'CREDIT_CARD') {
-                if (!is_array($entry['card'] ?? null)) {
+                $c = $entry['card'] ?? null;
+                if (!is_array($c)) {
                     return false;
                 }
-                $this->view('gift/pay', [
-                    'pageTitle'    => 'Pagamento do presente',
-                    'bodyClass'    => 'page-light',
-                    'gift'         => $gift,
-                    'billingType'  => 'CREDIT_CARD',
-                    'value'        => $value,
-                    'cardApproved' => null,
-                    'cardForm'     => $entry['card'],
-                ]);
+                $this->renderCardForm(
+                    $giftId,
+                    (string) ($c['buyer_name'] ?? ''),
+                    (string) ($c['buyer_email'] ?? ''),
+                    (string) ($c['buyer_phone'] ?? ''),
+                    (string) ($c['buyer_cpf'] ?? ''),
+                    isset($c['message']) ? (string) $c['message'] : null
+                );
                 return true;
             }
 
@@ -378,18 +370,17 @@ final class GiftController extends Controller
 
         $giftId     = (int) ($_POST['gift_id'] ?? 0);
 
-        // Cartão já aprovado nesta sessão (envio repetido): mostra o sucesso.
+        // Cartão já cobrado nesta sessão (envio repetido): mostra o resultado.
         if ((int) ($_SESSION['gift_paid'][$giftId] ?? 0) > time() - 3600) {
             $paidGift = (new Gift($this->config))->find($giftId);
             if ($paidGift !== null) {
-                $this->view('gift/pay', [
-                    'pageTitle'    => 'Pagamento do presente',
-                    'bodyClass'    => 'page-light',
-                    'gift'         => $paidGift,
-                    'billingType'  => 'CREDIT_CARD',
-                    'value'        => round(((int) $paidGift['price_cents']) / 100, 2),
-                    'cardApproved' => true,
-                ]);
+                $info = $_SESSION['gift_paid_info'][$giftId] ?? [];
+                $this->renderCardResult(
+                    $paidGift,
+                    !empty($info['approved']) ? true : null,
+                    (int) ($info['n'] ?? 1),
+                    (int) ($info['total'] ?? $paidGift['price_cents'])
+                );
                 return;
             }
         }
@@ -416,21 +407,57 @@ final class GiftController extends Controller
             return;
         }
 
+        // Parcelas escolhidas + total que a pessoa VIU na tela ("6|91218").
+        // Nunca cobramos um valor diferente do mostrado.
+        [$installments, $shownTotal] = self::parseInstallmentChoice((string) ($_POST['installments'] ?? '1'));
+
+        // O processamento do cartão pode levar até ~60 s no ASAAS.
+        @set_time_limit(150);
+
         $giftModel = new Gift($this->config);
+        $gift = $giftModel->findPurchasable($giftId);
+        if ($gift === null) {
+            $this->redirectHome('presentes', 'erro-indisponivel');
+        }
+        $priceCents = (int) $gift['price_cents'];
+        if ($priceCents <= 0) {
+            $this->redirectHome('presentes', 'erro-valor');
+        }
+
+        // Total no cartão = preço do presente + taxas do ASAAS para essa
+        // quantidade de parcelas (pagas por quem presenteia). Conferido no
+        // simulador antes de cobrar, para o casal receber o valor cheio.
         try {
-            $gift = $giftModel->findPurchasable($giftId);
-            if ($gift === null) {
-                $this->redirectHome('presentes', 'erro-indisponivel');
+            $asaas   = Asaas::fromSettings($this->config);
+            $options = CardInstallments::options($asaas, $priceCents, $this->installmentOverrides($giftId));
+            if (!isset($options[$installments])) {
+                throw new \RuntimeException('Parcelas fora das opções: ' . $installments);
             }
-
-            $amountCents = (int) $gift['price_cents'];
-            if ($amountCents <= 0) {
-                $this->redirectHome('presentes', 'erro-valor');
+            $option = $options[$installments];
+            if ($shownTotal !== $option['total_cents']) {
+                // O valor mudou desde que a tela foi aberta: mostra de novo.
+                $this->renderCardForm($giftId, $buyerName, $buyerMail, $buyerPhone, $buyerCpf, $message, 'changed');
+                return;
             }
-            $value = round($amountCents / 100, 2);
+            $charge = CardInstallments::verify($asaas, $priceCents, $installments, $option['total_cents']);
+            if ($charge['total_cents'] !== $option['total_cents']) {
+                // Raro: arredondamento do ASAAS pediu mais centavos. Guarda o
+                // valor corrigido e mostra à pessoa antes de cobrar.
+                $_SESSION['gift_inst_override'][$giftId][$installments] = $charge['total_cents'];
+                $this->renderCardForm($giftId, $buyerName, $buyerMail, $buyerPhone, $buyerCpf, $message, 'changed');
+                return;
+            }
+        } catch (Throwable $e) {
+            error_log('[Gift] payCard installments: ' . $e->getMessage());
+            $this->renderCardForm($giftId, $buyerName, $buyerMail, $buyerPhone, $buyerCpf, $message, 'installments');
+            return;
+        }
+        $amountCents = $charge['total_cents'];
+        $value       = round($amountCents / 100, 2);
 
-            $asaas = Asaas::fromSettings($this->config);
-
+        $paymentId = '';
+        $approved  = false;
+        try {
             $customerId = $asaas->createCustomer([
                 'name'    => $buyerName,
                 'email'   => $buyerMail ?: null,
@@ -442,6 +469,7 @@ final class GiftController extends Controller
                 'customer'          => $customerId,
                 'billingType'       => 'CREDIT_CARD',
                 'value'             => $value,
+                'installmentCount'  => $installments,
                 'dueDate'           => date('Y-m-d'),
                 'description'       => 'Presente: ' . (string) $gift['name'],
                 'externalReference' => 'gift_' . $giftId,
@@ -459,19 +487,23 @@ final class GiftController extends Controller
 
             $paymentId = (string) ($payment['id'] ?? '');
             $status    = strtoupper((string) ($payment['status'] ?? ''));
+            $approved  = in_array($status, ['CONFIRMED', 'RECEIVED', 'RECEIVED_IN_CASH'], true);
 
-            // Grava a compra.
-            $purchases = new GiftPurchase($this->config);
-            $purchases->createPending([
+            // Grava a compra. amount_cents = o que foi cobrado no cartão (com
+            // as taxas); gift_price_cents = o preço do presente.
+            $purchases  = new GiftPurchase($this->config);
+            $purchaseId = $purchases->createPending([
                 'gift_id'           => $giftId,
                 'guest_id'          => $guestId,
                 'buyer_name'        => $buyerName,
                 'buyer_email'       => $buyerMail ?: null,
                 'amount_cents'      => $amountCents,
-                'gift_price_cents'  => $amountCents,
+                'gift_price_cents'  => $priceCents,
                 'payment_ref'       => $paymentId ?: null,
                 'asaas_customer_id' => $customerId,
                 'billing_type'      => 'CREDIT_CARD',
+                'installment_count' => $installments,
+                'installment_ref'   => isset($payment['installment']) ? (string) $payment['installment'] : null,
                 'invoice_url'       => isset($payment['invoiceUrl']) ? (string) $payment['invoiceUrl'] : null,
                 'bank_slip_url'     => null,
                 'pix_payload'       => null,
@@ -479,7 +511,17 @@ final class GiftController extends Controller
                 'message'           => $message,
             ]);
 
-            $approved = in_array($status, ['CONFIRMED', 'RECEIVED', 'RECEIVED_IN_CASH'], true);
+            // Taxa e líquido previstos pelo simulador. No parcelado o aviso do
+            // ASAAS vem por parcela, então este é o valor da compra inteira.
+            try {
+                $purchases->updateFinance($purchaseId, [
+                    'fee_cents' => max(0, $amountCents - $charge['net_cents']),
+                    'net_cents' => $charge['net_cents'],
+                ]);
+            } catch (Throwable $e) {
+                error_log('[Gift] payCard fee: ' . $e->getMessage());
+            }
+
             if ($approved && $paymentId !== '') {
                 $purchase = $purchases->findByPaymentRef($paymentId);
                 if ($purchase !== null) {
@@ -497,11 +539,6 @@ final class GiftController extends Controller
                         error_log('[Gift] payCard finance: ' . $e->getMessage());
                     }
                 }
-                // Reenvio do mesmo formulário (toque duplo) mostra o sucesso
-                // de novo em vez de "presente indisponível".
-                unset($_SESSION['gift_pending'][$giftId]);
-                $_SESSION['gift_paid'][$giftId] = time();
-
                 // Confirmação por e-mail + WhatsApp AGORA (cartão aprovado na
                 // hora). Como já marcamos "paid", quando o webhook do ASAAS
                 // chegar depois ele verá wasPaid=true e NÃO reenviará — sem
@@ -509,21 +546,83 @@ final class GiftController extends Controller
                 $this->notifyCardPaid($giftId, $guestId, $buyerName, $buyerMail, $buyerPhone, $amountCents, $paymentId);
             }
 
-            $this->view('gift/pay', [
-                'pageTitle'    => 'Pagamento do presente',
-                'bodyClass'    => 'page-light',
-                'gift'         => $gift,
-                'billingType'  => 'CREDIT_CARD',
-                'value'        => $value,
-                'cardApproved' => $approved,
-            ]);
+            $this->rememberCardCharge($giftId, $approved, $installments, $amountCents);
+            $this->renderCardResult($gift, $approved, $installments, $amountCents);
             return;
         } catch (Throwable $e) {
             error_log('[Gift] payCard: ' . $e->getMessage());
+            if ($paymentId !== '') {
+                $this->rememberCardCharge($giftId, $approved, $installments, $amountCents);
+                // A cobrança JÁ foi criada no ASAAS e o erro veio depois (ex.:
+                // banco). Não diz "recusado" — a pessoa poderia pagar de novo.
+                // O webhook registra a confirmação quando chegar.
+                $this->renderCardResult($gift, $approved ?: null, $installments, $amountCents);
+                return;
+            }
             // Cartão recusado: reabre o formulário para tentar outro cartão.
             $this->renderCardForm($giftId, $buyerName, $buyerMail, $buyerPhone, $buyerCpf, $message, 'declined');
             return;
         }
+    }
+
+    /**
+     * Marca na sessão que o cartão deste presente já foi cobrado (aprovado ou
+     * em processamento). Um reenvio do mesmo formulário (toque duplo, voltar
+     * e reenviar) mostra o resultado em vez de cobrar de novo. Um novo
+     * presente pelo popup passa por store(), que limpa esta marca.
+     */
+    private function rememberCardCharge(int $giftId, bool $approved, int $installments, int $amountCents): void
+    {
+        unset($_SESSION['gift_pending'][$giftId]);
+        $_SESSION['gift_paid'][$giftId]      = time();
+        $_SESSION['gift_paid_info'][$giftId] = [
+            'n'        => $installments,
+            'total'    => $amountCents,
+            'approved' => $approved,
+        ];
+    }
+
+    /**
+     * Lê a opção de parcelas enviada ("N|totalCentavos").
+     *
+     * @return array{0:int, 1:int} [parcelas, total mostrado em centavos]
+     */
+    private static function parseInstallmentChoice(string $raw): array
+    {
+        $parts = explode('|', $raw, 2);
+        $n     = max(1, min(CardInstallments::MAX, (int) $parts[0]));
+        return [$n, (int) ($parts[1] ?? 0)];
+    }
+
+    /**
+     * Totais corrigidos após conferência no ASAAS, por parcela, para este
+     * presente nesta sessão (ver payCard()).
+     *
+     * @return array<int, int>
+     */
+    private function installmentOverrides(int $giftId): array
+    {
+        $o = $_SESSION['gift_inst_override'][$giftId] ?? [];
+        return is_array($o) ? $o : [];
+    }
+
+    /**
+     * Tela de resultado do cartão. $approved: true = aprovado, false = em
+     * análise/pendente no ASAAS, null = cobrança criada mas sem confirmação.
+     */
+    private function renderCardResult(array $gift, ?bool $approved, int $installments, int $amountCents): void
+    {
+        $this->view('gift/pay', [
+            'pageTitle'         => 'Pagamento do presente',
+            'bodyClass'         => 'page-light',
+            'gift'              => $gift,
+            'billingType'       => 'CREDIT_CARD',
+            'value'             => round(((int) $gift['price_cents']) / 100, 2),
+            'cardApproved'      => $approved === true,
+            'cardProcessing'    => $approved !== true,
+            'cardInstallments'  => $installments,
+            'cardChargedCents'  => $amountCents,
+        ]);
     }
 
     /**
@@ -580,7 +679,8 @@ final class GiftController extends Controller
 
     /**
      * Renderiza a tela de pagamento com o FORMULÁRIO do cartão (reutilizada no
-     * fluxo e nas tentativas após erro). $error: null | 'invalid' | 'declined'.
+     * fluxo e nas tentativas após erro).
+     * $error: null | 'invalid' | 'declined' | 'installments'.
      */
     private function renderCardForm(
         int $giftId,
@@ -591,11 +691,25 @@ final class GiftController extends Controller
         ?string $message,
         ?string $error = null
     ): void {
-        $gift = (new Gift($this->config))->find($giftId);
+        $gift = (new Gift($this->config))->findPurchasable($giftId);
         if ($gift === null) {
             $this->redirectHome('presentes', 'erro-indisponivel');
         }
         $value = round(((int) $gift['price_cents']) / 100, 2);
+
+        // Opções de parcelamento com a taxa já somada (taxas reais da conta,
+        // via simulador do ASAAS). Sem elas não dá para garantir o valor
+        // cheio ao casal, então o formulário não é exibido.
+        $options = [];
+        try {
+            $options = CardInstallments::options(
+                Asaas::fromSettings($this->config),
+                (int) $gift['price_cents'],
+                $this->installmentOverrides($giftId)
+            );
+        } catch (Throwable $e) {
+            error_log('[Gift] installment options: ' . $e->getMessage());
+        }
 
         $this->view('gift/pay', [
             'pageTitle'   => 'Pagamento do presente',
@@ -605,6 +719,8 @@ final class GiftController extends Controller
             'value'       => $value,
             'cardApproved'=> null,
             'cardError'   => $error,
+            'installmentOptions' => $options,
+            'selectedInstallments' => self::parseInstallmentChoice((string) ($_POST['installments'] ?? '1'))[0],
             'cardForm'    => [
                 'gift_id'     => $giftId,
                 'buyer_name'  => $buyerName,

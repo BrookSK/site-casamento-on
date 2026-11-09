@@ -77,10 +77,18 @@ final class AsaasWebhookController extends Controller
             if ($status !== null) {
                 $purchases = new GiftPurchase($this->config);
                 $purchase  = $purchases->findByPaymentRef($paymentId);
+                // Cartão parcelado: cada parcela é uma cobrança com id próprio
+                // e só a 1ª está em payment_ref. As demais chegam com o id do
+                // parcelamento ("installment") e são ligadas à mesma compra.
+                $installmentRef = (string) ($payment['installment'] ?? '');
+                if ($purchase === null && $installmentRef !== '') {
+                    $purchase = $purchases->findByInstallmentRef($installmentRef);
+                }
                 if ($purchase !== null) {
                     $purchaseId = (int) $purchase['id'];
                     $prevStatus = (string) ($purchase['payment_status'] ?? '');
                     $wasPaid    = $prevStatus === 'paid';
+                    $isInstallment = (int) ($purchase['installment_count'] ?? 1) > 1 || $installmentRef !== '';
 
                     $purchases->updateStatus($purchaseId, $status);
 
@@ -91,7 +99,13 @@ final class AsaasWebhookController extends Controller
 
                     // Captura financeira (ponto 11): taxas, valor líquido e datas
                     // extraídas do payload do gateway, gravadas na transação.
-                    $purchases->updateFinance($purchaseId, $this->extractFinance($payment, $status));
+                    $finance = $this->extractFinance($payment, $status);
+                    if ($isInstallment) {
+                        // O aviso traz valor/taxa de UMA parcela; a taxa e o
+                        // líquido da compra inteira já foram gravados na criação.
+                        unset($finance['fee_cents'], $finance['net_cents']);
+                    }
+                    $purchases->updateFinance($purchaseId, $finance);
 
                     // O pagamento não altera a disponibilidade do presente: o
                     // mesmo item pode ser dado por várias pessoas.

@@ -63,7 +63,51 @@ final class GiftPurchase extends Model
                 'message'           => $data['message'] ?? null,
             ]
         );
-        return (int) $this->lastInsertId();
+        $id = (int) $this->lastInsertId();
+
+        // Parcelamento no cartão (colunas da migração 2026_11_09_parcelamento).
+        // Gravado à parte para a compra nunca deixar de ser registrada caso a
+        // migração ainda não tenha sido rodada.
+        $count = (int) ($data['installment_count'] ?? 1);
+        if ($id > 0 && ($count > 1 || !empty($data['installment_ref'])) && $this->hasInstallmentColumns()) {
+            $this->execute(
+                'UPDATE ' . $this->table . ' SET installment_count = :c, installment_ref = :r WHERE id = :id',
+                ['c' => max(1, $count), 'r' => $data['installment_ref'] ?? null, 'id' => $id]
+            );
+        }
+        return $id;
+    }
+
+    /** As colunas de parcelamento já existem? (migração rodada) */
+    public function hasInstallmentColumns(): bool
+    {
+        static $has = null;
+        if ($has === null) {
+            try {
+                $has = $this->selectOne(
+                    'SHOW COLUMNS FROM ' . $this->table . " LIKE 'installment_ref'"
+                ) !== null;
+            } catch (\Throwable $e) {
+                $has = false;
+            }
+        }
+        return $has;
+    }
+
+    /**
+     * Busca a compra pelo id do PARCELAMENTO no ASAAS. Cada parcela é uma
+     * cobrança com id próprio; só a 1ª fica em payment_ref, então os avisos
+     * das demais parcelas são ligados à compra por aqui.
+     */
+    public function findByInstallmentRef(string $ref): ?array
+    {
+        if ($ref === '' || !$this->hasInstallmentColumns()) {
+            return null;
+        }
+        return $this->selectOne(
+            'SELECT * FROM ' . $this->table . ' WHERE installment_ref = :r LIMIT 1',
+            ['r' => $ref]
+        );
     }
 
     /**

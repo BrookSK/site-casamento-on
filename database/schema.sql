@@ -149,6 +149,9 @@ CREATE TABLE IF NOT EXISTS `gift_purchases` (
     `finance_status`  VARCHAR(20) NOT NULL DEFAULT 'pending',
     -- Referência externa do gateway (preenchida no futuro).
     `payment_ref`     VARCHAR(190) NULL,
+    -- Parcelamento no cartão: quantidade e id do parcelamento no ASAAS.
+    `installment_count` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    `installment_ref`   VARCHAR(60) NULL,
     `message`         TEXT NULL,
     `created_at`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -210,7 +210,8 @@ $exportQs = $qs !== '' ? ('?' . $qs) : '';
                                 'gift'         => (string) ($p['gift_name'] ?? '—'),
                                 'buyer'        => $buyer !== '' ? $buyer : '—',
                                 'email'        => (string) ($p['buyer_email'] ?? ''),
-                                'billing'      => $billingLabels[$bt] ?? $bt,
+                                'billing'      => ($billingLabels[$bt] ?? $bt)
+                                    . ((int) ($p['installment_count'] ?? 1) > 1 ? ' — ' . (int) $p['installment_count'] . 'x' : ''),
                                 'status'       => $label,
                                 'status_cls'   => $cls,
                                 'ref'          => (string) ($p['payment_ref'] ?? ''),

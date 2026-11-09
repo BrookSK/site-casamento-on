@@ -317,7 +317,7 @@ $resolveImage = static function (string $image) use ($baseUrl): string {
                 <label for="gm_billing">Forma de pagamento</label>
                 <select id="gm_billing" name="billing_type" data-gift-modal-billing>
                     <option value="PIX" <?= $oldBilling === 'PIX' ? 'selected' : '' ?>>PIX (aprovação na hora)</option>
-                    <option value="CREDIT_CARD" <?= $oldBilling === 'CREDIT_CARD' ? 'selected' : '' ?>>Cartão de crédito</option>
+                    <option value="CREDIT_CARD" <?= $oldBilling === 'CREDIT_CARD' ? 'selected' : '' ?>>Cartão de crédito (até <?= \App\Core\CardInstallments::MAX ?>x)</option>
                     <option value="BOLETO" <?= $oldBilling === 'BOLETO' ? 'selected' : '' ?>>Boleto bancário</option>
                 </select>
             </div>

@@ -27,6 +27,7 @@ final class Asaas
     private const BASE_SANDBOX    = 'https://api-sandbox.asaas.com/v3';
     private const BASE_PRODUCTION = 'https://api.asaas.com/v3';
     private const TIMEOUT         = 15;
+    private const CARD_TIMEOUT    = 75;
 
     private string $baseUrl;
     private string $apiKey;
@@ -155,24 +156,38 @@ final class Asaas
         $payload = [
             'customer'    => $data['customer'],
             'billingType' => $data['billingType'],
-            'value'       => $data['value'],
             'dueDate'     => $data['dueDate'],
         ];
+        // Parcelado (2x ou mais): o ASAAS pede installmentCount + totalValue e
+        // divide o total entre as parcelas. À vista: só "value" (a doc proíbe
+        // os campos de parcelamento em cobrança avulsa).
+        $installments = (int) ($data['installmentCount'] ?? 1);
+        if ($installments >= 2) {
+            $payload['installmentCount'] = $installments;
+            $payload['totalValue']       = $data['value'];
+        } else {
+            $payload['value'] = $data['value'];
+        }
         if (!empty($data['description']))       { $payload['description']       = $data['description']; }
         if (!empty($data['externalReference'])) { $payload['externalReference'] = $data['externalReference']; }
 
         // Checkout transparente de cartão: quando os dados do cartão são
         // enviados junto, o ASAAS processa a transação na hora (sem fatura
         // hospedada). Exige o remoteIp do PAGADOR (não o do servidor).
+        $timeout = self::TIMEOUT;
         if (!empty($data['creditCard']) && !empty($data['creditCardHolderInfo'])) {
             $payload['creditCard']           = $data['creditCard'];
             $payload['creditCardHolderInfo'] = $data['creditCardHolderInfo'];
             if (!empty($data['remoteIp'])) {
                 $payload['remoteIp'] = $data['remoteIp'];
             }
+            // A doc do ASAAS pede no mínimo 60 s quando o cartão é processado
+            // (antes eram 15 s: uma resposta lenta virava "recusado" mesmo
+            // com a cobrança aprovada, e a pessoa podia pagar de novo).
+            $timeout = self::CARD_TIMEOUT;
         }
 
-        return $this->request('POST', '/payments', $payload);
+        return $this->request('POST', '/payments', $payload, $timeout);
     }
 
     /**
@@ -211,7 +226,7 @@ final class Asaas
      * @return array<string, mixed>
      * @throws RuntimeException em erro de rede ou status não-2xx.
      */
-    private function request(string $method, string $path, ?array $body = null): array
+    private function request(string $method, string $path, ?array $body = null, int $timeout = self::TIMEOUT): array
     {
         $url  = $this->baseUrl . $path;
         $json = $body !== null
@@ -226,29 +241,7 @@ final class Asaas
             throw new RuntimeException('A extensão cURL do PHP é necessária para o ASAAS.');
         }
 
-        $ch = curl_init($url);
-        if ($ch === false) {
-            throw new RuntimeException('Não foi possível iniciar a conexão com o ASAAS.');
-        }
-
-        $headers = [
-            'access_token: ' . $this->apiKey,
-            'Content-Type: application/json',
-            'Accept: application/json',
-            'User-Agent: site-casamento-on',
-        ];
-
-        curl_setopt_array($ch, [
-            CURLOPT_CUSTOMREQUEST  => strtoupper($method),
-            CURLOPT_HTTPHEADER     => $headers,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => self::TIMEOUT,
-            CURLOPT_TIMEOUT        => self::TIMEOUT,
-            CURLOPT_FOLLOWLOCATION => false,
-        ]);
-        if ($json !== null) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
-        }
+        $ch = $this->handle($method, $url, $json, $timeout);
 
         $raw    = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
@@ -272,6 +265,120 @@ final class Asaas
         }
 
         return $decoded;
+    }
+
+    /** Monta um handle cURL autenticado (usado em request() e no simulador). */
+    private function handle(string $method, string $url, ?string $json, int $timeout): \CurlHandle
+    {
+        $ch = curl_init($url);
+        if ($ch === false) {
+            throw new RuntimeException('Não foi possível iniciar a conexão com o ASAAS.');
+        }
+
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST  => strtoupper($method),
+            CURLOPT_HTTPHEADER     => [
+                'access_token: ' . $this->apiKey,
+                'Content-Type: application/json',
+                'Accept: application/json',
+                'User-Agent: site-casamento-on',
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => self::TIMEOUT,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_FOLLOWLOCATION => false,
+        ]);
+        if ($json !== null) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+        }
+        return $ch;
+    }
+
+    /**
+     * Simulador de vendas do ASAAS (POST /payments/simulate) para cartão de
+     * crédito, em paralelo para várias quantidades de parcelas. Usa as taxas
+     * REAIS da conta (não uma tabela fixa).
+     *
+     * @param array<int, int> $counts quantidades de parcelas (1..N)
+     * @return array<int, array{net:float, pct:?float}> parcelas => valor
+     *         líquido total de uma venda de $value reais e a taxa percentual
+     * @throws RuntimeException se alguma simulação falhar
+     */
+    public function simulateCard(float $value, array $counts): array
+    {
+        if (!function_exists('curl_multi_init')) {
+            throw new RuntimeException('A extensão cURL do PHP é necessária para o ASAAS.');
+        }
+
+        $out   = [];
+        $error = null;
+        // Poucas requisições por vez (respeita os limites de uso da API) e uma
+        // nova tentativa para as que falharem.
+        $pending = array_values($counts);
+        for ($attempt = 0; $attempt < 2 && $pending !== []; $attempt++) {
+            $failed = [];
+            foreach (array_chunk($pending, 4) as $chunk) {
+                $multi   = curl_multi_init();
+                $handles = [];
+                foreach ($chunk as $n) {
+                    $body = ['value' => round($value, 2), 'billingTypes' => ['CREDIT_CARD']];
+                    if ($n > 1) {
+                        $body['installmentCount'] = $n;
+                    }
+                    $ch = $this->handle('POST', $this->baseUrl . '/payments/simulate', (string) json_encode($body), self::TIMEOUT);
+                    curl_multi_add_handle($multi, $ch);
+                    $handles[$n] = $ch;
+                }
+
+                do {
+                    $st = curl_multi_exec($multi, $running);
+                    if ($running > 0) {
+                        curl_multi_select($multi, 1.0);
+                    }
+                } while ($running > 0 && $st === CURLM_OK);
+
+                foreach ($handles as $n => $ch) {
+                    $raw    = curl_multi_getcontent($ch);
+                    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+                    curl_multi_remove_handle($multi, $ch);
+
+                    $res = json_decode((string) $raw, true);
+                    $cc  = is_array($res) && is_array($res['creditCard'] ?? null) ? $res['creditCard'] : null;
+                    $net = null;
+                    if ($status >= 200 && $status < 300 && $cc !== null) {
+                        if (isset($cc['netValue'])) {
+                            $net = (float) $cc['netValue'];
+                        } elseif (isset($cc['installment']['paymentNetValue'])) {
+                            $net = (float) $cc['installment']['paymentNetValue'] * $n;
+                        }
+                    }
+                    if ($net === null) {
+                        $failed[] = $n;
+                        $error = 'simulação ' . $n . 'x: HTTP ' . $status . ' ' . mb_substr((string) $raw, 0, 200);
+                        continue;
+                    }
+                    $out[$n] = [
+                        'net' => $net,
+                        'pct' => isset($cc['feePercentage']) && is_numeric($cc['feePercentage'])
+                            ? (float) $cc['feePercentage'] : null,
+                    ];
+                }
+                curl_multi_close($multi);
+            }
+            $pending = $failed;
+        }
+
+        if ($pending !== []) {
+            error_log('[Asaas] simulate: ' . $error);
+            throw new RuntimeException('Não foi possível consultar as taxas do cartão no ASAAS.');
+        }
+        return $out;
+    }
+
+    /** Ambiente da conta (sandbox/production), usado como chave de cache. */
+    public function environment(): string
+    {
+        return str_contains($this->baseUrl, 'sandbox') ? 'sandbox' : 'production';
     }
 
     /**

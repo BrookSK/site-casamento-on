@@ -2235,6 +2235,19 @@ p { margin: 0 0 1rem; }
     width: 100%;
 }
 .pay-field input:focus { border-color: var(--c-sage); background: var(--c-white); outline: none; }
+/* Seletor de parcelas: mesmo visual dos campos do cartão. */
+.pay-field select {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    padding: 0.7rem 2.25rem 0.7rem 0.9rem;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    background-color: var(--c-cream);
+    color: var(--c-ink);
+    width: 100%;
+}
+.pay-field select:focus { border-color: var(--c-sage); background-color: var(--c-white); outline: none; }
+.pay-field__hint { font-size: 0.8rem; line-height: 1.45; color: var(--c-muted); text-align: left; }
 .pay-cardform__submit { grid-column: 1 / -1; margin-top: 0.25rem; }
 .pay-cardform__note {
     grid-column: 1 / -1;

@@ -22,15 +22,36 @@ use App\Core\View;
  * @var string|null           $pixQr
  * @var bool|null             $cardApproved null = ainda não processado
  * @var array|null            $cardForm     dados do comprador (p/ o form do cartão)
- * @var string|null           $cardError    null | 'invalid' | 'declined'
+ * @var string|null           $cardError    null | 'invalid' | 'declined' | 'installments'
+ * @var array<int, array{n:int,total_cents:int,per_cents:int,net_cents:int}>|null $installmentOptions
+ * @var int|null              $selectedInstallments
+ * @var bool|null             $cardProcessing   cobrança criada, ainda sem aprovação
+ * @var int|null              $cardInstallments parcelas da compra concluída
+ * @var int|null              $cardChargedCents total cobrado no cartão
  */
 
 $baseUrl   = $app['base_url'] ?? '';
 $giftName  = (string) ($gift['name'] ?? 'Presente');
 $valueText = 'R$ ' . number_format((float) $value, 2, ',', '.');
+$brl       = static fn (int $cents): string => 'R$ ' . number_format($cents / 100, 2, ',', '.');
 
 $cardForm  = $cardForm ?? null;
 $cardError = $cardError ?? null;
+$installmentOptions   = $installmentOptions ?? [];
+$selectedInstallments = (int) ($selectedInstallments ?? 1);
+if (!isset($installmentOptions[$selectedInstallments])) {
+    $selectedInstallments = 1;
+}
+$cardProcessing   = !empty($cardProcessing);
+$cardInstallments = (int) ($cardInstallments ?? 1);
+$cardChargedCents = (int) ($cardChargedCents ?? 0);
+// Resumo "6x de R$ 152,03 (total R$ 912,18)" do que foi cobrado.
+$chargedText = '';
+if ($cardChargedCents > 0) {
+    $chargedText = $cardInstallments > 1
+        ? $cardInstallments . 'x de ' . $brl(intdiv($cardChargedCents, $cardInstallments)) . ' (total ' . $brl($cardChargedCents) . ')'
+        : 'à vista, ' . $brl($cardChargedCents);
+}
 ?>
 <section class="section section--pay" id="pagamento" data-reveal>
     <div class="container container--narrow">
@@ -92,8 +113,26 @@ $cardError = $cardError ?? null;
                 <?php if ($cardApproved === true): ?>
                     <div class="pay-card__success" aria-hidden="true">&#10003;</div>
                     <h3 class="pay-card__title">Pagamento aprovado!</h3>
-                    <p>Recebemos a sua contribuição com o cartão de crédito.
+                    <p>Recebemos a sua contribuição com o cartão de crédito
+                       <?php if ($chargedText !== ''): ?>(<?= View::e($chargedText) ?>)<?php endif; ?>.
                        Muito obrigado pelo carinho!</p>
+
+                <?php elseif ($cardProcessing): ?>
+                    <h3 class="pay-card__title">Pagamento em processamento</h3>
+                    <p>O pagamento com o cartão foi enviado
+                       <?php if ($chargedText !== ''): ?>(<?= View::e($chargedText) ?>)<?php endif; ?>
+                       e está sendo confirmado pela operadora. Você recebe a
+                       confirmação por e-mail assim que for aprovado.
+                       <strong>Não é preciso pagar de novo.</strong></p>
+
+                <?php elseif ($cardForm !== null && $installmentOptions === []): ?>
+                    <!-- Sem as taxas do ASAAS não dá para montar as parcelas
+                         garantindo o valor cheio ao casal. -->
+                    <h3 class="pay-card__title">Cartão de crédito</h3>
+                    <p class="pay-card__alert">
+                        Não foi possível calcular as parcelas do cartão agora.
+                        Tente novamente em instantes ou volte e escolha PIX.
+                    </p>
 
                 <?php elseif ($cardForm !== null): ?>
                     <!-- Formulário do cartão (checkout transparente). Os dados
@@ -109,6 +148,17 @@ $cardError = $cardError ?? null;
                     <?php elseif ($cardError === 'invalid'): ?>
                         <p class="pay-card__alert">
                             Verifique os dados do cartão e tente novamente.
+                        </p>
+                    <?php elseif ($cardError === 'changed'): ?>
+                        <p class="pay-card__alert">
+                            O valor das parcelas foi atualizado. Nada foi cobrado:
+                            confira as opções abaixo e preencha os dados do cartão
+                            novamente.
+                        </p>
+                    <?php elseif ($cardError === 'installments'): ?>
+                        <p class="pay-card__alert">
+                            Não foi possível confirmar o valor das parcelas agora.
+                            Nada foi cobrado. Tente novamente.
                         </p>
                     <?php endif; ?>
 
@@ -160,16 +210,45 @@ $cardError = $cardError ?? null;
                                    inputmode="numeric" placeholder="123">
                         </div>
 
+                        <?php /* Parcelas com a taxa do cartão já somada: quem
+                                 presenteia paga a taxa e o casal recebe o
+                                 valor cheio do presente. */ ?>
+                        <div class="pay-field pay-field--full">
+                            <label for="cc_installments">Parcelas</label>
+                            <select id="cc_installments" name="installments" data-card-installments>
+                                <?php foreach ($installmentOptions as $opt): ?>
+                                    <?php
+                                    $n     = (int) $opt['n'];
+                                    $total = (int) $opt['total_cents'];
+                                    $label = $n === 1
+                                        ? '1x de ' . $brl($total) . ' (à vista)'
+                                        : $n . 'x de ' . $brl((int) $opt['per_cents']) . ' (total ' . $brl($total) . ')';
+                                    ?>
+                                    <option value="<?= $n . '|' . $total ?>" data-total="<?= View::e($brl($total)) ?>"
+                                            <?= $n === $selectedInstallments ? 'selected' : '' ?>>
+                                        <?= View::e($label) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="pay-field__hint">
+                                No cartão, o valor inclui a taxa da operadora e do
+                                parcelamento. No PIX você paga só o valor do presente
+                                (<?= View::e($valueText) ?>).
+                            </small>
+                        </div>
+
+                        <?php $selTotal = (int) ($installmentOptions[$selectedInstallments]['total_cents'] ?? 0); ?>
                         <button class="btn btn--primary pay-cardform__submit" type="submit">
-                            Pagar <?= View::e($valueText) ?>
+                            Pagar <span data-card-total><?= View::e($brl($selTotal)) ?></span>
                         </button>
                         <p class="pay-cardform__note">
                             Pagamento processado com segurança. Seus dados do
-                            cartão não são armazenados pelo site.
+                            cartão não são armazenados pelo site. A confirmação
+                            pode levar até um minuto.
                         </p>
                     </form>
 
-                <?php elseif ($invoiceUrl): ?>
+                <?php elseif (!empty($invoiceUrl)): ?>
                     <!-- Fallback: conta sem checkout transparente de cartão. -->
                     <h3 class="pay-card__title">Pague com Cartão de Crédito</h3>
                     <p>Para concluir com segurança, finalize o pagamento do cartão
@@ -225,15 +304,16 @@ document.querySelectorAll('[data-copy-target]').forEach(function (btn) {
     var form = document.querySelector('.pay-cardform');
     if (!form) { return; }
     var btn = form.querySelector('[type="submit"]');
-    var label = btn ? btn.textContent : '';
+    // innerHTML (e não textContent): o botão tem o <span> do total.
+    var label = btn ? btn.innerHTML : '';
     form.addEventListener('submit', function (e) {
         if (form.getAttribute('data-sending') === '1') { e.preventDefault(); return; }
         form.setAttribute('data-sending', '1');
-        if (btn) { btn.disabled = true; btn.textContent = 'Processando pagamento…'; }
+        if (btn) { label = btn.innerHTML; btn.disabled = true; btn.textContent = 'Processando pagamento…'; }
     });
     window.addEventListener('pageshow', function () {
         form.removeAttribute('data-sending');
-        if (btn) { btn.disabled = false; btn.textContent = label; }
+        if (btn) { btn.disabled = false; btn.innerHTML = label; }
     });
 })();
 
@@ -258,6 +338,15 @@ document.querySelectorAll('[data-copy-target]').forEach(function (btn) {
     if (ccv) {
         ccv.addEventListener('input', function () {
             ccv.value = onlyDigits(ccv.value).slice(0, 4);
+        });
+    }
+    // Botão "Pagar" acompanha o total da parcela escolhida.
+    var inst = document.querySelector('[data-card-installments]');
+    if (inst) {
+        inst.addEventListener('change', function () {
+            var opt = inst.options[inst.selectedIndex];
+            var totalEl = document.querySelector('[data-card-total]');
+            if (opt && totalEl) { totalEl.textContent = opt.getAttribute('data-total') || ''; }
         });
     }
     var cep = document.querySelector('[data-card-cep]');
